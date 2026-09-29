@@ -183,3 +183,4 @@ app/private/
 app/apps/base/
 app/apps/cms/
 app/apps/contacts/
+secrets/
