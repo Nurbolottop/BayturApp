@@ -85,6 +85,17 @@ class OtpLoginTests(BaseAPITestCase):
         self.assertIsNone(cache.get('sms:last:+996700000000'))
         self.assertTrue(self.verify('1234', '+996700000000').json()['isNew'])
 
+    def test_fixed_otp_code_on_staging(self):
+        from django.test import override_settings
+        with override_settings(OTP_FIXED_CODE='1234', APP_ENV='staging'):
+            self.request_code('+996555999000')
+            self.assertTrue(self.verify('1234', '+996555999000').json()['isNew'])
+        cache.clear()
+        OtpChallenge.objects.all().delete()
+        with override_settings(OTP_FIXED_CODE='1234', APP_ENV='production'):
+            self.request_code('+996555999001')
+            self.assertEqual(self.verify('1234', '+996555999001').json()['error']['code'], 'otp_invalid')
+
     def test_blocked_member(self):
         self.make_member(phone=self.phone, status=MemberStatus.BLOCKED)
         self.request_code()

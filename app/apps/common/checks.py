@@ -13,6 +13,8 @@ def production_providers(app_configs, **kwargs):
                             id='baytur.E001'))
     if settings.SMS_BACKEND == 'console':
         issues.append(Error('SMS_BACKEND=console в production: SMS-коды не уходят клиентам', id='baytur.E002'))
+    if settings.OTP_FIXED_CODE:
+        issues.append(Error('OTP_FIXED_CODE задан в production — уберите переменную', id='baytur.E003'))
     if settings.PUSH_BACKEND == 'console':
         issues.append(Warning('PUSH_BACKEND=console в production: push не отправляются', id='baytur.W001'))
     if settings.PAYMENT_WEBHOOK_SECRET == settings.SECRET_KEY:

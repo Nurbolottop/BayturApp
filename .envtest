@@ -99,3 +99,6 @@ PAYMENT_WEBHOOK_SECRET=change_me
 
 # [НЕ ТРОГАТЬ без нужды] S3-совместимое хранилище. Пусто — локальный media/
 S3_BUCKET=
+
+# [dev/staging] Единый OTP-код для всех номеров, пока нет SMS-провайдера. В production не задавать.
+OTP_FIXED_CODE=

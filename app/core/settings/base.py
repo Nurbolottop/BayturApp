@@ -295,7 +295,9 @@ JWT_ALGORITHM = 'HS256'
 # ПРОВАЙДЕРЫ
 # =============================================================================
 
-SMS_BACKEND = os.getenv('SMS_BACKEND', 'console')      # console | (реальный — после выбора провайдера)
+SMS_BACKEND = os.getenv('SMS_BACKEND', 'console')
+# Временный единый OTP-код для всех номеров (dev/staging, пока нет SMS-провайдера). В production игнорируется.
+OTP_FIXED_CODE = os.getenv('OTP_FIXED_CODE', '').strip()      # console | (реальный — после выбора провайдера)
 PUSH_BACKEND = os.getenv('PUSH_BACKEND', 'console')    # console | fcm
 FCM_CREDENTIALS_FILE = os.getenv('FCM_CREDENTIALS_FILE', '')
 PAYMENT_BACKEND = os.getenv('PAYMENT_BACKEND', 'fake')  # fake | (реальные — после выбора провайдеров)

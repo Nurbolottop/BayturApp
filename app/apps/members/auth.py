@@ -66,6 +66,11 @@ def _count_limit(key, limit, ttl):
     return value > limit
 
 
+def fixed_otp_code():
+    """OTP_FIXED_CODE: один код для всех номеров на dev/staging, пока SMS-провайдер не подключён."""
+    return settings.OTP_FIXED_CODE if settings.APP_ENV != 'production' else ''
+
+
 def request_otp(phone, purpose=OtpPurpose.LOGIN, ip=None, device_id=None):
     ps = ProgramSettings.get()
     phone = normalize_phone(phone)
@@ -83,7 +88,13 @@ def request_otp(phone, purpose=OtpPurpose.LOGIN, ip=None, device_id=None):
         if ip and _count_limit(f'otp:ip:{ip}:{now:%Y%m%d%H}', ps.otp_per_ip_hour, 3600):
             raise ApiError('otp_limit', 429, extra={'retryIn': 3600})
 
-    code = ps.test_code if test else ''.join(secrets.choice('0123456789') for _ in range(ps.otp_length))
+    fixed = fixed_otp_code()
+    if test:
+        code = ps.test_code
+    elif fixed:
+        code = fixed  # временно, пока не подключён SMS-провайдер (только не production)
+    else:
+        code = ''.join(secrets.choice('0123456789') for _ in range(ps.otp_length))
     OtpChallenge.objects.filter(phone=phone, purpose=purpose, used_at__isnull=True).update(burned=True)
     OtpChallenge.objects.create(phone=phone, purpose=purpose, code_hash=_code_hash(phone, code),
                                 expires_at=now + timedelta(seconds=ps.otp_ttl_seconds), ip=ip,
