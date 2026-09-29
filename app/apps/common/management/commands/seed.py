@@ -81,11 +81,17 @@ class Command(BaseCommand):
             PushTemplate.objects.get_or_create(kind=kind, defaults={'title': title, 'body': body})
 
         base = 'https://baytur.kg'
-        for kind, path in ((LegalKind.TERMS, 'terms'), (LegalKind.PRIVACY, 'privacy'),
-                           (LegalKind.DELETION, 'account/delete')):
+        # Условия и политика — заглушки на сайте курорта: заменить в админке на реальные версии
+        for kind, path in ((LegalKind.TERMS, 'terms'), (LegalKind.PRIVACY, 'privacy')):
             LegalDocument.objects.get_or_create(kind=kind, version='1.0', defaults={
                 'url': l10n(f'{base}/ru/{path}', f'{base}/ky/{path}', f'{base}/en/{path}'),
-                'requires_acceptance': kind != LegalKind.DELETION, 'published_at': now})
+                'requires_acceptance': True, 'published_at': now})
+        # Страница удаления аккаунта без приложения — наша /account/delete (Google Play)
+        from django.conf import settings
+        page = f'{settings.PUBLIC_BASE_URL}/account/delete'
+        LegalDocument.objects.update_or_create(kind=LegalKind.DELETION, version='1.0', defaults={
+            'url': l10n(f'{page}?lang=ru', f'{page}?lang=ky', f'{page}?lang=en'),
+            'requires_acceptance': False, 'published_at': now})
 
         self.stdout.write(self.style.SUCCESS(
             f'Сид: {Category.objects.count()} категорий, {Item.objects.count()} услуг, {Tier.objects.count()} уровней, '
