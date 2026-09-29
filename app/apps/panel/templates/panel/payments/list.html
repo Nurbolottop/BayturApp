@@ -1,0 +1,27 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Платежи{% endblock %}
+{% block content %}
+<div class="topbar"><div><h1 class="page-title">Платежи</h1><div class="muted" style="margin-top:6px">Онлайн-оплаты денежной части заявок</div></div>
+  <div class="actions"><a class="btn {% if f.orphan %}btn-dark{% endif %}" href="?orphan=1">{% icon 'warning' 18 %} Оплачено без заявки <span class="tag">{{ orphan_count }}</span></a></div></div>
+{% if f.orphan %}<div class="banner warn" style="margin-bottom:18px">{% icon 'info' 18 %}<span>Клиент оплатил, но заявка не создана. Сервер пытается создать её сам через 10 минут; если это невозможно — делает возврат. Здесь можно вернуть деньги вручную.</span></div>{% endif %}
+<form class="filters" method="get" data-autosubmit>
+  <div class="field grow search"><label>Поиск</label>{% icon 'search' 18 %}<input type="search" name="q" value="{{ f.q }}" placeholder="pay_…, ID провайдера, BT-…"></div>
+  <div class="field"><label>Статус</label><select name="status"><option value="">Все</option>{% for v, l in statuses %}<option value="{{ v }}" {% if f.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="field"><label>Способ</label><select name="method"><option value="">Все</option>{% for v, l in methods %}<option value="{{ v }}" {% if f.method == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="field"><label>С</label><input type="date" name="from" value="{{ f.from }}"></div>
+  <div class="field"><label>По</label><input type="date" name="to" value="{{ f.to }}"></div>
+  {% if f.orphan %}<input type="hidden" name="orphan" value="1">{% endif %}
+  <a class="btn btn-ghost" href="?">Сбросить</a>
+</form>
+<div class="card flush appear"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Платёж</th><th class="hide-s">Клиент</th><th>Способ</th><th class="n">Сумма</th><th class="n hide-s">Возвращено</th><th>Заявка</th><th>Статус</th></tr></thead>
+  <tbody>{% for p in page %}
+    <tr class="link" data-href="{% url 'panel:payment' p.pk %}">
+      <td><b class="tabular">{{ p.pk }}</b><div class="small muted tabular">{{ p.created_at|local }}</div></td>
+      <td class="hide-s">{{ p.member.member_id }}</td><td>{{ p.method|method }}</td>
+      <td class="n">{{ p.amount|som }}</td><td class="n hide-s">{% if p.refunded_amount %}{{ p.refunded_amount|som }}{% else %}—{% endif %}</td>
+      <td>{% if p.request_id %}<a class="tabular small" href="{% url 'panel:request' p.request_id %}">{{ p.request_id }}</a>{% elif p.status == 'paid' %}<span class="pill pill-warning">нет заявки</span>{% else %}—{% endif %}</td>
+      <td>{% pill 'payment' p.status %}</td></tr>
+  {% empty %}<tr><td colspan="7"><div class="empty">Платежей нет</div></td></tr>{% endfor %}</tbody>
+</table></div>{% include 'panel/components/pager.html' %}</div>
+{% endblock %}

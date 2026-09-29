@@ -1,0 +1,51 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Каталог{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div><h1 class="page-title">Каталог</h1><div class="muted" style="margin-top:6px">Разделы, правила кешбека и услуги</div></div>
+  <div class="actions">
+    <form method="get" class="search field" style="width:260px">{% icon 'search' 18 %}<input type="search" name="q" value="{{ q }}" placeholder="Найти услугу"></form>
+    {% if can_edit %}<a class="btn btn-accent" href="{% url 'panel:item-new' %}">{% icon 'plus' 18 %} Услуга</a>{% endif %}
+  </div>
+</div>
+<div class="stack">
+{% for g in groups %}
+  <section class="card flush appear">
+    <div class="card-head" style="padding-bottom:14px">
+      <div class="row" style="gap:14px">
+        <div class="thumb" style="width:56px;height:56px;border-radius:16px;background:var(--fill) url('{{ g.cat.cover|media }}') center/cover"></div>
+        <div><div class="h3">{{ g.cat.title|tr }} {% if not g.cat.is_active %}<span class="pill pill-muted">скрыт</span>{% endif %}</div>
+          <div class="row wrap small muted tabular" style="margin-top:4px"><span class="tag accent">кешбек {{ g.cat.rate|pct }}</span><span class="tag">баллами до {{ g.cat.max_points_share|pct }}</span><span>{{ g.cat.methods|join:" · " }}</span></div></div>
+      </div>
+      <div class="row">{% if can_edit %}<a class="btn btn-s" href="{% url 'panel:item-new' %}?category={{ g.cat.pk }}">{% icon 'plus' 16 %}</a>{% endif %}<a class="btn btn-s" href="{% url 'panel:category' g.cat.pk %}">{% icon 'edit' 16 %} Правила</a></div>
+    </div>
+    <div class="table-wrap"><table class="table"><tbody data-sortable-items="{{ g.cat.pk }}">
+      {% for i in g.items %}
+        <tr class="link" data-href="{% url 'panel:item' i.obj.pk %}" data-id="{{ i.obj.pk }}">
+          <td style="width:28px" class="muted">{% if can_edit %}<span class="re-handle" data-handle title="Перетащите">{% icon 'drag' 18 %}</span>{% endif %}</td>
+          <td><div class="title-cell"><img class="thumb" src="{{ i.obj.image|media }}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div><b>{{ i.obj.title|tr }}</b><span class="small muted">{{ i.obj.meta|tr }}</span></div></div></td>
+          <td class="hide-s small muted">{{ i.obj.outlet.name|tr|default:"—" }}</td>
+          <td class="n">{{ i.obj.price|som }}</td>
+          <td>{% if i.promo %}<span class="tag accent">акция {{ i.promo.rate|pct }}{% if i.promo.ends_at %} до {{ i.promo.ends_at|local:"d.m" }}{% endif %}</span>{% endif %}</td>
+          <td>{% if i.obj.is_active %}{% pill 'bool' True 'в каталоге' %}{% else %}{% pill 'bool' False 'скрыта' %}{% endif %}</td>
+        </tr>
+      {% empty %}<tr><td><div class="empty">Нет услуг</div></td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+{% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  Panel.$$('[data-sortable-items]').forEach(function (tb) {
+    Panel.sortable(tb, 'tr[data-id]', '[data-handle]', function () {
+      var rows = Panel.$$('tr[data-id]', tb); if (!rows.length) return;
+      var fd = new FormData(); rows.forEach(function (r) { fd.append('order', r.getAttribute('data-id')); });
+      fetch('/panel/catalog/items/' + rows[0].getAttribute('data-id') + '/sort/', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-CSRFToken': Panel.csrf() } })
+        .then(function (r) { Panel.toast(r.ok ? 'Порядок сохранён' : 'Не удалось сохранить порядок', r.ok ? 'success' : 'error'); });
+    });
+  });
+});
+</script>
+{% endblock %}

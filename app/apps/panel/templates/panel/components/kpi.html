@@ -1,0 +1,6 @@
+{% load panel %}
+<div class="kpi appear{% if hero %} hero-kpi{% endif %}">
+  <span class="kpi-label">{{ k.label }}</span>
+  <span class="kpi-value" {% if k.value|is_number and k.unit != '%' and k.unit != 'percent' %}data-countup="{{ k.value|stringformat:'s' }}"{% if k.unit == 'som' or k.unit == 'сом' %} data-suffix=" сом"{% endif %}{% endif %}>{{ k.value|unit:k.unit }}</span>
+  {% with d=k|delta %}{% if d %}<span class="delta {{ d.dir }}">{% if d.dir == 'up' %}↑{% elif d.dir == 'down' %}↓{% endif %} {{ d.text }} <span style="opacity:.7;font-weight:500">к прошлому</span></span>{% elif k.prev is not None and k.prev != '' %}<span class="small" style="opacity:.6">было {{ k.prev|unit:k.unit }}</span>{% endif %}{% endwith %}
+</div>

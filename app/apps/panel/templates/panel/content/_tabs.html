@@ -1,0 +1,2 @@
+{% load panel %}
+<div class="seg" style="margin-bottom:18px">{% for key, k in kinds.items %}<a href="{% url 'panel:content-kind' key %}" class="{% if kind == key %}on{% endif %}">{% icon k.icon 16 %} {{ k.label }}</a>{% endfor %}</div>

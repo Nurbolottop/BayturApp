@@ -1,0 +1,16 @@
+{% extends 'panel/base.html' %}{% load static panel %}
+{% block title %}Шаблоны push{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:campaigns' %}">{% icon 'arrow-left' 14 %} Рассылки</a></div><h1 class="page-title">Шаблоны push</h1><div class="muted" style="margin-top:6px">Плейсхолдеры: {points}, {tier}, {number}, {days}, {item}, {reason}</div></div></div>
+<div class="seg" style="margin-bottom:18px">{% for k, label in kinds %}<a href="?kind={{ k }}" class="{% if k == kind %}on{% endif %}">{{ label }}</a>{% endfor %}</div>
+<div class="split">
+  <form method="post" id="edit-form" class="card appear" novalidate>
+    {% csrf_token %}<input type="hidden" name="kind" value="{{ kind }}">
+    {% if not custom %}<div class="lock-note" style="margin-bottom:14px">{% icon 'info' 16 %} Сейчас используется встроенный текст. Сохраните, чтобы заменить его.</div>{% endif %}
+    <div class="stack">{% include 'panel/components/field.html' with f=form.title %}{% include 'panel/components/field.html' with f=form.body %}</div>
+    <div class="form-actions"><button class="btn btn-accent btn-l">Сохранить</button></div>
+  </form>
+  {% include 'panel/preview/_frame.html' with body='panel/preview/campaign.html' %}
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'panel/preview.js' %}" defer></script>{% endblock %}

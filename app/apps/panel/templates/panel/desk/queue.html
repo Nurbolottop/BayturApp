@@ -1,0 +1,24 @@
+{% extends 'panel/base.html' %}{% load static panel %}
+{% block title %}Очередь{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div>
+    <h1 class="page-title">Очередь заявок</h1>
+    <div class="row" style="margin-top:8px"><span class="live-dot" data-live><i></i><span data-live-text>подключение…</span></span><span class="muted small">· старые сверху</span></div>
+  </div>
+  <div class="actions">
+    <button class="btn" type="button" data-sound-toggle title="Звук новой заявки">{% icon 'bell' 18 %} <span data-sound-label>Звук вкл</span></button>
+  </div>
+</div>
+{% include 'panel/desk/_tabs.html' with tab='queue' %}
+{% if outlets|length > 1 %}
+  <div class="seg" style="margin-bottom:14px">
+    <a href="?" class="{% if not outlet %}on{% endif %}">Все точки</a>
+    {% for o in outlets %}<a href="?outlet={{ o.pk }}" class="{% if outlet == o.pk %}on{% endif %}">{{ o.name|tr }}</a>{% endfor %}
+  </div>
+{% endif %}
+<div data-queue-box data-url="{% url 'panel:desk' %}?partial=1{% if outlet %}&outlet={{ outlet }}{% endif %}">
+  {% include 'panel/desk/_queue.html' %}
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'panel/desk.js' %}" defer></script>{% endblock %}

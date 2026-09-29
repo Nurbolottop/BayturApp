@@ -1,0 +1,99 @@
+{% load panel %}
+<div class="stack" data-request-card="{{ req.pk }}">
+  <div class="row-between wrap">
+    <div>
+      <div class="small muted tabular">{{ req.pk }} · {{ req.created_at|local }} · {{ req.created_at|ago }}</div>
+      <div class="h2" style="margin-top:4px">{{ title|tr }}{% if req.quantity > 1 %} <span class="muted">× {{ req.quantity }}</span>{% endif %}</div>
+      {% if req.outlet %}<div class="muted small" style="margin-top:2px">{% icon 'location' 14 %} {{ req.outlet.name|tr }}</div>{% endif %}
+    </div>
+    <div class="row">{% pill 'request' req.status %}{% if req.escalated and req.status == 'pending' %}<span class="pill pill-warning">{% icon 'warning' 14 %} У менеджера</span>{% endif %}{% if req.is_test %}<span class="tag">тест</span>{% endif %}</div>
+  </div>
+
+  {% request_timeline req %}
+
+  <div class="card-soft row" style="gap:14px">
+    <span class="ic-bubble">{% icon 'user' 20 %}</span>
+    <div style="min-width:0;flex:1">
+      <div style="font-weight:700">{{ req.member.full_name|default:"—" }}</div>
+      <div class="small muted tabular">{{ req.member.member_id }} · {{ req.member.phone|mask }}</div>
+    </div>
+    {% tier_badge member_tier %}
+  </div>
+
+  <div class="split-amounts">
+    <div class="cell"><span class="small muted">Сумма</span><b>{{ req.total|som }}</b>{% if req.original_total %}<span class="small muted">было {{ req.original_total|som }}</span>{% endif %}</div>
+    <div class="cell"><span class="small muted">Баллами</span><b>{{ req.points_som|som }}</b><span class="small muted tabular">{{ req.points|num }} баллов</span></div>
+    <div class="cell"><span class="small muted">Деньгами</span><b>{{ req.money_som|som }}</b><span class="small muted">{{ req.method|method }}</span></div>
+    <div class="cell accent"><span class="small muted">Будущий кешбек</span><b>+{{ req.cashback|num }}</b><span class="small muted">ставка {{ req.rate|pct }}</span></div>
+  </div>
+
+  {% if payment and payment.paid_at %}
+    <div class="paid-box">{% icon 'check' 20 %}<span>Оплачено онлайн · {{ payment.method|method }} · {{ payment.amount|som }} · {{ payment.paid_at|local:"d.m H:i" }}</span></div>
+  {% elif is_cash %}
+    <div class="cash-box">
+      <span class="ic-bubble dark">{% icon 'cash' 20 %}</span>
+      <div style="flex:1"><div class="small" style="opacity:.6">Принять наличными</div><b>{{ req.money_som|som }}</b></div>
+      {% if req.cash_received %}<span class="pill pill-positive">деньги приняты</span>{% endif %}
+    </div>
+  {% endif %}
+
+  {% if req.bonuses %}<div class="row wrap">{% for b in req.bonuses %}<span class="tag accent">{% if b.kind == 'birthday' %}День рождения ×{{ b.multiplier }}{% else %}Акция{% if b.title %}: {{ b.title }}{% endif %}{% endif %}</span>{% endfor %}</div>{% endif %}
+  {% if req.adjust_reason %}<div class="note"><div class="meta">Причина правки суммы</div>{{ req.adjust_reason }}</div>{% endif %}
+  {% if req.status == 'rejected' %}<div class="banner neg">{% icon 'close' 18 %}<span>Отклонена{% if req.reject_code %}: {{ req.get_reject_code_display }}{% endif %}{% if req.reject_reason %} — {{ req.reject_reason }}{% endif %}</span></div>{% endif %}
+
+  {% if awaiting_manager %}
+    <div class="banner warn">{% icon 'warning' 18 %}<span>{% if req.escalation_reason == 'adjust_threshold' %}Предложена сумма {{ req.proposed_total|som }} — правка больше порога, ждёт менеджера{% else %}Кешбек выше лимита — подтверждает менеджер{% endif %}</span></div>
+    {% if can_approve %}
+      <div class="row wrap">
+        <form method="post" action="{% url 'panel:request-action' req.pk 'approve' %}" data-confirm="Утвердить?">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-accent btn-action">{% icon 'check' 18 %} Утвердить{% if req.escalation_reason == 'adjust_threshold' %} сумму{% else %} и подтвердить{% endif %}</button></form>
+        <form method="post" action="{% url 'panel:request-action' req.pk 'decline' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-action">Вернуть в очередь</button></form>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  {% if can_process %}
+    <form method="post" action="{% url 'panel:request-action' req.pk 'confirm' %}" class="stack-s" id="confirm-form">
+      {% csrf_token %}<input type="hidden" name="next" value="{{ back|default:request.get_full_path }}">
+      {% if is_cash and not req.cash_received %}
+        <label class="choice" style="height:56px;font-size:15px"><input type="checkbox" name="cash_received" value="1" required data-cash-check style="width:24px;height:24px"> Деньги приняты — {{ req.money_som|som }}</label>
+      {% elif is_cash %}<input type="hidden" name="cash_received" value="1">{% endif %}
+    </form>
+    <div class="big-actions">
+      <button class="btn btn-accent" form="confirm-form" {% if is_cash and not req.cash_received %}data-needs-cash{% endif %}>{% icon 'check' 20 %} Подтвердить</button>
+      <button class="btn" type="button" data-open="adjust-{{ req.pk }}">{% icon 'edit' 20 %} Изменить сумму</button>
+      <button class="btn btn-danger" type="button" data-open="reject-{{ req.pk }}">{% icon 'close' 20 %} Отклонить</button>
+    </div>
+
+    <form method="post" action="{% url 'panel:request-action' req.pk 'adjust' %}" class="card-soft stack-s" id="adjust-{{ req.pk }}" hidden data-adjust data-preview-url="{% url 'panel:request-preview' req.pk %}">
+      {% csrf_token %}<input type="hidden" name="next" value="{{ back|default:request.get_full_path }}">
+      <div class="h3">Изменить сумму по чеку</div>
+      <div class="form-grid">
+        <div class="field"><label>Сумма по чеку, сом</label><input type="number" name="total" min="1" required value="{{ req.total }}" inputmode="numeric" class="tabular"></div>
+        <div class="field"><label>Причина (обязательно)</label><input type="text" name="reason" required maxlength="500" placeholder="Например: сумма в чеке 3 200"></div>
+      </div>
+      <div class="preview-split" data-preview-out>
+        <div class="split-amounts">
+          <div class="cell"><span class="small muted">Новая сумма</span><b data-k="total">—</b></div>
+          <div class="cell"><span class="small muted">Баллами</span><b data-k="pointsSom">—</b></div>
+          <div class="cell"><span class="small muted">Деньгами</span><b data-k="moneySom">—</b></div>
+          <div class="cell accent"><span class="small muted">Кешбек</span><b data-k="cashback">—</b></div>
+        </div>
+        <div class="banner warn" data-needs-manager hidden style="margin-top:8px">{% icon 'warning' 18 %}<span>Правка больше допустимого порога — уйдёт на подтверждение менеджеру</span></div>
+      </div>
+      <div class="row wrap">
+        <button type="button" class="btn btn-action" data-preview>{% icon 'refresh' 18 %} Пересчитать</button>
+        <button class="btn btn-dark btn-action" data-adjust-save disabled>Сохранить сумму</button>
+      </div>
+    </form>
+
+    <form method="post" action="{% url 'panel:request-action' req.pk 'reject' %}" class="card-soft stack-s" id="reject-{{ req.pk }}" hidden>
+      {% csrf_token %}<input type="hidden" name="next" value="{{ back|default:request.get_full_path }}">
+      <div class="h3">Причина отказа <span class="small muted">— её увидит клиент</span></div>
+      <div class="reasons checks">
+        {% for code, label in reasons %}<label><input type="radio" name="reason_code" value="{{ code }}" required> {{ label }}</label>{% endfor %}
+      </div>
+      <div class="field"><textarea name="comment" rows="2" maxlength="500" placeholder="Комментарий (обязателен для «Другое»)"></textarea></div>
+      <button class="btn btn-danger btn-action">{% icon 'close' 18 %} Отклонить заявку</button>
+    </form>
+  {% endif %}
+</div>

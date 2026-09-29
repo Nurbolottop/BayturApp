@@ -1,0 +1,16 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Темы обращений{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:complaints' %}">{% icon 'arrow-left' 14 %} Обращения</a></div><h1 class="page-title">Темы обращений</h1></div></div>
+<div class="split-wide">
+  <div class="card flush appear"><table class="table"><tbody>
+    {% for t in items %}<tr class="link{% if obj.pk == t.pk %} hl{% endif %}" data-href="{% url 'panel:complaint-category' t.pk %}"><td><b>{{ t.title|tr }}</b><div class="small muted">{{ t.id }}</div></td><td class="small muted">{% if t.is_active %}показывается{% else %}скрыта{% endif %}</td></tr>
+    {% empty %}<tr><td><div class="empty">Тем нет</div></td></tr>{% endfor %}
+  </tbody></table></div>
+  <form method="post" class="card stack appear" novalidate>
+    {% csrf_token %}<div class="h3">{% if obj %}Редактировать{% else %}Новая тема{% endif %}</div>
+    {% for f in form %}{% include 'panel/components/field.html' %}{% endfor %}
+    <div class="form-actions">{% if obj %}<button class="btn btn-danger" name="delete" value="1" formnovalidate>Удалить</button><a class="btn btn-ghost" href="{% url 'panel:complaint-categories' %}">Новая</a>{% endif %}<button class="btn btn-accent">Сохранить</button></div>
+  </form>
+</div>
+{% endblock %}

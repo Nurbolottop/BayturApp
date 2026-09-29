@@ -1,0 +1,28 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Смена{% endblock %}
+{% block content %}
+<div class="topbar"><div><h1 class="page-title">Моя смена</h1><div class="muted" style="margin-top:6px">{{ shift.date|date:"j E Y" }}</div></div></div>
+{% include 'panel/desk/_tabs.html' with tab='shift' %}
+<div class="grid cols-4" style="margin-bottom:18px">
+  <div class="kpi hero-kpi appear"><span class="kpi-label">Наличные в кассе</span><span class="kpi-value" data-countup="{{ shift.cash_total }}" data-suffix=" сом">{{ shift.cash_total|som }}</span></div>
+  <div class="kpi appear"><span class="kpi-label">Подтверждено</span><span class="kpi-value" data-countup="{{ shift.confirmed|length }}">{{ shift.confirmed|length }}</span></div>
+  <div class="kpi appear"><span class="kpi-label">Отклонено</span><span class="kpi-value">{{ shift.rejected|length }}</span></div>
+  <div class="kpi appear"><span class="kpi-label">Правок суммы</span><span class="kpi-value">{{ shift.adjusted_count }}</span></div>
+</div>
+<div class="grid cols-2" style="align-items:start">
+  <div class="card flush">
+    <div class="card-head"><div class="h3">Подтверждённые</div><span class="small muted tabular">кешбек +{{ shift.cashback_total|num }}</span></div>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Время</th><th>Услуга</th><th class="n">Сумма</th><th class="n">Наличные</th></tr></thead><tbody>
+      {% for r in shift.confirmed %}<tr><td class="tabular">{{ r.confirmed_at|local:"H:i" }}</td><td>{{ r.item_snapshot.title|tr }}<div class="small muted">{{ r.member.member_id }}</div></td><td class="n">{{ r.total|som }}</td><td class="n">{% if r.method == 'cash' %}{{ r.money_som|som }}{% else %}—{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="4" class="empty">Пока ничего</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+  <div class="card flush">
+    <div class="card-head"><div class="h3">Отклонённые</div></div>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Время</th><th>Услуга</th><th>Причина</th></tr></thead><tbody>
+      {% for r in shift.rejected %}<tr><td class="tabular">{{ r.rejected_at|local:"H:i" }}</td><td>{{ r.item_snapshot.title|tr }}<div class="small muted">{{ r.member.member_id }}</div></td><td>{{ r.get_reject_code_display }}{% if r.reject_reason %}<div class="small muted">{{ r.reject_reason }}</div>{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="3" class="empty">Пока ничего</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+</div>
+{% endblock %}

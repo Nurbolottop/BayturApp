@@ -1,0 +1,6 @@
+<div class="l10n" data-l10n="{{ widget.field_name }}">
+  <div class="l10n-tabs" role="tablist">
+    {% for w in widget.subwidgets %}<button type="button" role="tab" class="{% if forloop.first %}on{% endif %}{% if w.empty %} empty{% endif %}" data-lang="{{ w.lang }}" title="{% if w.empty %}Нет перевода{% endif %}">{{ w.lang_label }}<i class="miss"></i></button>{% endfor %}
+  </div>
+  {% for w in widget.subwidgets %}<div class="l10n-pane{% if forloop.first %} on{% endif %}" data-lang="{{ w.lang }}">{% include w.template_name with widget=w %}</div>{% endfor %}
+</div>

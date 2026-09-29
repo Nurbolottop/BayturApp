@@ -1,0 +1,30 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Платёж {{ p.pk }}{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:payments' %}">{% icon 'arrow-left' 14 %} Платежи</a></div><h1 class="page-title tabular">{{ p.pk }}</h1></div><div class="actions">{% pill 'payment' p.status %}</div></div>
+<div class="split-wide">
+  <div class="stack">
+    <div class="hero appear"><div class="glow"></div><div class="label">Сумма платежа · {{ p.method|method }}</div><div class="big" data-countup="{{ p.amount }}" data-suffix=" сом">{{ p.amount|som }}</div>
+      <div class="hero-grid"><div class="cell"><span class="label">Возвращено</span><b>{{ p.refunded_amount|som }}</b></div><div class="cell"><span class="label">Оплачен</span><b>{{ p.paid_at|local:"d.m H:i" }}</b></div><div class="cell"><span class="label">Провайдер</span><b style="font-size:14px">{{ p.provider_ref|default:"—" }}</b></div></div></div>
+    <div class="card flush appear"><div class="card-head"><div class="h3">Возвраты</div></div>
+      <table class="table"><thead><tr><th>Когда</th><th>Причина</th><th>Кто</th><th class="n">Сумма</th><th>Статус</th></tr></thead><tbody>
+      {% for r in refunds %}<tr><td class="tabular small">{{ r.created_at|local }}</td><td>{{ r.reason }}</td><td class="small">{{ r.author.full_name|default:"система" }}</td><td class="n">{{ r.amount|som }}</td><td><span class="pill {% if r.status == 'done' %}pill-positive{% elif r.status == 'failed' %}pill-negative{% else %}pill-live{% endif %}">{{ r.status }}</span></td></tr>
+      {% empty %}<tr><td colspan="5"><div class="empty">Возвратов не было</div></td></tr>{% endfor %}</tbody></table></div>
+  </div>
+  <div class="stack">
+    <div class="card appear"><dl class="kv">
+      <dt>Клиент</dt><dd>{% if user|can:'members.view' %}<a href="{% url 'panel:member' p.member_id %}">{{ p.member.member_id }}</a>{% else %}{{ p.member.member_id }}{% endif %}</dd>
+      <dt>Заявка</dt><dd>{% if p.request_id %}<a href="{% url 'panel:request' p.request_id %}" class="tabular">{{ p.request_id }}</a>{% else %}<span class="pill pill-warning">нет заявки</span>{% endif %}</dd>
+      <dt>Создан</dt><dd class="tabular">{{ p.created_at|local }}</dd><dt>Истекает</dt><dd class="tabular">{{ p.expires_at|local }}</dd>
+    </dl></div>
+    {% if user|can:'payments.refund' and p.status == 'paid' and left > 0 %}
+    <form class="card stack-s appear" method="post" action="{% url 'panel:payment-refund' p.pk %}" data-confirm="Вернуть деньги клиенту через провайдера?">
+      {% csrf_token %}<div class="h3">Возврат</div>
+      <div class="field"><label>Сумма, сом (до {{ left|num }})</label><input type="number" name="amount" min="1" max="{{ left }}" value="{{ left }}" required class="tabular"></div>
+      <div class="field"><label>Причина</label><input type="text" name="reason" required maxlength="200" placeholder="Например: оплачено без заявки"></div>
+      <button class="btn btn-danger btn-action">{% icon 'undo' 18 %} Вернуть</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

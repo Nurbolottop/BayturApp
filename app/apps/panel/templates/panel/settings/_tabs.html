@@ -1,0 +1,1 @@
+<div class="seg" style="margin-bottom:18px">{% for key, label in tabs %}<a href="{% url 'panel:settings-tab' key %}" class="{% if tab == key %}on{% endif %}">{{ label }}</a>{% endfor %}</div>

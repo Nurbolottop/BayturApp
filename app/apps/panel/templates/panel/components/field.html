@@ -1,0 +1,10 @@
+<div class="field{% if f.errors %} has-error{% endif %}{% if full %} full{% endif %}">
+  {% if f.field.widget.input_type == 'checkbox' %}
+    <label class="check">{{ f }} <span>{{ f.label }}</span></label>
+  {% else %}
+    {% if f.field.widget.template_name != 'panel/widgets/l10n.html' %}<label for="{{ f.id_for_label }}">{{ f.label }}</label>{% else %}<div class="row-between"><span class="label">{{ f.label }}</span></div>{% endif %}
+    {{ f }}
+  {% endif %}
+  {% if f.help_text %}<div class="help">{{ f.help_text }}</div>{% endif %}
+  {{ f.errors }}
+</div>

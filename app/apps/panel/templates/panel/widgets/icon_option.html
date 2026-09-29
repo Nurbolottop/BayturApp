@@ -1,0 +1,1 @@
+{% load panel %}<label title="{{ widget.label }}"><input type="{{ widget.type }}" name="{{ widget.name }}" value="{{ widget.value }}"{% if widget.selected %} checked{% endif %}{% include "django/forms/widgets/attrs.html" %}><span class="ic-bubble">{% icon widget.value 20 %}</span>{{ widget.label }}</label>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BAYTUR — удаление аккаунта</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--accent:#C6F24E;--on-accent:#12140F;--ink:#12140F;--muted:rgba(18,20,15,.55);--page:#F4F6F1;--surface:#fff;--negative:#D64545;--fill:rgba(18,20,15,.06)}
+@media (prefers-color-scheme:dark){:root{--ink:#F1F3EE;--muted:rgba(241,243,238,.55);--page:#0D0E0C;--surface:#191B17;--negative:#FF6B6B;--fill:rgba(241,243,238,.06)}}
+*{box-sizing:border-box}body{margin:0;font-family:Onest,system-ui,sans-serif;background:var(--page);color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:var(--surface);border-radius:28px;padding:28px;max-width:420px;width:100%}
+h1{font-size:30px;font-weight:800;letter-spacing:-1px;margin:0 0 8px}p{color:var(--muted);font-size:14px;line-height:1.5;margin:0 0 18px}
+input{width:100%;min-height:52px;border-radius:14px;border:0;background:var(--fill);color:var(--ink);font:500 17px Onest,sans-serif;padding:0 18px;margin-bottom:14px}
+button{width:100%;min-height:52px;border:0;border-radius:999px;background:var(--negative);color:#fff;font:700 16px Onest,sans-serif;cursor:pointer}
+.err{color:var(--negative);font-size:14px;margin-bottom:14px}.ok{background:var(--accent);color:var(--on-accent);border-radius:18px;padding:18px;font-weight:500}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Удаление аккаунта</h1>
+  {% if step == 'done' %}
+    <div class="ok">Аккаунт удалён. Восстановить его можно в течение {{ purge_days }} дней, войдя в приложение по тому же номеру. После этого данные будут удалены окончательно, а оставшиеся баллы сгорят.</div>
+  {% else %}
+    <p>Баланс баллов, уровень и история станут недоступны. В течение {{ purge_days }} дней аккаунт можно восстановить, войдя по тому же номеру; затем данные удаляются окончательно, остаток баллов сгорает. Финансовые записи хранятся обезличенно.</p>
+    {% if error %}<div class="err">{{ error }}</div>{% endif %}
+    <form method="post">{% csrf_token %}
+      {% if step == 'code' %}
+        <input type="hidden" name="step" value="code">
+        <p>Если номер {{ phone }} зарегистрирован, на него отправлен SMS-код.</p>
+        <input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="Код из SMS" required>
+        <button>Удалить аккаунт</button>
+      {% else %}
+        <input type="hidden" name="step" value="phone">
+        <input name="phone" type="tel" placeholder="+996 555 123 456" required>
+        <button>Получить код</button>
+      {% endif %}
+    </form>
+  {% endif %}
+</div>
+</body>
+</html>

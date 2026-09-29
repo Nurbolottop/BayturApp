@@ -1,0 +1,23 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Аудит-лог{% endblock %}
+{% block content %}
+<div class="topbar"><div><h1 class="page-title">Аудит-лог</h1><div class="muted" style="margin-top:6px">{% if all %}Кто, когда, с какого IP и что изменил. Не редактируется и не удаляется{% else %}Ваши действия{% endif %}</div></div></div>
+<form class="filters" method="get" data-autosubmit>
+  {% if all %}<div class="field"><label>Сотрудник</label><select name="actor"><option value="">Все</option>{% for a in actors %}<option value="{{ a.pk }}" {% if f.actor == a.pk|stringformat:"s" %}selected{% endif %}>{{ a.full_name }}</option>{% endfor %}</select></div>{% endif %}
+  <div class="field"><label>Действие</label><input type="text" name="action" value="{{ f.action }}" placeholder="request., member.…"></div>
+  <div class="field"><label>Объект</label><input type="text" name="object" value="{{ f.object }}" placeholder="id или тип"></div>
+  <div class="field"><label>С</label><input type="date" name="from" value="{{ f.from }}"></div>
+  <div class="field"><label>По</label><input type="date" name="to" value="{{ f.to }}"></div>
+  <button class="btn btn-dark">Показать</button>
+</form>
+<div class="card flush appear"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Когда</th><th>Кто</th><th>Действие</th><th>Объект</th><th class="hide-s">Было → стало</th></tr></thead>
+  <tbody>{% for e in page %}
+    <tr><td class="small tabular nowrap">{{ e.at|local:"d.m.Y H:i:s" }}<div class="muted">{{ e.ip|default:"" }}</div></td>
+      <td class="small">{{ e.actor.full_name|default:e.actor_label }}</td>
+      <td><span class="tag">{{ e.action }}</span>{% if e.comment %}<div class="small muted" style="margin-top:4px">{{ e.comment|truncatechars:120 }}</div>{% endif %}</td>
+      <td class="small"><span class="muted">{{ e.object_type }}</span><div class="tabular">{{ e.object_id }}</div></td>
+      <td class="hide-s small" style="max-width:420px">{% if e.before %}<details><summary class="muted">было</summary><pre style="white-space:pre-wrap;font-size:11px;margin:4px 0">{{ e.before|jsonattr }}</pre></details>{% endif %}{% if e.after %}<details><summary>стало</summary><pre style="white-space:pre-wrap;font-size:11px;margin:4px 0">{{ e.after|jsonattr }}</pre></details>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="5"><div class="empty">Записей нет</div></td></tr>{% endfor %}</tbody>
+</table></div>{% include 'panel/components/pager.html' %}</div>
+{% endblock %}

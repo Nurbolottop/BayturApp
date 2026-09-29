@@ -1,0 +1,124 @@
+{% extends 'panel/base.html' %}{% load static panel %}
+{% block title %}{% if item %}{{ item.title|tr }}{% else %}Новая услуга{% endif %}{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div><div class="crumbs"><a href="{% url 'panel:catalog' %}">{% icon 'arrow-left' 14 %} Каталог</a></div>
+    <h1 class="page-title">{% if item %}{{ item.title|tr }}{% else %}Новая услуга{% endif %}</h1>
+    {% if item %}<div class="row" style="margin-top:8px"><span class="tabular muted">{{ item.pk }}</span>{% if item.is_active %}{% pill 'bool' True 'в каталоге' %}{% else %}{% pill 'bool' False 'скрыта' %}{% endif %}</div>{% endif %}
+  </div>
+  {% if item and can_edit %}<div class="actions">
+    <form method="post" action="{% url 'panel:item-action' item.pk item.is_active|yesno:'hide,show' %}">{% csrf_token %}<button class="btn">{% if item.is_active %}{% icon 'eye-off' 18 %} Скрыть{% else %}{% icon 'eye' 18 %} Показать{% endif %}</button></form>
+    {% if has_requests %}<span class="btn disabled" title="На услугу есть заявки — её можно только скрыть">{% icon 'trash' 18 %} Удалить</span>
+    {% else %}<form method="post" action="{% url 'panel:item-action' item.pk 'delete' %}" data-confirm="Удалить услугу навсегда?">{% csrf_token %}<button class="btn btn-danger">{% icon 'trash' 18 %} Удалить</button></form>{% endif %}
+  </div>{% endif %}
+</div>
+
+<div class="split">
+  <div class="stack">
+    <form method="post" id="edit-form" class="stack" novalidate>
+      {% csrf_token %}
+      <div class="card appear">
+        {% include 'panel/components/form_errors.html' %}
+        {% if not can_edit %}<div class="lock-note" style="margin-bottom:14px">{% icon 'lock' 16 %} Ваша роль меняет тексты и фото; цена, правила и точка — у владельца и менеджера.</div>{% endif %}
+        <div class="form-grid">
+          {% include 'panel/components/field.html' with f=form.title full=1 %}
+          {% include 'panel/components/field.html' with f=form.meta full=1 %}
+          {% include 'panel/components/field.html' with f=form.id %}
+          {% include 'panel/components/field.html' with f=form.category %}
+          {% include 'panel/components/field.html' with f=form.outlet %}
+          {% include 'panel/components/field.html' with f=form.tag %}
+        </div>
+      </div>
+
+      <div class="card appear">
+        <div class="card-head"><div class="h3">{% bubble 'image' 18 %} Фото</div><span class="small muted">Первое — главное; перетаскивайте, чтобы изменить порядок</span></div>
+        <div class="field"><span class="label">Главное фото</span>
+          <div class="photo-field" data-photo="id_image"><div class="ph">{% icon 'image' 24 %}</div>
+            <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.image }}</div>
+        <div class="field" style="margin-top:14px" data-gallery="id_gallery"><span class="label">Галерея</span>
+          <div class="gallery"><label class="g-add">{% icon 'plus' 24 %}<input type="file" accept="image/*" multiple hidden></label></div>{{ form.gallery }}</div>
+      </div>
+
+      <div class="card appear">
+        <div class="card-head"><div class="h3">{% bubble 'cash' 18 %} Цена</div></div>
+        <div class="form-grid">
+          {% include 'panel/components/field.html' with f=form.price %}
+          <div class="field"><span class="label">{{ form.pricing_type.label }}</span><div class="checks">{% for r in form.pricing_type %}<label>{{ r.tag }} {{ r.choice_label }}</label>{% endfor %}</div></div>
+          <div class="field" data-toggle-by="pricing_type" data-toggle-value="unit"><label for="id_pricing_unit">{{ form.pricing_unit.label }}</label>{{ form.pricing_unit }}</div>
+          <div class="field"><label>Диапазон <span class="muted" data-toggle-by="pricing_type" data-toggle-value="unit">(количество)</span><span class="muted" data-toggle-by="pricing_type" data-toggle-value="check">(сумма чека, сом)</span></label><div class="row">{{ form.pricing_min }}<span class="muted">—</span>{{ form.pricing_max }}</div>{{ form.pricing_max.errors }}</div>
+        </div>
+      </div>
+
+      <div class="card appear rows-editor" data-features="id_features" data-icons='{{ feature_icons|jsonattr }}'>
+        <div class="card-head"><div class="h3">{% bubble 'check' 18 %} Что входит</div><button type="button" class="btn btn-s" data-add>{% icon 'plus' 16 %} Пункт</button></div>
+        <div class="re-list"></div>
+        {{ form.features }}{{ form.features.errors }}
+        <div class="small muted">Иконка выбирается из сетки — набор фиксирован в приложении</div>
+        {% icon_templates feature_icons %}
+      </div>
+
+      <div class="card appear">
+        <div class="form-grid">
+          {% include 'panel/components/field.html' with f=form.description full=1 %}
+          {% include 'panel/components/field.html' with f=form.sort_order %}
+          {% include 'panel/components/field.html' with f=form.is_active %}
+        </div>
+        <div class="form-actions"><a class="btn btn-ghost" href="{% url 'panel:catalog' %}">Отмена</a><button class="btn btn-accent btn-l">Сохранить</button></div>
+      </div>
+    </form>
+
+    {% if item %}
+    <div class="card appear">
+      <div class="card-head"><div class="h3">{% bubble 'sparkle' 18 %} Акции</div><span class="small muted">Повышенная ставка с датами — по окончании снимается сама</span></div>
+      <div class="table-wrap"><table class="table"><tbody>
+        {% for p in promos %}<tr>
+          <td><b class="tabular">{{ p.rate|pct }}</b> {% if p.tag %}<span class="tag accent">{{ p.tag|tr }}</span>{% endif %}</td>
+          <td class="small muted tabular">{{ p.starts_at|local:"d.m.Y H:i" }} — {{ p.ends_at|local:"d.m.Y H:i" }}</td>
+          <td>{% if p.is_active and not p.ends_at or p.is_active and p.ends_at > now %}{% pill 'bool' True 'активна' %}{% else %}{% pill 'bool' False 'завершена' %}{% endif %}</td>
+          <td class="n">{% if can_edit and p.is_active %}<form method="post" action="{% url 'panel:item-action' item.pk 'promo-off' %}">{% csrf_token %}<input type="hidden" name="promo" value="{{ p.pk }}"><button class="btn btn-s btn-ghost">Выключить</button></form>{% endif %}</td>
+        </tr>{% empty %}<tr><td class="muted small">Акций не было</td></tr>{% endfor %}
+      </tbody></table></div>
+      {% if can_edit %}
+      <form method="post" action="{% url 'panel:item-action' item.pk 'promo' %}" class="card-soft" style="margin-top:14px">
+        {% csrf_token %}
+        <div class="form-grid">
+          {% include 'panel/components/field.html' with f=promo_form.rate %}
+          {% include 'panel/components/field.html' with f=promo_form.tag %}
+          {% include 'panel/components/field.html' with f=promo_form.starts_at %}
+          {% include 'panel/components/field.html' with f=promo_form.ends_at %}
+        </div>
+        <div class="form-actions"><button class="btn btn-dark">{% icon 'plus' 16 %} Добавить акцию</button></div>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% include 'panel/preview/_frame.html' with body='panel/preview/item.html' %}
+</div>
+{{ categories|json_script:"category-rates" }}
+{% endblock %}
+{% block scripts %}
+<script>
+window.PREVIEW = {
+  render: function (screen, h) {
+    var rates = JSON.parse(document.getElementById('category-rates').textContent);
+    var price = parseInt(h.val('price') || 0, 10), rate = parseFloat('{{ promo_rate }}' || rates[h.val('category')] || 0);
+    var cb = screen.querySelector('[data-p-cashback]');
+    cb.textContent = '+' + h.fmt(Math.round(price * rate * {{ points_per_som }})) + ' баллов';
+    var units = { night: 'за ночь', session: 'за сеанс', guest: 'за гостя', hour: 'за час', visit: 'за посещение' };
+    screen.querySelector('[data-p-unit]').textContent = h.val('pricing_type') === 'check' ? 'по чеку' : (units[h.val('pricing_unit')] || '');
+    var feats = []; try { feats = JSON.parse(h.val('features') || '[]'); } catch (e) {}
+    var box = screen.querySelector('[data-p-features]');
+    box.hidden = !feats.length;
+    box.innerHTML = feats.map(function (f) {
+      var t = (f.text || {})[h.lang()] || '', ru = (f.text || {}).ru || '';
+      return '<div class="p-feat"><span class="ic-bubble">' + h.iconSvg(f.icon) + '</span><span class="' + (!t && ru && h.lang() !== 'ru' ? 'p-miss' : '') + '">' + h.esc(t || ru) + '</span></div>';
+    }).join('');
+    var gal = []; try { gal = JSON.parse(h.val('gallery') || '[]'); } catch (e) {}
+    var n = (h.val('image') ? 1 : 0) + gal.length, dots = screen.querySelector('[data-p-dots]');
+    dots.innerHTML = n > 1 ? Array(n).join('.').split('.').map(function (_, i) { return '<i style="width:' + (i ? 6 : 16) + 'px;height:6px;border-radius:3px;background:' + (i ? 'var(--separator)' : 'var(--ink)') + '"></i>'; }).join('') : '';
+  }
+};
+</script>
+<script src="{% static 'panel/preview.js' %}" defer></script>
+{% endblock %}

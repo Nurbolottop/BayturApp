@@ -1,0 +1,2 @@
+{% if form.non_field_errors %}<div class="banner neg" style="margin-bottom:14px">{% for e in form.non_field_errors %}<span>{{ e }}</span>{% endfor %}</div>{% endif %}
+{% if form.errors and not form.non_field_errors %}<div class="banner neg" style="margin-bottom:14px"><span>Проверьте поля, отмеченные красным</span></div>{% endif %}

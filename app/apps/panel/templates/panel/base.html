@@ -1,0 +1,100 @@
+{% load static panel %}<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F4F6F1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0D0E0C" media="(prefers-color-scheme: dark)">
+  <title>{% block title %}BAYTUR{% endblock %} · BAYTUR</title>
+  <script>window.PANEL_MEDIA_URL='{% media_url %}';(function(){try{var t=localStorage.getItem('panel-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="{% static 'panel/tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'panel/panel.css' %}">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23C6F24E'/%3E%3Ctext x='16' y='22' font-family='Arial' font-weight='800' font-size='16' text-anchor='middle' fill='%2312140F'%3EB%3C/text%3E%3C/svg%3E">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+{% block body %}
+<div class="shell">
+  <aside class="sidebar" aria-label="Меню">
+    <div class="sidebar-inner glass">
+      <a class="brand" href="{% url 'panel:home' %}"><span class="brand-mark">B</span><span>BAYTUR<small>Программа лояльности</small></span></a>
+      <nav class="nav">
+        {% for g in panel_menu %}
+          <div class="nav-group">
+            {% if g.label %}<div class="nav-group-title">{{ g.label }}</div>{% endif %}
+            {% for i in g.items %}
+              <a href="{{ i.url }}" class="{% if i.active %}active{% endif %}" {% if i.active %}aria-current="page"{% endif %} data-nav="{{ i.key }}">
+                {% icon i.icon 20 %}<span>{{ i.label }}</span>
+                {% if i.badge %}<span class="count" data-count="{{ i.key }}">{{ i.badge }}</span>{% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </nav>
+      <div class="me">
+        <span class="me-avatar">{{ user.full_name|slice:":1"|upper }}</span>
+        <div style="min-width:0"><div class="me-name">{{ user.full_name }}</div><div class="me-role">{{ panel_role }}</div></div>
+        <span class="me-tools">
+          <button class="btn btn-icon btn-s btn-ghost" type="button" data-theme-toggle title="Тема">{% icon 'moon' 18 %}</button>
+          <a class="btn btn-icon btn-s btn-ghost" href="{% url 'panel:password' %}" title="Сменить пароль">{% icon 'key' 18 %}</a>
+          <form method="post" action="{% url 'panel:logout' %}">{% csrf_token %}<button class="btn btn-icon btn-s btn-ghost" title="Выйти">{% icon 'logout' 18 %}</button></form>
+        </span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="container">
+      <div class="mobile-top">
+        <a class="brand" style="padding:0" href="{% url 'panel:home' %}"><span class="brand-mark">B</span><span>BAYTUR</span></a>
+        <div class="row">
+          <button class="btn btn-icon" type="button" data-theme-toggle title="Тема">{% icon 'moon' 20 %}</button>
+          <form method="post" action="{% url 'panel:logout' %}">{% csrf_token %}<button class="btn btn-icon" title="Выйти">{% icon 'logout' 20 %}</button></form>
+        </div>
+      </div>
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar glass" aria-label="Вкладки">
+  {% for t in panel_tabs %}
+    <a href="{{ t.url }}" class="{% if t.active %}active{% endif %}">{% icon t.icon 22 %}<span>{{ t.label }}</span>{% if t.badge %}<span class="count" data-count="{{ t.key }}">{{ t.badge }}</span>{% endif %}</a>
+  {% endfor %}
+  <button type="button" data-open-menu>{% icon 'menu' 22 %}<span>Ещё</span></button>
+</nav>
+
+<template id="menu-sheet">
+  <div class="h2" style="margin-bottom:14px">Разделы</div>
+  <nav class="nav">
+    {% for g in panel_menu %}{% for i in g.items %}
+      <a href="{{ i.url }}" class="{% if i.active %}active{% endif %}">{% icon i.icon 20 %}<span>{{ i.label }}</span>{% if i.badge %}<span class="count">{{ i.badge }}</span>{% endif %}</a>
+    {% endfor %}{% endfor %}
+    <a href="{% url 'panel:password' %}">{% icon 'key' 20 %}<span>Сменить пароль</span></a>
+  </nav>
+</template>
+{% endblock %}
+
+<div class="toasts" aria-live="polite">
+  {% for m in messages %}
+    <div class="toast {{ m.tags }}" role="status">
+      <span class="ic-bubble">{% if m.tags == 'error' %}{% icon 'close' 16 %}{% elif m.tags == 'warning' %}{% icon 'warning' 16 %}{% else %}{% icon 'check' 16 %}{% endif %}</span>
+      <span>{{ m }}</span>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="sheet-backdrop" hidden data-sheet-backdrop></div>
+<aside class="sheet" hidden data-sheet role="dialog" aria-modal="true">
+  <div class="grabber"></div>
+  <button class="btn btn-icon btn-s sheet-close" type="button" data-sheet-close aria-label="Закрыть">{% icon 'close' 18 %}</button>
+  <div data-sheet-body></div>
+</aside>
+
+<script src="{% static 'panel/panel.js' %}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

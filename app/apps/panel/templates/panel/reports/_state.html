@@ -1,0 +1,8 @@
+{% load panel %}
+{% if not_ready %}
+  <div class="card empty appear" style="padding:56px 24px"><span class="ic-bubble" style="width:64px;height:64px">{% icon 'chart' 28 %}</span><div class="h2" style="margin-top:10px;color:var(--ink)">Отчёты ещё не готовы</div><div style="margin-top:6px">Модуль аналитики подключается — здесь появятся цифры, графики и таблицы.</div></div>
+{% elif error %}
+  <div class="banner neg appear">{% icon 'warning' 20 %}<span>{{ error }}</span></div>
+{% elif report %}
+  {% include 'panel/components/report.html' %}
+{% endif %}

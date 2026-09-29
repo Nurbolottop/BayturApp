@@ -1,0 +1,13 @@
+{% load panel %}
+<aside class="preview-panel" data-phone data-form="{{ form_id|default:'edit-form' }}">
+  <div class="row-between" style="margin-bottom:10px"><div class="h3">Как в приложении</div><span class="pill pill-negative" data-p-missing hidden></span></div>
+  <div class="preview-controls">
+    <div class="seg"><button type="button" class="on" data-p-lang="ru">RU</button><button type="button" data-p-lang="ky">KY</button><button type="button" data-p-lang="en">EN</button></div>
+    <div class="seg"><button type="button" data-p-theme="light" title="Светлая">{% icon 'sun' 16 %}</button><button type="button" data-p-theme="dark" title="Тёмная">{% icon 'moon' 16 %}</button></div>
+  </div>
+  <div class="phone"><div class="phone-screen">
+    <div class="phone-notch"><span class="tabular">9:41</span><span>●●●</span></div>
+    {% include body %}
+  </div></div>
+  <p class="small muted" style="text-align:center;margin-top:10px">Пунктир — нет перевода, показан русский текст</p>
+</aside>

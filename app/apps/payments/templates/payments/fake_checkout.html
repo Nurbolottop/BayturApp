@@ -1,0 +1,9 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Тестовая оплата</title>
+<style>body{font-family:system-ui,sans-serif;background:#F4F6F1;color:#12140F;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:16px}
+.card{background:#fff;border-radius:28px;padding:28px;max-width:360px;width:100%}h1{font-size:21px;margin:0 0 6px}p{color:#12140F8C;margin:0 0 18px}
+.sum{font-size:36px;font-weight:700;font-variant-numeric:tabular-nums;margin:0 0 24px}button{width:100%;min-height:52px;border:0;border-radius:999px;font-size:16px;font-weight:700;margin-bottom:10px;cursor:pointer}
+.pay{background:#C6F24E;color:#12140F}.fail{background:#12140F0F;color:#D64545}</style></head>
+<body><form class="card" method="post"><h1>Тестовый шлюз ({{ payment.method }})</h1><p>Деньги не списываются. Платёж {{ payment.id }}</p>
+<div class="sum">{{ payment.amount }} сом</div>
+<button class="pay" name="result" value="paid">Оплатить</button><button class="fail" name="result" value="failed">Отказ</button></form></body></html>

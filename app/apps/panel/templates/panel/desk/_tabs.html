@@ -1,0 +1,6 @@
+{% load panel %}
+<div class="seg" style="margin-bottom:18px">
+  <a href="{% url 'panel:desk' %}" class="{% if tab == 'queue' %}on{% endif %}">{% icon 'queue' 16 %} Очередь</a>
+  <a href="{% url 'panel:desk-members' %}" class="{% if tab == 'members' %}on{% endif %}">{% icon 'search' 16 %} Клиент</a>
+  <a href="{% url 'panel:desk-shift' %}" class="{% if tab == 'shift' %}on{% endif %}">{% icon 'clock' 16 %} Смена</a>
+</div>

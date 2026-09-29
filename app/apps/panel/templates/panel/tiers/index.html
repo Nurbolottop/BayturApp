@@ -1,0 +1,69 @@
+{% extends 'panel/base.html' %}{% load static panel %}
+{% block title %}Уровни{% endblock %}
+{% block content %}
+<div class="topbar"><div><h1 class="page-title">Уровни и привилегии</h1><div class="muted" style="margin-top:6px">Уровень считается по lifetime-баллам и никогда не понижается</div></div>
+  {% if can_edit %}<div class="actions"><a class="btn btn-accent" href="{% url 'panel:privilege-new' %}">{% icon 'plus' 18 %} Привилегия</a></div>{% endif %}</div>
+
+{% if preview %}
+<div class="banner warn appear" style="margin-bottom:18px">{% icon 'users' 20 %}
+  <div style="flex:1"><b class="tabular">{{ preview.total|num }} клиентов сменят уровень</b>
+    {% if preview.changes %}<div class="small" style="font-weight:500">{% for k, v in preview.changes.items %}{{ k }}: {{ v|num }}{% if not forloop.last %} · {% endif %}{% endfor %}</div>{% endif %}
+    <div class="small" style="font-weight:500">Уровни только повышаются. Проверьте пороги и подтвердите.</div></div>
+</div>
+{% endif %}
+
+<div class="split"><div>
+<form method="post" id="edit-form" novalidate>
+  {% csrf_token %}
+  {% if preview %}<input type="hidden" name="confirm" value="1">{% endif %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:18px">
+    {% for r in rows %}
+    <div class="stack-s appear">
+      <div class="tier-card tier-{{ r.tier.pk }}">
+        <div class="shine"></div>
+        <div class="row-between"><div><div class="small" style="opacity:.8">от <span class="tabular">{{ r.tier.from_points|num }}</span></div><div class="h2">{{ r.tier.name|tr }}</div></div>{% medal r.tier.pk 52 %}</div>
+        <div class="small" style="opacity:.85">{{ r.privileges|length }} привилегий</div>
+      </div>
+      <div class="card stack-s">
+        {% include 'panel/components/field.html' with f=r.form.name %}
+        {% include 'panel/components/field.html' with f=r.form.from_points %}
+        {% for e in r.form.non_field_errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="card row-between wrap appear" style="margin-bottom:24px">
+    <div class="small muted">{% icon 'info' 16 %} Пороги строго возрастают, у первого уровня — 0. Количество уровней фиксировано в приложении.</div>
+    <div class="row">{% if preview %}<a class="btn btn-ghost" href="{% url 'panel:tiers' %}">Отмена</a><button class="btn btn-accent btn-l">Сохранить и пересчитать</button>{% else %}<button class="btn btn-accent btn-l">Сохранить</button>{% endif %}</div>
+  </div>
+</form>
+
+<div class="h2" style="margin-bottom:14px">Привилегии</div>
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+  {% for r in rows %}
+  <div class="card flush appear">
+    <div class="card-head" style="padding-bottom:10px"><span class="tier-badge tier-{{ r.tier.pk }}">{% medal r.tier.pk 18 %}<span>{{ r.tier.name|tr }}</span></span>{% if can_edit %}<a class="btn btn-s" href="{% url 'panel:privilege-new' %}?tier={{ r.tier.pk }}">{% icon 'plus' 16 %}</a>{% endif %}</div>
+    <table class="table"><tbody>
+      {% for p in r.privileges %}<tr class="link" data-href="{% url 'panel:privilege' p.pk %}"><td><div class="title-cell">{% bubble p.icon 18 %}<div><b>{{ p.title|tr }}</b><span class="small muted">{{ p.short|tr }}</span></div></div></td></tr>
+      {% empty %}<tr><td class="muted small">Нет привилегий</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+  {% endfor %}
+</div>
+</div>
+{% include 'panel/preview/_frame.html' with body='panel/preview/tiers.html' %}
+</div>
+{{ perks|json_script:"tier-perks" }}
+{% endblock %}
+{% block scripts %}
+<script>
+window.PREVIEW = { render: function (screen, h) {
+  var perks = JSON.parse(document.getElementById('tier-perks').textContent);
+  Object.keys(perks).forEach(function (t) {
+    var box = screen.querySelector('[data-p-perks="' + t + '"]'); if (!box) return;
+    box.innerHTML = perks[t].map(function (p) { return '<span style="background:rgba(255,255,255,.18);border-radius:10px;padding:2px 8px;font-size:11px;font-weight:600">' + h.esc(p[h.lang()] || p.ru || '') + '</span>'; }).join('');
+  });
+} };
+</script>
+<script src="{% static 'panel/preview.js' %}" defer></script>
+{% endblock %}

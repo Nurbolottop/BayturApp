@@ -1,0 +1,38 @@
+{% extends 'panel/base.html' %}{% load static panel %}
+{% block title %}{% if obj %}{{ obj.title|tr }}{% else %}Новая привилегия{% endif %}{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:tiers' %}">{% icon 'arrow-left' 14 %} Уровни</a></div><h1 class="page-title">{% if obj %}{{ obj.title|tr }}{% else %}Новая привилегия{% endif %}</h1></div>
+  {% if obj and user|can:'tiers.edit' %}<div class="actions"><form method="post" action="{% url 'panel:privilege-delete' obj.pk %}" data-confirm="Удалить привилегию?">{% csrf_token %}<button class="btn btn-danger">{% icon 'trash' 18 %} Удалить</button></form></div>{% endif %}</div>
+<div class="split">
+  <form method="post" id="edit-form" class="card appear" novalidate>
+    {% csrf_token %}{% include 'panel/components/form_errors.html' %}
+    {% if form.icon.field.disabled %}<div class="lock-note" style="margin-bottom:14px">{% icon 'lock' 16 %} Ваша роль меняет только тексты.</div>{% endif %}
+    <div class="form-grid">
+      {% include 'panel/components/field.html' with f=form.id %}
+      {% include 'panel/components/field.html' with f=form.tier %}
+      <div class="field full"><span class="label">Иконка</span>{{ form.icon }}{{ form.icon.errors }}</div>
+      {% include 'panel/components/field.html' with f=form.title full=1 %}
+      {% include 'panel/components/field.html' with f=form.short full=1 %}
+      {% include 'panel/components/field.html' with f=form.description full=1 %}
+      {% include 'panel/components/field.html' with f=form.sort_order %}
+    </div>
+    <div class="form-actions"><a class="btn btn-ghost" href="{% url 'panel:tiers' %}">Отмена</a><button class="btn btn-accent btn-l">Сохранить</button></div>
+  </form>
+  {% include 'panel/preview/_frame.html' with body='panel/preview/privilege.html' %}
+</div>
+{% icon_templates icons %}
+<div hidden>{% for t in tiers %}<template id="medal-{{ t.pk }}">{% medal t.pk 52 %}</template>{% endfor %}</div>
+{{ tier_names|json_script:"tier-names" }}
+{% endblock %}
+{% block scripts %}
+<script>
+window.PREVIEW = { render: function (screen, h) {
+  var tier = h.val('tier') || 'bronze', names = JSON.parse(document.getElementById('tier-names').textContent);
+  var card = screen.querySelector('[data-p-tier]'); card.className = 'tier-card tier-' + tier;
+  screen.querySelector('[data-p-tier-name]').textContent = (names[tier] || {})[h.lang()] || (names[tier] || {}).ru || tier;
+  var m = document.getElementById('medal-' + tier); screen.querySelector('[data-p-medal]').innerHTML = m ? m.innerHTML : '';
+  screen.querySelector('[data-p-icon]').innerHTML = h.iconSvg(h.val('icon'));
+} };
+</script>
+<script src="{% static 'panel/preview.js' %}" defer></script>
+{% endblock %}

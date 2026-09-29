@@ -1,0 +1,23 @@
+{% load panel %}
+{% if report.kpis %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:18px">
+    {% for k in report.kpis %}{% if forloop.counter <= heroes|default:2 %}{% include 'panel/components/kpi.html' with hero=1 %}{% else %}{% include 'panel/components/kpi.html' with hero=0 %}{% endif %}{% endfor %}
+  </div>
+{% endif %}
+{% if report.series %}
+  <div class="grid {% if report.series|length > 1 %}cols-2{% endif %}" style="margin-bottom:18px">
+    {% for s in report.series %}
+      <div class="card appear"><div class="card-head"><div class="h3">{{ s.label }}</div></div>{% chart s|aslist s.kind %}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% for t in report.tables %}
+  <div class="card flush appear" style="margin-bottom:18px">
+    <div class="card-head"><div class="h3">{{ t.label }}</div></div>
+    <div class="table-wrap"><table class="table">
+      <thead><tr>{% with first=t.rows.0 %}{% for c in t.columns %}<th class="{% if first|get:c.key|is_number %}n{% endif %}">{{ c.label }}</th>{% endfor %}{% endwith %}</tr></thead>
+      <tbody>{% for row in t.rows %}<tr>{% for c in t.columns %}{% with v=row|get:c.key %}<td class="{% if v|is_number %}n{% endif %}">{% if c.key == 'tier' and row.tier_id %}{% tier_badge row.tier_id %}{% else %}{{ row|cell:c }}{% endif %}</td>{% endwith %}{% endfor %}</tr>
+      {% empty %}<tr><td colspan="{{ t.columns|length }}"><div class="empty">Нет данных за период</div></td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+{% endfor %}

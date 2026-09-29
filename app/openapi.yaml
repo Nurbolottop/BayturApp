@@ -1,0 +1,5359 @@
+openapi: 3.0.3
+info:
+  title: BAYTUR API
+  version: 1.0.0
+  description: 'Backend программы лояльности BAYTUR: клиентский API, рабочее место
+    сотрудника и админ-API.'
+paths:
+  /api/v1/admin/auth/2fa:
+    post:
+      operationId: admin_auth_2fa_create
+      summary: TOTP-код → токены
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - 'Админка: вход'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffTwoFactorRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffTwoFactorRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tokens'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/admin/auth/login:
+    post:
+      operationId: admin_auth_login_create
+      summary: Email + пароль → токен второго шага
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - 'Админка: вход'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffLoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffLoginRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffLoginStep'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/admin/auth/logout:
+    post:
+      operationId: admin_auth_logout_create
+      summary: Выход сотрудника
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - 'Админка: вход'
+      security:
+      - staffBearer: []
+      responses:
+        '204':
+          description: Без тела
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/admin/auth/refresh:
+    post:
+      operationId: admin_auth_refresh_create
+      summary: Обновить токены сотрудника
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - 'Админка: вход'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tokens'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/admin/me:
+    get:
+      operationId: admin_me_retrieve
+      summary: Профиль и права сотрудника
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - 'Админка: вход'
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffProfile'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/admin/me/password:
+    post:
+      operationId: admin_me_password_create
+      description: Смена пароля (обязательна после выдачи временного).
+      summary: Сменить пароль (обязательно после временного)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - 'Админка: вход'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffPasswordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffPasswordRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffProfileAfterPassword'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/app/config:
+    get:
+      operationId: app_config_retrieve
+      description: Минимальная версия приложения (принудительное обновление) и техработы.
+      summary: Минимальная версия приложения и техработы
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-App-Version
+        schema:
+          type: string
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: header
+        name: X-Platform
+        schema:
+          type: string
+          enum:
+          - android
+          - ios
+      tags:
+      - Служебное
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppConfig'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/auth/logout:
+    post:
+      operationId: auth_logout_create
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: 'Выход: отзыв refresh и отвязка push-токена'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Вход
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LogoutInputRequest'
+      security:
+      - memberBearer: []
+      responses:
+        '204':
+          description: Без тела
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/auth/otp/request:
+    post:
+      operationId: auth_otp_request_create
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: Запросить SMS-код
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Вход
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OtpRequestRequest'
+        required: true
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpRequested'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/auth/otp/verify:
+    post:
+      operationId: auth_otp_verify_create
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: 'Проверить код: токены | регистрация | восстановление'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Вход
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OtpVerifyRequest'
+        required: true
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpVerified'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/auth/refresh:
+    post:
+      operationId: auth_refresh_create
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: Обновить пару токенов (ротация)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Вход
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RefreshInputRequest'
+        required: true
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tokens'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/auth/register:
+    post:
+      operationId: auth_register_create
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: Регистрация нового участника
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Вход
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+        required: true
+      security:
+      - memberBearerOptional: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokensWithProfile'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/auth/restart:
+    post:
+      operationId: auth_restart_create
+      description: '«Начать заново» вместо восстановления: старый аккаунт стирается,
+        дальше регистрация.'
+      summary: '«Начать заново»: стереть старый аккаунт и зарегистрироваться'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Вход
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestartInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RestartInputRequest'
+        required: true
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestartOutput'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/auth/restore:
+    post:
+      operationId: auth_restore_create
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: Восстановить удалённый аккаунт (30 дней)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Вход
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RestoreInputRequest'
+        required: true
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokensWithProfile'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/cashback-requests:
+    get:
+      operationId: cashback_requests_list
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Заявки
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: query
+        name: cursor
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: По умолчанию 20
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - active
+          - all
+      tags:
+      - Заявки
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestsPage'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+    post:
+      operationId: cashback_requests_create
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Создать заявку (сервер пересчитывает всё сам)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: Повтор с тем же ключом не создаёт вторую заявку
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Заявки
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RequestInputRequest'
+        required: true
+      security:
+      - memberBearer: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashbackRequest'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/cashback-requests/{request_id}:
+    get:
+      operationId: cashback_requests_retrieve
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Заявка
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: request_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Заявки
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashbackRequest'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/cashback-requests/{request_id}/cancel:
+    post:
+      operationId: cashback_requests_cancel_create
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Отменить заявку (только pending)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: request_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Заявки
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashbackRequest'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/cashback-requests/quote:
+    post:
+      operationId: cashback_requests_quote_create
+      description: Мобилка вызывает на каждое изменение ввода (с задержкой ~300 мс).
+      summary: Расчёт оплаты и кешбека (на каждое изменение ввода)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Заявки
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RequestInputRequest'
+        required: true
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/catalog:
+    get:
+      operationId: catalog_list
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: 'Каталог: категории с услугами и правилами'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Каталог
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceCategory'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/catalog/items/{item_id}:
+    get:
+      operationId: catalog_items_retrieve
+      description: В т.ч. неактивная услуга — для истории.
+      summary: Услуга (в т.ч. неактивная — для истории)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: item_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Каталог
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceItem'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/complaints:
+    get:
+      operationId: complaints_list
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Мои обращения
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: query
+        name: cursor
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: По умолчанию 20
+      tags:
+      - Обращения
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplaintsPage'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+    post:
+      operationId: complaints_create
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Новое обращение
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Обращения
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplaintInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ComplaintInputRequest'
+        required: true
+      security:
+      - memberBearer: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Complaint'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/complaints/{complaint_id}:
+    get:
+      operationId: complaints_retrieve
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Обращение с перепиской
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: complaint_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Обращения
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Complaint'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/complaints/{complaint_id}/messages:
+    post:
+      operationId: complaints_messages_create
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Ответ клиента
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: complaint_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Обращения
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComplaintReplyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ComplaintReplyRequest'
+        required: true
+      security:
+      - memberBearer: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Complaint'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/complaints/{complaint_id}/rating:
+    post:
+      operationId: complaints_rating_create
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Оценка после закрытия
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: complaint_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Обращения
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RatingInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RatingInputRequest'
+        required: true
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Complaint'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/complaints/categories:
+    get:
+      operationId: complaints_categories_retrieve
+      description: Темы на языке клиента + точки обслуживания.
+      summary: Темы обращений и точки обслуживания
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Обращения
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplaintRefs'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/content/articles/{article_id}:
+    get:
+      operationId: content_articles_retrieve
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: Статья (диплинк / push)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: article_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Контент
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/content/events:
+    get:
+      operationId: content_events_list
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: События недели
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Контент
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResortEvent'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/content/promos:
+    get:
+      operationId: content_promos_list
+      description: Только активные на сегодня.
+      summary: Акции-баннеры (активные сегодня)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Контент
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Promo'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/content/stories:
+    get:
+      operationId: content_stories_list
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: Сторис разделов каталога
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Контент
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Story'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/events:
+    post:
+      operationId: events_create
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: События аналитики пачкой
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Служебное
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventsBatchRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventsBatchRequest'
+        required: true
+      security:
+      - memberBearerOptional: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventsAccepted'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/legal:
+    get:
+      operationId: legal_retrieve
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: Версии и URL документов
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Служебное
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Legal'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/loyalty/program:
+    get:
+      operationId: loyalty_program_retrieve
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: Уровни и привилегии
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Лояльность
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Program'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me:
+    get:
+      operationId: me_retrieve
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Профиль
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+    patch:
+      operationId: me_partial_update
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Изменить профиль (телефон — только через ресепшен)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProfilePatchRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProfilePatchRequest'
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me/consents:
+    post:
+      operationId: me_consents_create
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Принять новую версию документа
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsentInputRequest'
+        required: true
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentOutput'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me/deletion/confirm:
+    post:
+      operationId: me_deletion_confirm_create
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: 'Удаление аккаунта: подтвердить кодом'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeletionConfirmInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DeletionConfirmInputRequest'
+        required: true
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionConfirmed'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me/deletion/request:
+    get:
+      operationId: me_deletion_request_retrieve
+      description: Данные для экрана предупреждения без отправки SMS.
+      summary: Данные для экрана предупреждения об удалении
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionInfo'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+    post:
+      operationId: me_deletion_request_create
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: 'Удаление аккаунта: отправить SMS-код'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionRequested'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me/devices:
+    post:
+      operationId: me_devices_create
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Зарегистрировать push-токен
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DeviceInputRequest'
+        required: true
+      security:
+      - memberBearer: []
+      responses:
+        '204':
+          description: Без тела
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me/devices/{token}:
+    delete:
+      operationId: me_devices_destroy
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Удалить push-токен
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - Профиль
+      security:
+      - memberBearer: []
+      responses:
+        '204':
+          description: Без тела
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me/member-qr:
+    get:
+      operationId: me_member_qr_retrieve
+      description: Подписанный токен со сроком жизни 1–2 мин — скриншот чужого QR
+        не сработает.
+      summary: QR участника (подписанный токен, 1–2 мин)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberQr'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me/notifications:
+    get:
+      operationId: me_notifications_retrieve
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Лента уведомлений (30 дней)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: query
+        name: cursor
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: По умолчанию 20
+      tags:
+      - Профиль
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationsPage'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me/notifications/read:
+    post:
+      operationId: me_notifications_read_create
+      description: '{id} — одно; {all: true} — все.'
+      summary: Отметить прочитанными (одно или все)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReadInputRequest'
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadOutput'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me/settings:
+    patch:
+      operationId: me_settings_partial_update
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: 'Настройки: язык и уведомления'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSettingsPatchRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSettingsPatchRequest'
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me/summary:
+    get:
+      operationId: me_summary_retrieve
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Цифры в профиле
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Summary'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/payments:
+    post:
+      operationId: payments_create
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Создать онлайн-оплату денежной части
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Оплата
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PaymentInputRequest'
+        required: true
+      security:
+      - memberBearer: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/payments/{payment_id}:
+    get:
+      operationId: payments_retrieve
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Статус оплаты
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: payment_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Оплата
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/payments/{payment_id}/check:
+    post:
+      operationId: payments_check_create
+      description: Кнопка «Я оплатил» в ЭлQR — запускает проверку у провайдера.
+      summary: «Я оплатил» — проверить у провайдера
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: payment_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Оплата
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/payments/webhooks/{provider}:
+    post:
+      operationId: payments_webhooks_create
+      description: 'Вебхук провайдера: проверка подписи, идемпотентная обработка,
+        сверка суммы.'
+      summary: Вебхук провайдера (подпись X-Signature)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: provider
+        schema:
+          type: string
+        required: true
+      tags:
+      - Оплата
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookOk'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/resort/contacts:
+    get:
+      operationId: resort_contacts_retrieve
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: Контакты курорта
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Служебное
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResortContacts'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/members:
+    get:
+      operationId: staff_members_retrieve
+      summary: Поиск клиента по memberId / телефону
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: query
+        name: q
+        schema:
+          type: string
+      tags:
+      - Сотрудник
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffMemberSearch'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/queue:
+    get:
+      operationId: staff_queue_retrieve
+      description: Заявки pending своих точек, старые сверху.
+      summary: Очередь pending своих точек (старые сверху)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: query
+        name: outlet
+        schema:
+          type: string
+      tags:
+      - Сотрудник
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffQueue'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/requests/{request_id}:
+    get:
+      operationId: staff_requests_retrieve
+      summary: Карточка заявки
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: request_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Сотрудник
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffRequest'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/requests/{request_id}/adjust:
+    post:
+      operationId: staff_requests_adjust_create
+      summary: Изменить сумму (202 — ушло менеджеру)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: request_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdjustInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdjustInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffRequest'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/requests/{request_id}/adjust/preview:
+    post:
+      operationId: staff_requests_adjust_preview_create
+      description: Новый расчёт без сохранения — сотрудник видит цифры до подтверждения
+        правки.
+      summary: 'Правка суммы: расчёт без сохранения'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: request_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdjustPreviewInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdjustPreviewInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdjustPreview'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/requests/{request_id}/confirm:
+    post:
+      operationId: staff_requests_confirm_create
+      summary: Подтвердить (202 — ушло менеджеру)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: request_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfirmInputRequest'
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffRequest'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/requests/{request_id}/reject:
+    post:
+      operationId: staff_requests_reject_create
+      summary: Отклонить
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: request_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RejectInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffRequest'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/scan:
+    post:
+      operationId: staff_scan_create
+      description: QR участника → клиент (токен живёт 1–2 мин).
+      summary: QR участника → клиент
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ScanInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffMemberCard'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/shift:
+    get:
+      operationId: staff_shift_retrieve
+      description: 'Итог смены: подтверждено / отклонено сегодня, наличные для сверки
+        кассы.'
+      summary: Итог смены
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shift'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/uploads/complaint-photo:
+    post:
+      operationId: uploads_complaint_photo_create
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Загрузить фото (JPEG/PNG/HEIC до 10 МБ, EXIF удаляется)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Обращения
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhotoUploadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PhotoUploadRequest'
+        required: true
+      security:
+      - memberBearer: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Uploaded'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/wallet:
+    get:
+      operationId: wallet_retrieve
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Кошелёк с уровнем и прогрессом
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Лояльность
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/wallet/operations:
+    get:
+      operationId: wallet_operations_retrieve
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: История операций, новые сверху
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: query
+        name: cursor
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: По умолчанию 20
+      tags:
+      - Лояльность
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationsPage'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+components:
+  schemas:
+    AdjustInputRequest:
+      type: object
+      properties:
+        total:
+          type: integer
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
+      - total
+    AdjustPreview:
+      type: object
+      properties:
+        total:
+          type: integer
+        pointsSom:
+          type: integer
+        points:
+          type: integer
+        moneySom:
+          type: integer
+        rate:
+          type: number
+          format: double
+        cashback:
+          type: integer
+        maxPointsSom:
+          type: integer
+        needsManager:
+          type: boolean
+      required:
+      - cashback
+      - maxPointsSom
+      - moneySom
+      - needsManager
+      - points
+      - pointsSom
+      - rate
+      - total
+    AdjustPreviewInputRequest:
+      type: object
+      properties:
+        total:
+          type: integer
+      required:
+      - total
+    AppConfig:
+      type: object
+      properties:
+        minVersion:
+          type: object
+          additionalProperties:
+            type: string
+        updateRequired:
+          type: boolean
+        maintenance:
+          type: boolean
+        maintenanceMessage:
+          type: string
+          nullable: true
+      required:
+      - maintenance
+      - maintenanceMessage
+      - minVersion
+      - updateRequired
+    AppEventInputRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        at:
+          type: string
+          format: date-time
+        props:
+          type: object
+          additionalProperties: {}
+      required:
+      - at
+      - name
+    Article:
+      type: object
+      properties:
+        id:
+          type: string
+        image:
+          type: string
+          format: uri
+          nullable: true
+        tag:
+          type: string
+        title:
+          type: string
+        lead:
+          type: string
+        body:
+          type: array
+          items:
+            type: string
+        quote:
+          type: string
+          nullable: true
+        date:
+          type: string
+          format: date
+        minutes:
+          type: integer
+        category:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/CategoryId'
+          - $ref: '#/components/schemas/NullEnum'
+      required:
+      - body
+      - category
+      - date
+      - id
+      - image
+      - lead
+      - minutes
+      - quote
+      - tag
+      - title
+    Bonus:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/BonusKind'
+        title:
+          type: string
+          nullable: true
+        multiplier:
+          type: number
+          format: double
+      required:
+      - kind
+    BonusKind:
+      enum:
+      - promo
+      - birthday
+      type: string
+      description: |-
+        * `promo` - promo
+        * `birthday` - birthday
+    CashbackRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          $ref: '#/components/schemas/RequestStatus'
+        createdAt:
+          type: string
+          format: date-time
+        timeline:
+          type: object
+          additionalProperties:
+            type: string
+            format: date-time
+          description: status → datetime (+ adjusted)
+        item:
+          $ref: '#/components/schemas/ItemSnapshot'
+        quantity:
+          type: integer
+        checkAmount:
+          type: integer
+          nullable: true
+        rules:
+          $ref: '#/components/schemas/CashbackRules'
+        split:
+          $ref: '#/components/schemas/PaymentSplit'
+        method:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/PaymentMethod'
+          - $ref: '#/components/schemas/NullEnum'
+        receipt:
+          allOf:
+          - $ref: '#/components/schemas/Receipt'
+          nullable: true
+        originalTotal:
+          type: integer
+          nullable: true
+        rejectReason:
+          type: string
+          nullable: true
+        adjustReason:
+          type: string
+          nullable: true
+        bonuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bonus'
+      required:
+      - adjustReason
+      - bonuses
+      - checkAmount
+      - createdAt
+      - id
+      - item
+      - method
+      - originalTotal
+      - quantity
+      - receipt
+      - rejectReason
+      - rules
+      - split
+      - status
+      - timeline
+    CashbackRules:
+      type: object
+      properties:
+        rate:
+          type: number
+          format: double
+        maxPointsShare:
+          type: number
+          format: double
+        methods:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentMethod'
+      required:
+      - maxPointsShare
+      - methods
+      - rate
+    CategoryId:
+      enum:
+      - rooms
+      - spa
+      - food
+      - pools
+      - sport
+      type: string
+      description: |-
+        * `rooms` - Номера
+        * `spa` - SPA
+        * `food` - Рестораны
+        * `pools` - Бассейны
+        * `sport` - Спорт
+    Complaint:
+      type: object
+      properties:
+        id:
+          type: string
+        number:
+          type: string
+        category:
+          type: string
+        categoryTitle:
+          type: string
+        subtype:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/ComplaintSubtype'
+          - $ref: '#/components/schemas/NullEnum'
+        outletId:
+          type: string
+          nullable: true
+        requestId:
+          type: string
+          nullable: true
+        operationId:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ComplaintStatus'
+        rating:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComplaintMessage'
+      required:
+      - category
+      - categoryTitle
+      - createdAt
+      - id
+      - number
+      - operationId
+      - outletId
+      - rating
+      - requestId
+      - status
+      - subtype
+      - updatedAt
+    ComplaintCategoryRef:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+      required:
+      - id
+      - title
+    ComplaintInputRequest:
+      type: object
+      properties:
+        category:
+          type: string
+          minLength: 1
+        outletId:
+          type: string
+          nullable: true
+          minLength: 1
+        requestId:
+          type: string
+          nullable: true
+          minLength: 1
+        operationId:
+          type: string
+          nullable: true
+          minLength: 1
+        subtype:
+          $ref: '#/components/schemas/ComplaintSubtype'
+        text:
+          type: string
+          minLength: 10
+          maxLength: 2000
+        attachmentIds:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          maxItems: 5
+      required:
+      - category
+      - text
+    ComplaintMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        author:
+          $ref: '#/components/schemas/MessageAuthor'
+        authorName:
+          type: string
+        text:
+          type: string
+        attachments:
+          type: array
+          items:
+            type: string
+            format: uri
+        at:
+          type: string
+          format: date-time
+      required:
+      - at
+      - attachments
+      - author
+      - authorName
+      - id
+      - text
+    ComplaintRefs:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComplaintCategoryRef'
+        outlets:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutletRef'
+        pointsSubtypes:
+          type: array
+          items:
+            type: string
+      required:
+      - categories
+      - outlets
+      - pointsSubtypes
+    ComplaintReplyRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+        attachmentIds:
+          type: array
+          items:
+            type: string
+            minLength: 1
+      required:
+      - text
+    ComplaintStatus:
+      enum:
+      - new
+      - in_progress
+      - answered
+      - closed
+      type: string
+      description: |-
+        * `new` - new
+        * `in_progress` - in_progress
+        * `answered` - answered
+        * `closed` - closed
+    ComplaintSubtype:
+      enum:
+      - not_credited
+      - credited_less
+      - overcharged
+      - other
+      type: string
+      description: |-
+        * `not_credited` - not_credited
+        * `credited_less` - credited_less
+        * `overcharged` - overcharged
+        * `other` - other
+    ComplaintsPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Complaint'
+        nextCursor:
+          type: string
+          nullable: true
+      required:
+      - items
+      - nextCursor
+    ConfirmInputRequest:
+      type: object
+      properties:
+        cashReceived:
+          type: boolean
+    ConsentInputRequest:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/ConsentKind'
+        version:
+          type: string
+          minLength: 1
+      required:
+      - kind
+      - version
+    ConsentKind:
+      enum:
+      - terms
+      - privacy
+      type: string
+      description: |-
+        * `terms` - terms
+        * `privacy` - privacy
+    ConsentOutput:
+      type: object
+      properties:
+        pendingConsents:
+          type: array
+          items:
+            $ref: '#/components/schemas/PendingConsent'
+      required:
+      - pendingConsents
+    DeletionConfirmInputRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+      required:
+      - code
+    DeletionConfirmed:
+      type: object
+      properties:
+        deleted:
+          type: boolean
+      required:
+      - deleted
+    DeletionInfo:
+      type: object
+      properties:
+        balance:
+          type: integer
+        tier:
+          $ref: '#/components/schemas/TierId'
+        purgeDays:
+          type: integer
+        purgeAt:
+          type: string
+          format: date-time
+        keeps:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Брони и заявки, которые сохранятся
+      required:
+      - balance
+      - keeps
+      - purgeAt
+      - purgeDays
+      - tier
+    DeletionRequested:
+      type: object
+      properties:
+        balance:
+          type: integer
+        tier:
+          $ref: '#/components/schemas/TierId'
+        purgeDays:
+          type: integer
+        purgeAt:
+          type: string
+          format: date-time
+        keeps:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Брони и заявки, которые сохранятся
+        expiresIn:
+          type: integer
+        retryIn:
+          type: integer
+      required:
+      - balance
+      - expiresIn
+      - keeps
+      - purgeAt
+      - purgeDays
+      - retryIn
+      - tier
+    DeviceInputRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+        platform:
+          $ref: '#/components/schemas/Platform'
+        appVersion:
+          type: string
+          minLength: 1
+      required:
+      - platform
+      - token
+    Error:
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+      required:
+      - error
+    ErrorBody:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+      - code
+      - message
+    EventsAccepted:
+      type: object
+      properties:
+        accepted:
+          type: integer
+        dropped:
+          type: integer
+      required:
+      - accepted
+      - dropped
+    EventsBatchRequest:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          minLength: 1
+        platform:
+          $ref: '#/components/schemas/Platform'
+        appVersion:
+          type: string
+          minLength: 1
+        language:
+          $ref: '#/components/schemas/Language'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppEventInputRequest'
+      required:
+      - appVersion
+      - deviceId
+      - events
+      - language
+      - platform
+    Feature:
+      type: object
+      properties:
+        icon:
+          $ref: '#/components/schemas/FeatureIcon'
+        text:
+          type: string
+      required:
+      - icon
+      - text
+    FeatureIcon:
+      enum:
+      - view
+      - bed
+      - people
+      - area
+      - wifi
+      - breakfast
+      - terrace
+      - pool
+      - time
+      - towel
+      - tea
+      - music
+      - fire
+      - chef
+      - drink
+      - sun
+      - water
+      - gym
+      - trainer
+      - bath
+      - nature
+      - cold
+      - warm
+      - tv
+      - flower
+      type: string
+      description: |-
+        * `view` - view
+        * `bed` - bed
+        * `people` - people
+        * `area` - area
+        * `wifi` - wifi
+        * `breakfast` - breakfast
+        * `terrace` - terrace
+        * `pool` - pool
+        * `time` - time
+        * `towel` - towel
+        * `tea` - tea
+        * `music` - music
+        * `fire` - fire
+        * `chef` - chef
+        * `drink` - drink
+        * `sun` - sun
+        * `water` - water
+        * `gym` - gym
+        * `trainer` - trainer
+        * `bath` - bath
+        * `nature` - nature
+        * `cold` - cold
+        * `warm` - warm
+        * `tv` - tv
+        * `flower` - flower
+    ItemSnapshot:
+      type: object
+      properties:
+        id:
+          type: string
+        category:
+          $ref: '#/components/schemas/CategoryId'
+        title:
+          type: string
+        image:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - category
+      - id
+      - image
+      - title
+    Language:
+      enum:
+      - ru
+      - ky
+      - en
+      type: string
+      description: |-
+        * `ru` - ru
+        * `ky` - ky
+        * `en` - en
+    Legal:
+      type: object
+      properties:
+        terms:
+          allOf:
+          - $ref: '#/components/schemas/LegalDocTerms'
+          nullable: true
+        privacy:
+          allOf:
+          - $ref: '#/components/schemas/LegalDocPrivacy'
+          nullable: true
+        deletion:
+          allOf:
+          - $ref: '#/components/schemas/LegalDocDeletion'
+          nullable: true
+      required:
+      - deletion
+      - privacy
+      - terms
+    LegalDocDeletion:
+      type: object
+      properties:
+        version:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - url
+      - version
+    LegalDocPrivacy:
+      type: object
+      properties:
+        version:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - url
+      - version
+    LegalDocTerms:
+      type: object
+      properties:
+        version:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - url
+      - version
+    LogoutInputRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+        pushToken:
+          type: string
+          minLength: 1
+    MemberQr:
+      type: object
+      properties:
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+      - expiresAt
+      - token
+    MessageAuthor:
+      enum:
+      - client
+      - resort
+      type: string
+      description: |-
+        * `client` - client
+        * `resort` - resort
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        data:
+          type: object
+          additionalProperties: {}
+        createdAt:
+          type: string
+          format: date-time
+        read:
+          type: boolean
+      required:
+      - body
+      - createdAt
+      - data
+      - id
+      - read
+      - title
+      - type
+    NotificationsPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        nextCursor:
+          type: string
+          nullable: true
+        unread:
+          type: integer
+      required:
+      - items
+      - nextCursor
+      - unread
+    NullEnum:
+      enum:
+      - null
+    OnlinePaymentMethod:
+      enum:
+      - finik
+      - freedomPay
+      - elqr
+      type: string
+      description: |-
+        * `finik` - finik
+        * `freedomPay` - freedomPay
+        * `elqr` - elqr
+    Operation:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/OperationKind'
+        points:
+          type: integer
+        at:
+          type: string
+          format: date-time
+        itemId:
+          type: string
+          nullable: true
+        category:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/CategoryId'
+          - $ref: '#/components/schemas/NullEnum'
+        requestId:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+        relatedId:
+          type: string
+          nullable: true
+      required:
+      - at
+      - category
+      - id
+      - itemId
+      - kind
+      - points
+      - reason
+      - relatedId
+      - requestId
+      - title
+    OperationKind:
+      enum:
+      - cashback
+      - spend
+      - refund
+      - adjustment
+      - expire
+      - forfeit
+      type: string
+      description: |-
+        * `cashback` - Начисление
+        * `spend` - Списание
+        * `refund` - Возврат
+        * `adjustment` - Корректировка
+        * `expire` - Сгорание
+        * `forfeit` - Списание при удалении
+    OperationsPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Operation'
+        nextCursor:
+          type: string
+          nullable: true
+      required:
+      - items
+      - nextCursor
+    OtpRequestRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+          minLength: 1
+          description: E.164
+      required:
+      - phone
+    OtpRequested:
+      type: object
+      properties:
+        expiresIn:
+          type: integer
+        retryIn:
+          type: integer
+      required:
+      - expiresIn
+      - retryIn
+    OtpVerified:
+      type: object
+      description: 'Одна из трёх форм: токены | {isNew, registrationToken} | {deactivated,
+        restoreToken, purgeAt, balance}.'
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+        isNew:
+          type: boolean
+        registrationToken:
+          type: string
+        deactivated:
+          type: boolean
+        restoreToken:
+          type: string
+        purgeAt:
+          type: string
+          format: date-time
+        balance:
+          type: integer
+    OtpVerifyRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+          minLength: 1
+        code:
+          type: string
+          minLength: 1
+      required:
+      - code
+      - phone
+    OutletRef:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required:
+      - id
+      - name
+    PatchedProfilePatchRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+        lastName:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        birthday:
+          type: string
+          format: date
+          description: Только если ещё не задана
+    PatchedSettingsPatchRequest:
+      type: object
+      properties:
+        language:
+          $ref: '#/components/schemas/Language'
+        notifyCashback:
+          type: boolean
+        notifyPromos:
+          type: boolean
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+        method:
+          $ref: '#/components/schemas/PaymentMethod'
+        amount:
+          type: integer
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        redirectUrl:
+          type: string
+          format: uri
+          nullable: true
+        qrPayload:
+          type: string
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        requestId:
+          type: string
+          nullable: true
+      required:
+      - amount
+      - expiresAt
+      - id
+      - method
+      - paidAt
+      - qrPayload
+      - redirectUrl
+      - requestId
+      - status
+    PaymentInputRequest:
+      type: object
+      properties:
+        method:
+          $ref: '#/components/schemas/OnlinePaymentMethod'
+        amountSom:
+          type: integer
+        itemId:
+          type: string
+          minLength: 1
+        quantity:
+          type: integer
+          nullable: true
+        checkAmount:
+          type: integer
+          nullable: true
+        pointsSom:
+          type: integer
+      required:
+      - amountSom
+      - itemId
+      - method
+    PaymentMethod:
+      enum:
+      - cash
+      - finik
+      - freedomPay
+      - elqr
+      type: string
+      description: |-
+        * `cash` - Наличные
+        * `finik` - Finik
+        * `freedomPay` - Freedom Pay
+        * `elqr` - ЭлQR
+    PaymentSplit:
+      type: object
+      properties:
+        total:
+          type: integer
+        pointsSom:
+          type: integer
+        points:
+          type: integer
+        moneySom:
+          type: integer
+        rate:
+          type: number
+          format: double
+        cashback:
+          type: integer
+      required:
+      - cashback
+      - moneySom
+      - points
+      - pointsSom
+      - rate
+      - total
+    PaymentStatus:
+      enum:
+      - created
+      - pending
+      - paid
+      - failed
+      - expired
+      - refunded
+      type: string
+      description: |-
+        * `created` - created
+        * `pending` - pending
+        * `paid` - paid
+        * `failed` - failed
+        * `expired` - expired
+        * `refunded` - refunded
+    PendingConsent:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/ConsentKind'
+        version:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - kind
+      - url
+      - version
+    PerkIcon:
+      enum:
+      - cashback
+      - birthday
+      - drink
+      - earlyCheckIn
+      - beach
+      - parking
+      - lateCheckOut
+      - upgrade
+      - spa
+      - transfer
+      - concierge
+      - chef
+      - villa
+      - events
+      - gift
+      type: string
+      description: |-
+        * `cashback` - cashback
+        * `birthday` - birthday
+        * `drink` - drink
+        * `earlyCheckIn` - earlyCheckIn
+        * `beach` - beach
+        * `parking` - parking
+        * `lateCheckOut` - lateCheckOut
+        * `upgrade` - upgrade
+        * `spa` - spa
+        * `transfer` - transfer
+        * `concierge` - concierge
+        * `chef` - chef
+        * `villa` - villa
+        * `events` - events
+        * `gift` - gift
+    PhotoUploadRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+      required:
+      - file
+    Platform:
+      enum:
+      - ios
+      - android
+      type: string
+      description: |-
+        * `ios` - ios
+        * `android` - android
+    Pricing:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/PricingType'
+        unit:
+          $ref: '#/components/schemas/PricingUnit'
+        min:
+          type: integer
+        max:
+          type: integer
+      required:
+      - max
+      - min
+      - type
+    PricingType:
+      enum:
+      - unit
+      - check
+      type: string
+      description: |-
+        * `unit` - unit
+        * `check` - check
+    PricingUnit:
+      enum:
+      - night
+      - session
+      - guest
+      - hour
+      - visit
+      type: string
+      description: |-
+        * `night` - night
+        * `session` - session
+        * `guest` - guest
+        * `hour` - hour
+        * `visit` - visit
+    Privilege:
+      type: object
+      properties:
+        id:
+          type: string
+        tier:
+          $ref: '#/components/schemas/TierId'
+        icon:
+          $ref: '#/components/schemas/PerkIcon'
+        title:
+          type: string
+        short:
+          type: string
+        description:
+          type: string
+      required:
+      - description
+      - icon
+      - id
+      - short
+      - tier
+      - title
+    Profile:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+          nullable: true
+        birthday:
+          type: string
+          format: date
+          nullable: true
+        memberId:
+          type: string
+        memberSince:
+          type: string
+          format: date
+        settings:
+          $ref: '#/components/schemas/Settings'
+        marketingConsent:
+          type: boolean
+        pendingConsents:
+          type: array
+          items:
+            $ref: '#/components/schemas/PendingConsent'
+      required:
+      - birthday
+      - email
+      - firstName
+      - lastName
+      - marketingConsent
+      - memberId
+      - memberSince
+      - pendingConsents
+      - phone
+      - settings
+    Program:
+      type: object
+      properties:
+        tiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tier'
+        privileges:
+          type: array
+          items:
+            $ref: '#/components/schemas/Privilege'
+      required:
+      - privileges
+      - tiers
+    Promo:
+      type: object
+      properties:
+        id:
+          type: integer
+        subtitle:
+          type: string
+        cta:
+          type: string
+        cutout:
+          type: string
+          format: uri
+          nullable: true
+        article:
+          $ref: '#/components/schemas/Article'
+      required:
+      - article
+      - cta
+      - cutout
+      - id
+      - subtitle
+    Quote:
+      type: object
+      properties:
+        total:
+          type: integer
+        pointsSom:
+          type: integer
+        points:
+          type: integer
+        moneySom:
+          type: integer
+        rate:
+          type: number
+          format: double
+        cashback:
+          type: integer
+        maxPointsSom:
+          type: integer
+        availablePoints:
+          type: integer
+        methods:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentMethod'
+        bonuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bonus'
+      required:
+      - availablePoints
+      - bonuses
+      - cashback
+      - maxPointsSom
+      - methods
+      - moneySom
+      - points
+      - pointsSom
+      - rate
+      - total
+    RatingInputRequest:
+      type: object
+      properties:
+        rating:
+          type: integer
+          maximum: 5
+          minimum: 1
+        comment:
+          type: string
+          minLength: 1
+      required:
+      - rating
+    ReadInputRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+        all:
+          type: boolean
+    ReadOutput:
+      type: object
+      properties:
+        unread:
+          type: integer
+      required:
+      - unread
+    Receipt:
+      type: object
+      properties:
+        id:
+          type: string
+        method:
+          $ref: '#/components/schemas/PaymentMethod'
+        amount:
+          type: integer
+        at:
+          type: string
+          format: date-time
+      required:
+      - amount
+      - at
+      - id
+      - method
+    RefreshInputRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+      required:
+      - refreshToken
+    RegisterRequest:
+      type: object
+      properties:
+        registrationToken:
+          type: string
+          minLength: 1
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        birthday:
+          type: string
+          format: date
+        email:
+          type: string
+          format: email
+        acceptTerms:
+          type: boolean
+        marketingConsent:
+          type: boolean
+        language:
+          $ref: '#/components/schemas/Language'
+      required:
+      - acceptTerms
+      - birthday
+      - firstName
+      - lastName
+      - registrationToken
+    RejectInputRequest:
+      type: object
+      properties:
+        reasonCode:
+          $ref: '#/components/schemas/RejectReasonCode'
+        comment:
+          type: string
+          minLength: 1
+      required:
+      - reasonCode
+    RejectReasonCode:
+      enum:
+      - not_provided
+      - wrong_amount
+      - duplicate
+      - other
+      type: string
+      description: |-
+        * `not_provided` - not_provided
+        * `wrong_amount` - wrong_amount
+        * `duplicate` - duplicate
+        * `other` - other
+    RequestInputRequest:
+      type: object
+      properties:
+        itemId:
+          type: string
+          minLength: 1
+        quantity:
+          type: integer
+          nullable: true
+        checkAmount:
+          type: integer
+          nullable: true
+        pointsSom:
+          type: integer
+        method:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/PaymentMethod'
+          - $ref: '#/components/schemas/NullEnum'
+        paymentId:
+          type: string
+          nullable: true
+          minLength: 1
+      required:
+      - itemId
+    RequestStatus:
+      enum:
+      - pending
+      - confirmed
+      - credited
+      - rejected
+      - cancelled
+      type: string
+      description: |-
+        * `pending` - pending
+        * `confirmed` - confirmed
+        * `credited` - credited
+        * `rejected` - rejected
+        * `cancelled` - cancelled
+    RequestsPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CashbackRequest'
+        nextCursor:
+          type: string
+          nullable: true
+      required:
+      - items
+      - nextCursor
+    ResortContacts:
+      type: object
+      properties:
+        phone:
+          type: string
+        whatsapp:
+          type: string
+        mapsUrl:
+          type: string
+          format: uri
+          nullable: true
+        termsUrl:
+          type: string
+          format: uri
+          nullable: true
+        privacyUrl:
+          type: string
+          format: uri
+          nullable: true
+        deletionUrl:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - deletionUrl
+      - mapsUrl
+      - phone
+      - privacyUrl
+      - termsUrl
+      - whatsapp
+    ResortEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        when:
+          type: string
+        place:
+          type: string
+        article:
+          $ref: '#/components/schemas/Article'
+      required:
+      - article
+      - id
+      - place
+      - when
+    RestartInputRequest:
+      type: object
+      properties:
+        restoreToken:
+          type: string
+          minLength: 1
+      required:
+      - restoreToken
+    RestartOutput:
+      type: object
+      properties:
+        isNew:
+          type: boolean
+        registrationToken:
+          type: string
+      required:
+      - isNew
+      - registrationToken
+    RestoreInputRequest:
+      type: object
+      properties:
+        restoreToken:
+          type: string
+          minLength: 1
+      required:
+      - restoreToken
+    ScanInputRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+      required:
+      - token
+    ServiceCategory:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/CategoryId'
+        title:
+          type: string
+        cover:
+          type: string
+          format: uri
+          nullable: true
+        sortOrder:
+          type: integer
+        rules:
+          $ref: '#/components/schemas/CashbackRules'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceItem'
+      required:
+      - cover
+      - id
+      - items
+      - rules
+      - sortOrder
+      - title
+    ServiceItem:
+      type: object
+      properties:
+        id:
+          type: string
+        category:
+          $ref: '#/components/schemas/CategoryId'
+        title:
+          type: string
+        meta:
+          type: string
+        image:
+          type: string
+          format: uri
+          nullable: true
+        gallery:
+          type: array
+          items:
+            type: string
+            format: uri
+        price:
+          type: integer
+        pricing:
+          $ref: '#/components/schemas/Pricing'
+        promoRate:
+          type: number
+          format: double
+          nullable: true
+        tag:
+          type: string
+          nullable: true
+        description:
+          type: string
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+        outlet:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        cashbackPreview:
+          type: integer
+          description: Баллы за оплату деньгами по цене по умолчанию
+      required:
+      - cashbackPreview
+      - category
+      - description
+      - features
+      - gallery
+      - id
+      - image
+      - isActive
+      - meta
+      - outlet
+      - price
+      - pricing
+      - promoRate
+      - tag
+      - title
+    Settings:
+      type: object
+      properties:
+        language:
+          $ref: '#/components/schemas/Language'
+        notifyCashback:
+          type: boolean
+        notifyPromos:
+          type: boolean
+      required:
+      - language
+      - notifyCashback
+      - notifyPromos
+    Shift:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        confirmed:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffRequest'
+        rejected:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffRequest'
+        adjustedCount:
+          type: integer
+        cashTotal:
+          type: integer
+      required:
+      - adjustedCount
+      - cashTotal
+      - confirmed
+      - date
+      - rejected
+    StaffLoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+      required:
+      - email
+      - password
+    StaffLoginStep:
+      type: object
+      properties:
+        twoFactorRequired:
+          type: boolean
+        twoFactorToken:
+          type: string
+        twoFactorSetup:
+          type: boolean
+        otpauthUri:
+          type: string
+      required:
+      - twoFactorRequired
+      - twoFactorToken
+    StaffMemberBrief:
+      type: object
+      properties:
+        id:
+          type: integer
+        memberId:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+          description: Со скрытыми цифрами
+        tier:
+          $ref: '#/components/schemas/TierId'
+        status:
+          type: string
+      required:
+      - id
+      - memberId
+      - name
+      - phone
+      - status
+      - tier
+    StaffMemberCard:
+      type: object
+      properties:
+        id:
+          type: integer
+        memberId:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+          description: Со скрытыми цифрами
+        tier:
+          $ref: '#/components/schemas/TierId'
+        status:
+          type: string
+        deletedNote:
+          type: string
+          format: date-time
+          nullable: true
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffRequest'
+      required:
+      - deletedNote
+      - id
+      - memberId
+      - name
+      - phone
+      - requests
+      - status
+      - tier
+    StaffMemberSearch:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffMemberCard'
+      required:
+      - items
+    StaffPasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+        newPassword:
+          type: string
+          minLength: 1
+      required:
+      - currentPassword
+      - newPassword
+    StaffProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        fullName:
+          type: string
+        role:
+          type: string
+        outlets:
+          type: array
+          items:
+            type: string
+        permissions:
+          type: array
+          items:
+            type: string
+      required:
+      - email
+      - fullName
+      - id
+      - outlets
+      - permissions
+      - role
+    StaffProfileAfterPassword:
+      type: object
+      properties:
+        mustChangePassword:
+          type: boolean
+      required:
+      - mustChangePassword
+    StaffQueue:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffRequest'
+        count:
+          type: integer
+      required:
+      - count
+      - items
+    StaffRefreshRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+      required:
+      - refreshToken
+    StaffRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          $ref: '#/components/schemas/RequestStatus'
+        createdAt:
+          type: string
+          format: date-time
+        timeline:
+          type: object
+          additionalProperties:
+            type: string
+            format: date-time
+          description: status → datetime (+ adjusted)
+        item:
+          $ref: '#/components/schemas/ItemSnapshot'
+        quantity:
+          type: integer
+        checkAmount:
+          type: integer
+          nullable: true
+        rules:
+          $ref: '#/components/schemas/CashbackRules'
+        split:
+          $ref: '#/components/schemas/PaymentSplit'
+        method:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/PaymentMethod'
+          - $ref: '#/components/schemas/NullEnum'
+        receipt:
+          allOf:
+          - $ref: '#/components/schemas/Receipt'
+          nullable: true
+        originalTotal:
+          type: integer
+          nullable: true
+        rejectReason:
+          type: string
+          nullable: true
+        adjustReason:
+          type: string
+          nullable: true
+        bonuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bonus'
+        outlet:
+          type: string
+          nullable: true
+        member:
+          $ref: '#/components/schemas/StaffMemberBrief'
+        paidOnline:
+          type: boolean
+        cashToCollect:
+          type: integer
+        cashReceived:
+          type: boolean
+        escalated:
+          type: boolean
+        escalationReason:
+          type: string
+          nullable: true
+        proposedTotal:
+          type: integer
+          nullable: true
+        confirmedBy:
+          type: integer
+          nullable: true
+        rejectedBy:
+          type: integer
+          nullable: true
+        adjustedBy:
+          type: integer
+          nullable: true
+        isTest:
+          type: boolean
+      required:
+      - adjustReason
+      - adjustedBy
+      - bonuses
+      - cashReceived
+      - cashToCollect
+      - checkAmount
+      - confirmedBy
+      - createdAt
+      - escalated
+      - escalationReason
+      - id
+      - isTest
+      - item
+      - member
+      - method
+      - originalTotal
+      - outlet
+      - paidOnline
+      - proposedTotal
+      - quantity
+      - receipt
+      - rejectReason
+      - rejectedBy
+      - rules
+      - split
+      - status
+      - timeline
+    StaffTwoFactorRequest:
+      type: object
+      properties:
+        twoFactorToken:
+          type: string
+          minLength: 1
+        code:
+          type: string
+          minLength: 1
+      required:
+      - code
+      - twoFactorToken
+    Story:
+      type: object
+      properties:
+        category:
+          $ref: '#/components/schemas/CategoryId'
+        title:
+          type: string
+        cover:
+          type: string
+          format: uri
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+        slides:
+          type: array
+          items:
+            $ref: '#/components/schemas/StorySlide'
+      required:
+      - category
+      - cover
+      - slides
+      - title
+      - updatedAt
+    StorySlide:
+      type: object
+      properties:
+        image:
+          type: string
+          format: uri
+          nullable: true
+        title:
+          type: string
+        text:
+          type: string
+        itemId:
+          type: string
+          nullable: true
+      required:
+      - image
+      - itemId
+      - text
+      - title
+    Summary:
+      type: object
+      properties:
+        available:
+          type: integer
+        lifetime:
+          type: integer
+        requestsCount:
+          type: integer
+      required:
+      - available
+      - lifetime
+      - requestsCount
+    Tier:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/TierId'
+        name:
+          type: string
+        from:
+          type: integer
+      required:
+      - from
+      - id
+      - name
+    TierId:
+      enum:
+      - bronze
+      - silver
+      - gold
+      - platinum
+      - diamond
+      type: string
+      description: |-
+        * `bronze` - Бронза
+        * `silver` - Серебро
+        * `gold` - Золото
+        * `platinum` - Платина
+        * `diamond` - Бриллиант
+    Tokens:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+      required:
+      - accessToken
+      - expiresIn
+      - refreshToken
+    TokensWithProfile:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+        profile:
+          $ref: '#/components/schemas/Profile'
+      required:
+      - accessToken
+      - expiresIn
+      - profile
+      - refreshToken
+    Uploaded:
+      type: object
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+      - id
+      - url
+    Wallet:
+      type: object
+      properties:
+        balance:
+          type: integer
+        reserved:
+          type: integer
+        available:
+          type: integer
+        lifetime:
+          type: integer
+        tier:
+          $ref: '#/components/schemas/TierId'
+        pendingCashback:
+          type: integer
+        nextTier:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/TierId'
+          - $ref: '#/components/schemas/NullEnum'
+        leftToNext:
+          type: integer
+        progress:
+          type: number
+          format: double
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - available
+      - balance
+      - expiresAt
+      - leftToNext
+      - lifetime
+      - nextTier
+      - pendingCashback
+      - progress
+      - reserved
+      - tier
+    WebhookOk:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+      - ok
+  securitySchemes:
+    memberBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    memberBearerOptional:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    staffBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

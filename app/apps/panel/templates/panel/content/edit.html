@@ -1,0 +1,116 @@
+{% extends 'panel/base.html' %}{% load static panel %}
+{% block title %}{% if obj %}{{ k.one }}{% else %}Новая: {{ k.one|lower }}{% endif %}{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div><div class="crumbs"><a href="{% url 'panel:content-kind' kind %}">{% icon 'arrow-left' 14 %} {{ k.label }}</a></div>
+    <h1 class="page-title">{% if obj %}{{ k.one }}{% else %}Новая запись{% endif %}</h1>
+    {% if obj %}<div class="row" style="margin-top:8px">{% pill 'publish' obj.status %}{% if obj.published_at %}<span class="small muted">опубликовано {{ obj.published_at|local }}</span>{% endif %}</div>{% endif %}</div>
+  {% if obj %}<div class="actions">
+    {% if obj.status == 'published' %}<form method="post" action="{% url 'panel:content-action' kind obj.pk 'unpublish' %}">{% csrf_token %}<button class="btn">{% icon 'eye-off' 18 %} Снять с публикации</button></form>
+    {% else %}<form method="post" action="{% url 'panel:content-action' kind obj.pk 'delete' %}" data-confirm="Удалить черновик?">{% csrf_token %}<button class="btn btn-danger btn-icon" title="Удалить">{% icon 'trash' 18 %}</button></form>{% endif %}
+  </div>{% endif %}
+</div>
+{% if missing %}<div class="banner warn appear" style="margin-bottom:18px">{% icon 'globe' 20 %}<span>Не хватает переводов: {{ missing }}.{% if not obj.use_ru_fallback %} Публикация невозможна, пока не заполните их или не включите «использовать ru».{% endif %}</span></div>{% endif %}
+<div class="split">
+  <form method="post" id="edit-form" class="stack" novalidate>
+    {% csrf_token %}
+    <div class="card appear">
+      {% include 'panel/components/form_errors.html' %}
+      <div class="form-grid">
+      {% if kind == 'articles' %}
+        {% include 'panel/components/field.html' with f=form.title full=1 %}
+        {% include 'panel/components/field.html' with f=form.id %}
+        {% include 'panel/components/field.html' with f=form.tag %}
+        <div class="field full"><span class="label">Обложка</span><div class="photo-field" data-photo="id_image"><div class="ph">{% icon 'image' 24 %}</div><div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.image }}</div>
+        {% include 'panel/components/field.html' with f=form.lead full=1 %}
+        {% include 'panel/components/field.html' with f=form.body full=1 %}
+        {% include 'panel/components/field.html' with f=form.quote full=1 %}
+        {% include 'panel/components/field.html' with f=form.date %}
+        {% include 'panel/components/field.html' with f=form.minutes %}
+        {% include 'panel/components/field.html' with f=form.category %}
+      {% elif kind == 'promos' %}
+        {% include 'panel/components/field.html' with f=form.article full=1 %}
+        {% include 'panel/components/field.html' with f=form.subtitle full=1 %}
+        {% include 'panel/components/field.html' with f=form.cta %}
+        <div class="field"><span class="label">PNG без фона</span><div class="photo-field" data-photo="id_cutout"><div class="ph" style="background-size:contain">{% icon 'image' 24 %}</div><div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/png,image/webp" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.cutout }}</div>
+        {% include 'panel/components/field.html' with f=form.active_from %}
+        {% include 'panel/components/field.html' with f=form.active_to %}
+        {% include 'panel/components/field.html' with f=form.sort_order %}
+      {% elif kind == 'events' %}
+        {% include 'panel/components/field.html' with f=form.article full=1 %}
+        {% include 'panel/components/field.html' with f=form.when %}
+        {% include 'panel/components/field.html' with f=form.place %}
+        {% include 'panel/components/field.html' with f=form.active_from %}
+        {% include 'panel/components/field.html' with f=form.active_to %}
+        {% include 'panel/components/field.html' with f=form.sort_order %}
+      {% else %}
+        {% include 'panel/components/field.html' with f=form.category %}
+        {% include 'panel/components/field.html' with f=form.sort_order %}
+        {% include 'panel/components/field.html' with f=form.title full=1 %}
+        <div class="field full"><span class="label">Обложка</span><div class="photo-field" data-photo="id_cover"><div class="ph">{% icon 'image' 24 %}</div><div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.cover }}</div>
+      {% endif %}
+      </div>
+    </div>
+    {% if kind == 'stories' %}
+    <div class="card appear rows-editor" data-slides="id_slides">
+      <div class="card-head"><div class="h3">{% bubble 'story' 18 %} Слайды</div><button type="button" class="btn btn-s" data-add>{% icon 'plus' 16 %} Слайд</button></div>
+      <div class="re-list"></div>{{ form.slides }}{{ form.slides.errors }}
+      <template><div class="re-row" style="grid-template-columns:28px 64px minmax(0,1fr) 34px">
+        <span class="re-handle">⋮⋮</span>
+        <button type="button" class="re-icon" style="width:64px;height:86px;border-radius:14px;background:var(--surface) center/cover">{% icon 'upload' 18 %}</button>
+        <div class="stack-s"><input type="file" accept="image/*" hidden>
+          <div class="re-langs"><input data-f="title" data-lang="ru" placeholder="Заголовок RU"><input data-f="title" data-lang="ky" placeholder="KY"><input data-f="title" data-lang="en" placeholder="EN"></div>
+          <div class="re-langs"><input data-f="text" data-lang="ru" placeholder="Текст RU"><input data-f="text" data-lang="ky" placeholder="KY"><input data-f="text" data-lang="en" placeholder="EN"></div>
+          <select><option value="">Без кнопки «Получить кешбек»</option>{% for i in items %}<option value="{{ i.pk }}">{{ i.title|tr }}</option>{% endfor %}</select>
+        </div>
+        <button type="button" class="btn btn-icon btn-s btn-ghost re-rm">✕</button>
+      </div></template>
+    </div>
+    {% endif %}
+    <div class="card row-between wrap appear">
+      {% include 'panel/components/field.html' with f=form.use_ru_fallback %}
+      <div class="row wrap">
+        <button class="btn">{% icon 'check' 18 %} Сохранить черновик</button>
+        {% if not obj or obj.status != 'published' %}<button class="btn btn-accent btn-l" name="then" value="publish">{% icon 'send' 18 %} Сохранить и опубликовать</button>{% else %}<button class="btn btn-accent btn-l">Сохранить</button>{% endif %}
+      </div>
+    </div>
+  </form>
+  {% with 'panel/preview/'|add:kind|add:'.html' as body %}{% include 'panel/preview/_frame.html' %}{% endwith %}
+</div>
+{% if articles %}{{ articles|json_script:"articles-data" }}{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+window.PREVIEW = { render: function (screen, h) {
+  var art = document.getElementById('articles-data');
+  if (art) {
+    var a = JSON.parse(art.textContent)[h.val('article')] || {};
+    var t = screen.querySelector('[data-p-article-title]');
+    if (t) { var v = (a.title || {})[h.lang()], ru = (a.title || {}).ru; t.textContent = v || ru || 'Статья не выбрана'; t.classList.toggle('p-miss', !v && !!ru && h.lang() !== 'ru'); }
+    var im = screen.querySelector('[data-p-article-image]'); if (im) im.style.backgroundImage = a.image ? 'url("' + h.media(a.image) + '")' : '';
+  }
+  var slidesBox = screen.querySelector('[data-p-slides]');
+  if (slidesBox) {
+    var slides = []; try { slides = JSON.parse(h.val('slides') || '[]'); } catch (e) {}
+    var cur = Math.min(parseInt(slidesBox.getAttribute('data-i') || 0, 10), Math.max(0, slides.length - 1));
+    var s = slides[cur] || {}, l = h.lang();
+    var tt = (s.title || {})[l], tx = (s.text || {})[l];
+    slidesBox.style.backgroundImage = s.image ? 'url("' + h.media(s.image) + '")' : (h.val('cover') ? 'url("' + h.media(h.val('cover')) + '")' : '');
+    slidesBox.querySelector('.bars').innerHTML = slides.map(function (_, i) { return '<i class="' + (i <= cur ? 'on' : '') + '"></i>'; }).join('');
+    var te = slidesBox.querySelector('[data-p-slide-title]'); te.textContent = tt || (s.title || {}).ru || (slides.length ? '' : 'Добавьте слайды'); te.classList.toggle('p-miss', !tt && !!(s.title || {}).ru && l !== 'ru');
+    var xe = slidesBox.querySelector('[data-p-slide-text]'); xe.textContent = tx || (s.text || {}).ru || ''; xe.classList.toggle('p-miss', !tx && !!(s.text || {}).ru && l !== 'ru');
+    slidesBox.querySelector('[data-p-slide-cta]').hidden = !s.item;
+    slidesBox.setAttribute('data-i', cur);
+  }
+  var q = screen.querySelector('[data-p-l10n="quote"]'); if (q) q.hidden = !q.textContent;
+  var cat = screen.querySelector('[data-p-category]'); if (cat) cat.hidden = !h.val('category');
+  var d = screen.querySelector('[data-p-date]'); if (d) { var v = h.val('date'); d.textContent = v ? v.split('-').reverse().join('.') : ''; }
+} };
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('[data-p-slide-nav]'); if (!b) return;
+  var box = document.querySelector('[data-p-slides]'); var i = parseInt(box.getAttribute('data-i') || 0, 10) + parseInt(b.getAttribute('data-p-slide-nav'), 10);
+  box.setAttribute('data-i', Math.max(0, i)); window.PanelPreview.render();
+});
+</script>
+<script src="{% static 'panel/preview.js' %}" defer></script>
+{% endblock %}

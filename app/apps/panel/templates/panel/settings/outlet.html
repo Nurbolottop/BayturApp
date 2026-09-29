@@ -1,0 +1,10 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Точка{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:settings-tab' 'outlets' %}">{% icon 'arrow-left' 14 %} Точки</a></div><h1 class="page-title">{% if obj %}{{ obj.name|tr }}{% else %}Новая точка{% endif %}</h1></div></div>
+<form method="post" class="card appear" style="max-width:720px" novalidate>
+  {% csrf_token %}{% include 'panel/components/form_errors.html' %}
+  <div class="stack-s">{% for f in form %}{% include 'panel/components/field.html' %}{% endfor %}</div>
+  <div class="form-actions"><a class="btn btn-ghost" href="{% url 'panel:settings-tab' 'outlets' %}">Отмена</a><button class="btn btn-accent">Сохранить</button></div>
+</form>
+{% endblock %}

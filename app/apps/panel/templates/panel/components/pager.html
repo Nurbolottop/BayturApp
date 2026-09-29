@@ -1,0 +1,10 @@
+{% if page.paginator.num_pages > 1 %}
+<div class="pager">
+  <span class="tabular">{{ page.start_index }}–{{ page.end_index }} из {{ page.paginator.count }}</span>
+  <span class="row">
+    {% if page.has_previous %}<a class="btn btn-s" href="?{{ page.query }}{% if page.query %}&{% endif %}page={{ page.previous_page_number }}">{% load panel %}{% icon 'arrow-left' 16 %}</a>{% endif %}
+    <span class="tabular">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="btn btn-s" href="?{{ page.query }}{% if page.query %}&{% endif %}page={{ page.next_page_number }}">{% load panel %}{% icon 'arrow-right' 16 %}</a>{% endif %}
+  </span>
+</div>
+{% endif %}

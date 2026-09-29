@@ -1,0 +1,12 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block body %}
+<div class="auth">
+  <div class="auth-card">
+    <div class="row-between">
+      <div class="brand"><span class="brand-mark">B</span><span>BAYTUR<small>Админка и рабочее место</small></span></div>
+      <button class="btn btn-icon btn-s btn-ghost" type="button" data-theme-toggle title="Тема" style="margin-top:-24px">{% icon 'moon' 18 %}</button>
+    </div>
+    {% block card %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

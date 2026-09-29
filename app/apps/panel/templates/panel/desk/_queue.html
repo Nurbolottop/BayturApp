@@ -1,0 +1,18 @@
+{% load panel %}
+<div class="queue" data-queue data-count="{{ count }}">
+  {% for r in items %}
+    <a class="q-item appear" href="{% url 'panel:desk-request' r.pk %}" data-sheet data-id="{{ r.pk }}">
+      <span class="ic-bubble">{% if r.method == 'cash' and r.money_som %}{% icon 'cash' 20 %}{% elif r.money_som %}{% icon 'card' 20 %}{% else %}{% icon 'star' 20 %}{% endif %}</span>
+      <div style="min-width:0">
+        <div class="q-title">{{ r.item_snapshot.title|tr }}{% if r.quantity > 1 %} × {{ r.quantity }}{% endif %}</div>
+        <div class="q-meta"><span>{{ r.member.full_name|default:r.member.member_id }}</span><span class="tabular">{{ r.member.member_id }}</span><span>{{ r.created_at|ago }}</span>{% if r.outlet %}<span>{{ r.outlet.name|tr }}</span>{% endif %}</div>
+      </div>
+      <div class="q-sum">
+        <b>{{ r.total|som }}</b>
+        {% if r.escalated %}<span class="pill pill-warning">у менеджера</span>{% elif r.method == 'cash' and r.money_som %}<span class="pill pill-live"><i class="dot"></i>наличные {{ r.money_som|num }}</span>{% elif r.money_som %}<span class="pill pill-positive">оплачено онлайн</span>{% else %}<span class="pill pill-live"><i class="dot"></i>баллами</span>{% endif %}
+      </div>
+    </a>
+  {% empty %}
+    <div class="card empty"><span class="ic-bubble">{% icon 'check' 22 %}</span><div class="h3">Очередь пуста</div><div class="small">Новые заявки появятся здесь сами — со звуком</div></div>
+  {% endfor %}
+</div>

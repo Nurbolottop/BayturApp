@@ -1,0 +1,33 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Обращения{% endblock %}
+{% block content %}
+<div class="topbar"><div><h1 class="page-title">Обращения</h1><div class="muted" style="margin-top:6px">Жалобы и вопросы клиентов · новых: {{ panel_counters.complaints|default:0 }}</div></div>
+  <div class="actions">{% if user|can:'complaints.settings' %}<a class="btn" href="{% url 'panel:complaint-categories' %}">{% icon 'grid' 18 %} Темы</a><a class="btn" href="{% url 'panel:reply-templates' %}">{% icon 'note' 18 %} Шаблоны ответов</a>{% endif %}</div></div>
+<div class="seg" style="margin-bottom:14px">
+  <a href="?" class="{% if not f.status and not f.overdue and not f.assignee and not f.all %}on{% endif %}">Открытые</a>
+  <a href="?status=new" class="{% if f.status == 'new' %}on{% endif %}">Новые</a>
+  <a href="?overdue=1" class="{% if f.overdue %}on{% endif %}">{% icon 'clock' 14 %} Просроченные</a>
+  <a href="?assignee=me" class="{% if f.assignee == 'me' %}on{% endif %}">Мои</a>
+  <a href="?all=1" class="{% if f.all %}on{% endif %}">Все</a>
+</div>
+<form class="filters" method="get" data-autosubmit>
+  <div class="field grow search"><label>Поиск</label>{% icon 'search' 18 %}<input type="search" name="q" value="{{ f.q }}" placeholder="О-000123 или BT-…"></div>
+  <div class="field"><label>Статус</label><select name="status"><option value="">Любой</option>{% for v, l in statuses %}<option value="{{ v }}" {% if f.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="field"><label>Тема</label><select name="category"><option value="">Все</option>{% for c in categories %}<option value="{{ c.pk }}" {% if f.category == c.pk %}selected{% endif %}>{{ c.title|tr }}</option>{% endfor %}</select></div>
+  <div class="field"><label>Точка</label><select name="outlet"><option value="">Все</option>{% for o in outlets %}<option value="{{ o.pk }}" {% if f.outlet == o.pk %}selected{% endif %}>{{ o.name|tr }}</option>{% endfor %}</select></div>
+  <div class="field"><label>Ответственный</label><select name="assignee"><option value="">Любой</option><option value="me" {% if f.assignee == 'me' %}selected{% endif %}>Я</option><option value="none" {% if f.assignee == 'none' %}selected{% endif %}>Не назначен</option>{% for a in assignees %}<option value="{{ a.pk }}" {% if f.assignee == a.pk|stringformat:"s" %}selected{% endif %}>{{ a.full_name }}</option>{% endfor %}</select></div>
+  {% if f.all %}<input type="hidden" name="all" value="1">{% endif %}{% if f.overdue %}<input type="hidden" name="overdue" value="1">{% endif %}
+</form>
+<div class="card flush appear"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Обращение</th><th class="hide-s">Клиент</th><th class="hide-s">Точка</th><th>Срок ответа</th><th class="hide-s">Ответственный</th><th>Статус</th></tr></thead>
+  <tbody>{% for c in page %}
+    <tr class="link{% if c.is_overdue %} overdue{% elif c.status == 'new' %} hl{% endif %}" data-href="{% url 'panel:complaint' c.pk %}">
+      <td><b class="tabular">{{ c.number }}</b> · {{ c.category.title|tr }}{% if c.subtype %} <span class="tag">{{ c.get_subtype_display }}</span>{% endif %}<div class="small muted tabular">{{ c.created_at|local }}</div></td>
+      <td class="hide-s">{{ c.member.full_name|default:"—" }}<div class="small muted tabular">{{ c.member.member_id }}</div></td>
+      <td class="hide-s small">{{ c.outlet.name|tr|default:"—" }}</td>
+      <td class="small tabular">{% if c.first_reply_at %}<span class="pos">ответили {{ c.first_reply_at|local:"d.m H:i" }}</span>{% elif c.is_overdue %}<span class="neg" style="font-weight:700">{% icon 'warning' 14 %} просрочено</span>{% elif c.due_at %}до {{ c.due_at|local:"d.m H:i" }}{% else %}—{% endif %}</td>
+      <td class="hide-s small">{{ c.assignee.full_name|default:"—" }}</td>
+      <td>{% pill 'complaint' c.status %}</td></tr>
+  {% empty %}<tr><td colspan="6"><div class="empty">Обращений нет</div></td></tr>{% endfor %}</tbody>
+</table></div>{% include 'panel/components/pager.html' %}</div>
+{% endblock %}

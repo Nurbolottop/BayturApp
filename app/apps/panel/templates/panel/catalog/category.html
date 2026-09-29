@@ -1,0 +1,22 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}{{ cat.title|tr }}{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:catalog' %}">{% icon 'arrow-left' 14 %} Каталог</a></div><h1 class="page-title">{{ cat.title|tr }}</h1></div></div>
+<form method="post" class="card appear" style="max-width:860px" novalidate>
+  {% csrf_token %}{% include 'panel/components/form_errors.html' %}
+  {% if form.rate.field.disabled %}<div class="lock-note" style="margin-bottom:14px">{% icon 'lock' 16 %} Ваша роль меняет только тексты и фото. Правила кешбека — у владельца и менеджера.</div>{% endif %}
+  <div class="form-grid">
+    {% include 'panel/components/field.html' with f=form.title full=1 %}
+    <div class="field full"><span class="label">Обложка</span>
+      <div class="photo-field" data-photo="id_cover"><div class="ph">{% icon 'image' 24 %}</div>
+        <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.cover }}</div>
+    {% include 'panel/components/field.html' with f=form.rate %}
+    {% include 'panel/components/field.html' with f=form.max_points_share %}
+    <div class="field full"><span class="label">{{ form.methods.label }}</span><div class="checks">{{ form.methods }}</div>{{ form.methods.errors }}</div>
+    {% include 'panel/components/field.html' with f=form.sort_order %}
+    {% include 'panel/components/field.html' with f=form.is_active %}
+  </div>
+  <div class="lock-note" style="margin-top:14px">{% icon 'info' 16 %} Изменения правил действуют только на новые заявки — отправленные хранят снимок.</div>
+  <div class="form-actions"><a class="btn btn-ghost" href="{% url 'panel:catalog' %}">Отмена</a><button class="btn btn-accent">Сохранить</button></div>
+</form>
+{% endblock %}

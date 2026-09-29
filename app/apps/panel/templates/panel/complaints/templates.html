@@ -1,0 +1,16 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Шаблоны ответов{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:complaints' %}">{% icon 'arrow-left' 14 %} Обращения</a></div><h1 class="page-title">Шаблоны ответов</h1></div></div>
+<div class="split-wide">
+  <div class="card flush appear"><table class="table"><tbody>
+    {% for t in items %}<tr class="link{% if obj.pk == t.pk %} hl{% endif %}" data-href="{% url 'panel:reply-template' t.pk %}"><td><b>{{ t.title }}</b><div class="small muted">{{ t.text|tr|truncatechars:90 }}</div></td><td class="small muted">{{ t.category.title|tr|default:"все темы" }}</td></tr>
+    {% empty %}<tr><td><div class="empty">Шаблонов нет</div></td></tr>{% endfor %}
+  </tbody></table></div>
+  <form method="post" class="card stack appear" novalidate>
+    {% csrf_token %}<div class="h3">{% if obj %}Редактировать{% else %}Новый шаблон{% endif %}</div>
+    {% for f in form %}{% include 'panel/components/field.html' %}{% endfor %}
+    <div class="form-actions">{% if obj %}<button class="btn btn-danger" name="delete" value="1" formnovalidate>Удалить</button><a class="btn btn-ghost" href="{% url 'panel:reply-templates' %}">Новый</a>{% endif %}<button class="btn btn-accent">Сохранить</button></div>
+  </form>
+</div>
+{% endblock %}

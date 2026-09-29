@@ -1,0 +1,20 @@
+{% extends 'panel/auth/_layout.html' %}{% load panel %}
+{% block title %}Код подтверждения{% endblock %}
+{% block card %}
+<h1 class="h2">{% if setup %}Настройте 2FA{% else %}Код подтверждения{% endif %}</h1>
+{% if setup %}
+  <p class="muted" style="margin:6px 0 16px">Первый вход: отсканируйте QR в Google Authenticator, 1Password или другом TOTP-приложении и введите 6 цифр.</p>
+  <div class="qr" aria-label="QR-код для приложения-аутентификатора">{{ qr }}</div>
+  {% if secret %}<p class="small muted" style="text-align:center;margin:10px 0 16px">Или введите ключ вручную:<br><code class="tabular" style="font-weight:700;color:var(--ink);letter-spacing:1px">{{ secret }}</code></p>{% endif %}
+{% else %}
+  <p class="muted" style="margin:6px 0 20px">Введите 6 цифр из приложения-аутентификатора</p>
+{% endif %}
+{% if error %}<div class="banner neg" style="margin-bottom:14px">{% icon 'warning' 18 %}<span>{{ error }}</span></div>{% endif %}
+<form method="post" class="stack-s" novalidate>
+  {% csrf_token %}
+  <div class="field"><label for="id_code" class="sr-only">Код</label>
+    <input type="text" name="code" id="id_code" class="input code-input" maxlength="8" autocomplete="one-time-code" inputmode="numeric" autofocus required placeholder="••••••"></div>
+  <button class="btn btn-accent btn-l btn-block" style="margin-top:10px">Войти</button>
+  <a class="btn btn-ghost btn-block" href="{% url 'panel:login' %}">{% icon 'arrow-left' 18 %} Другой аккаунт</a>
+</form>
+{% endblock %}

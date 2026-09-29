@@ -1,0 +1,18 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Рассылки{% endblock %}
+{% block content %}
+<div class="topbar"><div><h1 class="page-title">Push-рассылки</h1><div class="muted" style="margin-top:6px">Уходят только клиентам с «Акции» в настройках и согласием на рекламу</div></div>
+  <div class="actions">{% if user|can:'campaigns.send' %}<a class="btn" href="{% url 'panel:push-templates' %}">{% icon 'note' 18 %} Шаблоны push</a>{% endif %}<a class="btn btn-accent" href="{% url 'panel:campaign-new' %}">{% icon 'plus' 18 %} Рассылка</a></div></div>
+<div class="card flush appear"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Рассылка</th><th class="hide-s">Сегмент</th><th class="hide-s">Когда</th><th class="n">Отправлено</th><th class="n hide-s">Открыто</th><th>Статус</th></tr></thead>
+  <tbody>{% for r in rows %}
+    <tr class="link" data-href="{% url 'panel:campaign' r.c.pk %}">
+      <td><div class="title-cell"><span class="ic-bubble s">{% icon 'megaphone' 16 %}</span><div><b>{{ r.c.title|tr }}</b><span class="small muted">{{ r.c.body|tr|truncatechars:70 }}</span></div></div></td>
+      <td class="hide-s small">{% if r.c.segment.tiers %}{% for t in r.c.segment.tiers %}{{ t|tier_name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% else %}все уровни{% endif %} · {% if r.c.segment.languages %}{{ r.c.segment.languages|join:", " }}{% else %}все языки{% endif %}</td>
+      <td class="hide-s small tabular">{% if r.c.sent_at %}{{ r.c.sent_at|local }}{% elif r.c.scheduled_at %}{{ r.c.scheduled_at|local }}{% else %}—{% endif %}</td>
+      <td class="n">{% if r.stats %}{{ r.stats.sent|num }}{% else %}—{% endif %}</td>
+      <td class="n hide-s">{% if r.stats %}{{ r.stats.opened|num }}{% else %}—{% endif %}</td>
+      <td>{% pill 'campaign' r.c.status %}</td></tr>
+  {% empty %}<tr><td colspan="6"><div class="empty">Рассылок ещё не было</div></td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

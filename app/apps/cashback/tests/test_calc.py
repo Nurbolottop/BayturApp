@@ -1,0 +1,67 @@
+from datetime import date
+from decimal import Decimal
+
+from django.test import SimpleTestCase
+
+from apps.cashback.calc import Rules, compute_split, in_birthday_window, round_half_up
+from apps.common.errors import ApiError
+
+
+def rules(rate='0.07', share='1.00', methods=('cash',), pps=100):
+    return Rules(rate=Decimal(rate), base_rate=Decimal(rate), max_points_share=Decimal(share), methods=list(methods),
+                 points_per_som=pps)
+
+
+class SplitTests(SimpleTestCase):
+    def test_spec_example_cedar_barrel(self):
+        """ТЗ §5.2: бочка × 2 = 5 000 сом, promoRate 0.14, баллами 1 500 → 150 000 / 3 500 / 49 000."""
+        s = compute_split(5000, rules('0.14'), available=845_000, requested_points_som=1500)
+        self.assertEqual((s.total, s.points_som, s.points, s.money_som, s.cashback), (5000, 1500, 150_000, 3500, 49_000))
+
+    def test_max_points_by_share_and_balance(self):
+        # rooms: maxPointsShare 0.30 → 69 000 × 0.3 = 20 700; баланс 1 000 000 баллов = 10 000 сом
+        s = compute_split(69_000, rules('0.07', '0.30'), available=1_000_000, requested_points_som=50_000)
+        self.assertEqual(s.max_points_som, 10_000)
+        self.assertEqual(s.points_som, 10_000)
+        s = compute_split(69_000, rules('0.07', '0.30'), available=10_000_000, requested_points_som=50_000)
+        self.assertEqual(s.max_points_som, 20_700)
+
+    def test_available_not_multiple_of_100_is_floored(self):
+        s = compute_split(1000, rules(), available=12_345, requested_points_som=999)
+        self.assertEqual(s.max_points_som, 123)
+        self.assertEqual(s.points, 12_300)
+
+    def test_full_points_payment_gives_zero_cashback(self):
+        s = compute_split(2500, rules('0.14'), available=10_000_000, requested_points_som=2500)
+        self.assertEqual((s.money_som, s.cashback), (0, 0))
+
+    def test_strict_errors(self):
+        with self.assertRaises(ApiError) as e:
+            compute_split(10_000, rules('0.07', '0.30'), available=10_000_000, requested_points_som=5000, strict=True)
+        self.assertEqual(e.exception.code, 'points_limit_exceeded')
+        with self.assertRaises(ApiError) as e:
+            compute_split(10_000, rules(), available=100_000, requested_points_som=5000, strict=True)
+        self.assertEqual(e.exception.code, 'insufficient_points')
+
+    def test_negative_request_is_zero(self):
+        self.assertEqual(compute_split(1000, rules(), 100_000, -50).points_som, 0)
+
+    def test_round_half_up(self):
+        self.assertEqual(round_half_up(Decimal('0.5')), 1)
+        self.assertEqual(round_half_up(Decimal('2.5')), 3)
+        # 335 × 0.07 × 100 = 2 345
+        self.assertEqual(compute_split(335, rules('0.07'), 0, 0).cashback, 2345)
+
+
+class BirthdayWindowTests(SimpleTestCase):
+    def test_window(self):
+        bd = date(1994, 5, 14)
+        self.assertTrue(in_birthday_window(bd, date(2026, 5, 14), 3, 3))
+        self.assertTrue(in_birthday_window(bd, date(2026, 5, 11), 3, 3))
+        self.assertTrue(in_birthday_window(bd, date(2026, 5, 17), 3, 3))
+        self.assertFalse(in_birthday_window(bd, date(2026, 5, 18), 3, 3))
+        self.assertFalse(in_birthday_window(None, date(2026, 5, 14), 3, 3))
+
+    def test_year_boundary_and_leap(self):
+        self.assertTrue(in_birthday_window(date(1990, 1, 1), date(2026, 12, 30), 3, 3))
+        self.assertTrue(in_birthday_window(date(1992, 2, 29), date(2027, 2, 28), 3, 3))

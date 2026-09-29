@@ -1,0 +1,73 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}{{ c.number }}{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div><div class="crumbs"><a href="{% url 'panel:complaints' %}">{% icon 'arrow-left' 14 %} Обращения</a></div>
+    <h1 class="page-title tabular">{{ c.number }}</h1>
+    <div class="row wrap" style="margin-top:8px">{% pill 'complaint' c.status %}<span class="tag">{{ c.category.title|tr }}</span>{% if c.subtype %}<span class="tag">{{ c.get_subtype_display }}</span>{% endif %}{% if c.is_overdue %}<span class="pill pill-negative">{% icon 'clock' 14 %} просрочен первый ответ</span>{% endif %}</div></div>
+  {% if can_manage %}<div class="actions">
+    <form method="post" action="{% url 'panel:complaint-action' c.pk 'assign' %}" class="row">{% csrf_token %}
+      <select class="input" name="assignee" style="width:auto" onchange="this.form.submit()"><option value="">Не назначен</option>{% for a in assignees %}<option value="{{ a.pk }}" {% if c.assignee_id == a.pk %}selected{% endif %}>{{ a.full_name }}</option>{% endfor %}</select></form>
+    {% if c.status != 'closed' %}<form method="post" action="{% url 'panel:complaint-action' c.pk 'status' %}">{% csrf_token %}<input type="hidden" name="status" value="closed"><button class="btn">{% icon 'check' 18 %} Закрыть</button></form>
+    {% else %}<form method="post" action="{% url 'panel:complaint-action' c.pk 'status' %}">{% csrf_token %}<input type="hidden" name="status" value="in_progress"><button class="btn">{% icon 'undo' 18 %} Открыть снова</button></form>{% endif %}
+  </div>{% endif %}
+</div>
+<div class="split-wide">
+  <div class="stack">
+    <div class="card appear">
+      <div class="card-head"><div class="h3">{% bubble 'chat' 18 %} Переписка</div><span class="small muted">Клиент видит ответы от «Команда BAYTUR»</span></div>
+      <div class="thread">
+        {% for msg in thread %}
+          <div class="msg {{ msg.author }}"><div class="meta">{% if msg.author == 'resort' %}{{ msg.staff.full_name|default:"Команда BAYTUR" }}{% else %}{{ m.full_name|default:"Клиент" }}{% endif %} · {{ msg.at|local }}</div>
+            <div style="white-space:pre-wrap">{{ msg.text|default:"(текст удалён)" }}</div>
+            {% if msg.attachments.all %}<div class="photos">{% for u in msg.attachments.all %}<a href="{{ u.file.name|media }}" target="_blank" rel="noopener"><img src="{{ u.file.name|media }}" alt="Фото"></a>{% endfor %}</div>{% endif %}</div>
+        {% endfor %}
+      </div>
+      {% if can_reply %}
+      <form method="post" action="{% url 'panel:complaint-action' c.pk 'reply' %}" class="stack-s" style="margin-top:18px">
+        {% csrf_token %}
+        {% if templates %}<select class="input" data-reply-template="reply-text" data-lang="{{ m.language }}"><option value="">Шаблон ответа ({{ m.get_language_display }})…</option>{% for t in templates %}<option value="{{ t.id }}">{{ t.title }}</option>{% endfor %}</select>{% endif %}
+        <div class="field"><textarea id="reply-text" name="text" rows="4" required placeholder="Ответ клиенту на его языке: {{ m.get_language_display }}"></textarea></div>
+        <div class="row wrap"><button class="btn btn-accent btn-action">{% icon 'send' 18 %} Ответить</button><button class="btn btn-action" name="close" value="1">Ответить и закрыть</button></div>
+      </form>
+      {% elif not can_manage and c.status != 'closed' %}<div class="lock-note" style="margin-top:14px">{% icon 'lock' 16 %} Сотрудник точки не отвечает клиенту — только внутренние заметки.</div>{% endif %}
+    </div>
+  </div>
+  <div class="stack">
+    <div class="card appear">
+      <div class="row-between"><div class="row" style="gap:12px"><span class="ic-bubble">{% icon 'user' 20 %}</span><div><b>{{ m.full_name|default:"—" }}</b><div class="small muted tabular">{{ m.member_id }} · {{ m.get_language_display }}</div></div></div>{% tier_badge tier %}</div>
+      <dl class="kv" style="margin-top:14px">
+        <dt>Обращений раньше</dt><dd class="tabular">{{ previous }}</dd>
+        <dt>Точка</dt><dd>{{ c.outlet.name|tr|default:"—" }}</dd>
+        <dt>Создано</dt><dd class="tabular">{{ c.created_at|local }}</dd>
+        <dt>Срок ответа</dt><dd class="tabular">{{ c.due_at|local }}</dd>
+        <dt>Первый ответ</dt><dd class="tabular">{{ c.first_reply_at|local }}</dd>
+        {% if c.rating %}<dt>Оценка</dt><dd>{{ c.rating }}/5{% if c.rating_comment %} · {{ c.rating_comment }}{% endif %}</dd>{% endif %}
+      </dl>
+      {% if show_member_link %}<a class="btn btn-s" style="margin-top:12px" href="{% url 'panel:member' m.pk %}">Карточка клиента {% icon 'arrow-right' 14 %}</a>{% endif %}
+    </div>
+    {% if c.request %}
+    <div class="card appear"><div class="row-between"><div class="h3">Заявка на кешбек</div>{% pill 'request' c.request.status %}</div>
+      <div style="margin-top:8px"><b>{{ c.request.item_snapshot.title|tr }}</b><div class="small muted tabular">{{ c.request.created_at|local }} · {{ c.request.total|som }} · кешбек +{{ c.request.cashback|num }}</div></div>
+      {% if user|can:'requests.view_all' %}<a class="btn btn-s" style="margin-top:10px" href="{% url 'panel:request' c.request_id %}">Открыть заявку</a>{% endif %}</div>
+    {% endif %}
+    {% if c.operation %}<div class="card appear"><div class="h3">Операция</div><div class="small" style="margin-top:6px">{{ c.operation.get_kind_display }} · <b class="tabular">{{ c.operation.points|signed }}</b> · {{ c.operation.at|local }}</div></div>{% endif %}
+
+    {% if can_compensate %}
+    <form class="card stack-s appear" method="post" action="{% url 'panel:complaint-action' c.pk 'compensate' %}" data-confirm="Начислить компенсацию баллами?">
+      {% csrf_token %}<div class="h3">Компенсация баллами</div>
+      <div class="field"><input type="number" name="points" min="1" required placeholder="Баллы" class="tabular"></div>
+      <div class="field"><input type="text" name="comment" maxlength="500" placeholder="Комментарий (по умолчанию «Компенсация по обращению {{ c.number }}»)"></div>
+      <button class="btn btn-dark">Начислить</button>
+    </form>
+    {% endif %}
+
+    <div class="card appear">
+      <div class="h3" style="margin-bottom:10px">Внутренние заметки <span class="small muted">— клиент не видит</span></div>
+      <div class="stack-s">{% for n in notes %}<div class="note"><div class="meta">{{ n.staff.full_name }} · {{ n.at|local }}</div><div style="white-space:pre-wrap">{{ n.text }}</div></div>{% empty %}<div class="small muted">Заметок нет</div>{% endfor %}</div>
+      {% if can_note %}<form method="post" action="{% url 'panel:complaint-action' c.pk 'note' %}" class="stack-s" style="margin-top:12px">{% csrf_token %}<div class="field"><textarea name="text" rows="2" required placeholder="Заметка для коллег"></textarea></div><button class="btn">{% icon 'note' 18 %} Добавить заметку</button></form>{% endif %}
+    </div>
+  </div>
+</div>
+{{ templates|json_script:"reply-templates" }}
+{% endblock %}

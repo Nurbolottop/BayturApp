@@ -1,0 +1,20 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}{% if obj %}{{ obj.full_name }}{% else %}Новый сотрудник{% endif %}{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:staff' %}">{% icon 'arrow-left' 14 %} Сотрудники</a></div><h1 class="page-title">{% if obj %}{{ obj.full_name }}{% else %}Новый сотрудник{% endif %}</h1></div>
+  {% if obj %}<div class="actions"><form method="post" action="{% url 'panel:staff-reset-2fa' obj.pk %}" data-confirm="Сбросить 2FA? Сотрудник заново настроит приложение при входе.">{% csrf_token %}<button class="btn">{% icon 'key' 18 %} Сбросить 2FA</button></form></div>{% endif %}</div>
+<form method="post" class="card appear" style="max-width:860px" novalidate autocomplete="off">
+  {% csrf_token %}{% include 'panel/components/form_errors.html' %}
+  <div class="form-grid">
+    {% include 'panel/components/field.html' with f=form.full_name %}
+    {% include 'panel/components/field.html' with f=form.email %}
+    {% include 'panel/components/field.html' with f=form.role %}
+    {% include 'panel/components/field.html' with f=form.phone %}
+    <div class="field full"><span class="label">{{ form.outlets.label }} <span class="muted">— роль «Сотрудник» видит заявки только этих точек</span></span><div class="checks">{{ form.outlets }}</div>{{ form.outlets.errors }}</div>
+    {% include 'panel/components/field.html' with f=form.password %}
+    {% include 'panel/components/field.html' with f=form.is_active %}
+  </div>
+  <div class="small muted" style="margin-top:10px">Заданный здесь пароль — временный: при входе сотрудник сменит его сам.</div>
+  <div class="form-actions"><a class="btn btn-ghost" href="{% url 'panel:staff' %}">Отмена</a><button class="btn btn-accent">Сохранить</button></div>
+</form>
+{% endblock %}

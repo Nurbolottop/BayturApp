@@ -1,0 +1,31 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Заявка {{ req.pk }}{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:requests' %}">{% icon 'arrow-left' 14 %} Заявки</a></div><h1 class="page-title">Заявка</h1></div>
+  {% if user|can:'members.view' %}<div class="actions"><a class="btn" href="{% url 'panel:member' req.member_id %}">{% icon 'user' 18 %} Карточка клиента</a></div>{% endif %}</div>
+<div class="split-wide">
+  <div class="card appear">{% include 'panel/requests/_card.html' %}</div>
+  <div class="stack">
+    <div class="card appear">
+      <div class="h3" style="margin-bottom:12px">Детали</div>
+      <dl class="kv">
+        <dt>Правила</dt><dd class="tabular">ставка {{ req.rules.rate|pct }} · баллами до {{ req.rules.maxPointsShare|pct }}</dd>
+        <dt>Курс</dt><dd class="tabular">{{ req.rules.pointsPerSom|default:100 }} баллов = 1 сом</dd>
+        <dt>Подтвердил</dt><dd>{{ req.confirmed_by.full_name|default:"—" }}</dd>
+        <dt>Отклонил</dt><dd>{{ req.rejected_by.full_name|default:"—" }}</dd>
+        <dt>Правил сумму</dt><dd>{{ req.adjusted_by.full_name|default:"—" }}</dd>
+        {% if req.proposed_by %}<dt>Эскалацию запросил</dt><dd>{{ req.proposed_by.full_name }}</dd>{% endif %}
+        <dt>Истекает</dt><dd class="tabular">{{ req.expires_at|local }}</dd>
+      </dl>
+    </div>
+    {% if payment %}
+    <div class="card appear"><div class="row-between"><div class="h3">Платёж</div>{% pill 'payment' payment.status %}</div>
+      <dl class="kv" style="margin-top:12px"><dt>ID</dt><dd><a href="{% url 'panel:payment' payment.pk %}" class="tabular">{{ payment.pk }}</a></dd><dt>Сумма</dt><dd>{{ payment.amount|som }}</dd><dt>Возвращено</dt><dd>{{ payment.refunded_amount|som }}</dd></dl></div>
+    {% endif %}
+    {% if operations %}
+    <div class="card flush appear"><div class="card-head"><div class="h3">Операции по заявке</div></div>
+      <table class="table"><tbody>{% for o in operations %}<tr><td>{{ o.get_kind_display }}</td><td class="small muted">{{ o.at|local:"d.m H:i" }}</td><td class="n {% if o.points > 0 %}pos{% else %}neg{% endif %}">{{ o.points|signed }}</td></tr>{% endfor %}</tbody></table></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
