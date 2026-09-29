@@ -47,7 +47,9 @@ class FcmBackend:
                              json=message, headers={'Authorization': f'Bearer {self._token()}'}, timeout=10)
         if resp.status_code == 200:
             return True, False
-        invalid = resp.status_code == 404 or 'UNREGISTERED' in resp.text
+        # токен устройства больше не действителен → устройство удаляется из базы
+        invalid = resp.status_code == 404 or 'UNREGISTERED' in resp.text or (
+            resp.status_code == 400 and 'registration token' in resp.text.lower())
         log.warning('FCM error %s: %s', resp.status_code, resp.text[:300])
         return False, invalid
 
