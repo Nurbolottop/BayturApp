@@ -475,3 +475,7 @@ tr.dragging { position: relative; z-index: 2; }
 .re-row.dragging, .g-item.dragging { box-shadow: 0 10px 28px rgba(0, 0, 0, .18); }
 .avatar-s { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex: none; }
 .avatar-l { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex: none; }
+/* галерея: файл по ссылке не найден — плитка вместо битой картинки */
+.gallery .g-item.missing img { visibility: hidden; }
+.gallery .g-item.missing::before { content: 'Файл не найден'; position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 12px; font-weight: 600; color: var(--muted); background: var(--fill); text-align: center; padding: 8px; }

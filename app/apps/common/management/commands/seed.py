@@ -1,7 +1,10 @@
+import io
 from datetime import datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
@@ -12,8 +15,13 @@ from apps.common import seed_data as D
 class Command(BaseCommand):
     help = 'Сид справочников из хардкода мобилки (идемпотентно: повторный запуск обновляет записи).'
 
+    def add_arguments(self, parser):
+        parser.add_argument('--redraw-placeholders', action='store_true',
+                            help='Перерисовать сгенерированные заглушки seed/… (загруженные фото не трогает)')
+
     @transaction.atomic
     def handle(self, *args, **opts):
+        self.redraw = opts.get('redraw_placeholders', False)
         from apps.catalog.models import Category, Item, ItemPromo, Outlet
         from apps.common.i18n import l10n
         from apps.common.models import ProgramSettings
@@ -93,6 +101,80 @@ class Command(BaseCommand):
             'url': l10n(f'{page}?lang=ru', f'{page}?lang=ky', f'{page}?lang=en'),
             'requires_acceptance': False, 'published_at': now})
 
+        made = self._placeholders()
+
         self.stdout.write(self.style.SUCCESS(
+            f'Заглушек картинок создано: {made}. '
             f'Сид: {Category.objects.count()} категорий, {Item.objects.count()} услуг, {Tier.objects.count()} уровней, '
             f'{Privilege.objects.count()} привилегий, {Article.objects.count()} статей.'))
+
+    # ---------------------------------------------------------------- заглушки картинок
+
+    COLORS = {  # цвета разделов: градиент сверху вниз
+        'rooms': ('#3F4A56', '#C3CCD6'), 'spa': ('#2A3314', '#C6F24E'), 'food': ('#5E4206', '#E6BF58'),
+        'pools': ('#1C3A5E', '#8FD8FF'), 'sport': ('#4A220F', '#D9976A'), None: ('#232C38', '#B4C2D3'),
+    }
+
+    def _placeholders(self):
+        """
+        Фото мобилки (assets/images/) в бек ещё не переданы. Чтобы API и админка не отдавали битые ссылки,
+        для каждого пути seed/… без файла рисуется градиентная заглушка в цвете раздела.
+        Загруженные позже настоящие фото заменяют ссылку — заглушка просто перестаёт использоваться.
+        """
+        from apps.catalog.models import Category, Item
+        from apps.content.models import Article, Promo, Story
+
+        wanted = {}  # path → (category, png)
+        for c in Category.objects.all():
+            wanted[c.cover] = (c.id, False)
+        for i in Item.objects.all():
+            for path in [i.image, *(i.gallery or [])]:
+                wanted[path] = (i.category_id, False)
+        for a in Article.objects.all():
+            wanted[a.image] = (a.category_id, False)
+        for p in Promo.objects.select_related('article'):
+            wanted[p.cutout] = (p.article.category_id, True)
+        for st in Story.objects.prefetch_related('slides'):
+            wanted[st.cover] = (st.category_id, False)
+            for sl in st.slides.all():
+                wanted[sl.image] = (st.category_id, False)
+        made = 0
+        for path, (cat, png) in wanted.items():
+            if not path or not path.startswith('seed/'):
+                continue
+            if default_storage.exists(path):
+                if not self.redraw:
+                    continue
+                default_storage.delete(path)
+            default_storage.save(path, ContentFile(self._draw(cat, png, variant=made)))
+            made += 1
+        return made
+
+    def _draw(self, category, png, variant=0, size=(1200, 800)):
+        from PIL import Image, ImageDraw
+        top, bottom = (tuple(int(h[i:i + 2], 16) for i in (1, 3, 5)) for h in self.COLORS.get(category, self.COLORS[None]))
+        w, h = size
+        if png:  # вырезка для баннера: круг с прозрачным фоном
+            img = Image.new('RGBA', (600, 600), (0, 0, 0, 0))
+            d = ImageDraw.Draw(img)
+            d.ellipse((40, 40, 560, 560), fill=bottom + (255,))
+            d.ellipse((140, 140, 460, 460), fill=top + (255,))
+            buf = io.BytesIO()
+            img.save(buf, 'PNG')
+            return buf.getvalue()
+        img = Image.new('RGB', size)
+        d = ImageDraw.Draw(img)
+        for y in range(h):
+            t = y / (h - 1)
+            d.line([(0, y), (w, y)], fill=tuple(round(a + (b - a) * t) for a, b in zip(top, bottom)))
+        # мягкие «холмы» в тонах раздела — чтобы заглушки различались между собой
+        def mix(t):
+            return tuple(round(a + (b - a) * t) for a, b in zip(top, bottom))
+        shift = (variant * 137) % w
+        for k, tone in ((0, 0.55), (1, 0.35)):
+            y0 = int(h * (0.58 + 0.12 * k))
+            cx = shift + k * 380 - w // 3
+            d.ellipse((cx - w * 0.7, y0, cx + w * 0.7, y0 + h * 0.9), fill=mix(tone))
+        buf = io.BytesIO()
+        img.save(buf, 'JPEG', quality=82)
+        return buf.getvalue()

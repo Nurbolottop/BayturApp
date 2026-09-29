@@ -293,6 +293,7 @@
         var d = document.createElement('div');
         d.className = 'g-item'; d.setAttribute('data-path', p);
         d.innerHTML = '<img alt="" draggable="false"><button type="button" class="btn btn-icon btn-s g-rm" title="Убрать">✕</button>';
+        d.firstChild.onerror = function () { d.classList.add('missing'); d.setAttribute('title', 'Файл не найден: ' + p); };
         d.firstChild.src = mediaUrl(p);
         list.insertBefore(d, add);
       });
