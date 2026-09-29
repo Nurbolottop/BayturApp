@@ -13,15 +13,25 @@ from apps.common import seed_data as D
 
 
 class Command(BaseCommand):
-    help = 'Сид справочников из хардкода мобилки (идемпотентно: повторный запуск обновляет записи).'
+    help = ('Сид справочников из хардкода мобилки. Повторный запуск только добавляет недостающее и НЕ меняет '
+            'записи, отредактированные в админке. --reset — вернуть данные сида (перезаписывает правки!).')
 
     def add_arguments(self, parser):
+        parser.add_argument('--reset', action='store_true',
+                            help='Перезаписать существующие записи данными сида (правки из админки пропадут)')
         parser.add_argument('--redraw-placeholders', action='store_true',
                             help='Перерисовать сгенерированные заглушки seed/… (загруженные фото не трогает)')
 
     @transaction.atomic
     def handle(self, *args, **opts):
         self.redraw = opts.get('redraw_placeholders', False)
+        reset = opts.get('reset', False)
+
+        def upsert(model, lookup, defaults):
+            """Без --reset существующая запись не трогается — правки из админки сохраняются."""
+            if reset:
+                return model.objects.update_or_create(**lookup, defaults=defaults)
+            return model.objects.get_or_create(**lookup, defaults=defaults)
         from apps.catalog.models import Category, Item, ItemPromo, Outlet
         from apps.common.i18n import l10n
         from apps.common.models import ProgramSettings
@@ -35,55 +45,57 @@ class Command(BaseCommand):
         ProgramSettings.get().save()
 
         for oid, name, sort in D.OUTLETS:
-            Outlet.objects.update_or_create(id=oid, defaults={'name': name, 'sort_order': sort})
+            upsert(Outlet, {'id': oid}, {'name': name, 'sort_order': sort})
 
         for cid, title, sort, rate, share, methods in D.CATEGORIES:
-            Category.objects.update_or_create(id=cid, defaults={
+            upsert(Category, {'id': cid}, {
                 'title': title, 'sort_order': sort, 'rate': Decimal(rate), 'max_points_share': Decimal(share),
                 'methods': methods, 'cover': f'seed/categories/{cid}.jpg'})
 
         promo_end = datetime(2026, 10, 1, tzinfo=ZoneInfo('Asia/Bishkek'))  # «до 30 сентября»
         for i, (iid, cat, outlet, title, meta, price, pricing, promo, tag, desc, features) in enumerate(D.ITEMS):
-            item, _ = Item.objects.update_or_create(id=iid, defaults={
+            item, created = upsert(Item, {'id': iid}, {
                 'category_id': cat, 'outlet_id': outlet, 'title': title, 'meta': meta, 'price': price,
                 'pricing': pricing, 'tag': tag or {}, 'description': desc, 'features': features, 'sort_order': i,
                 'image': f'seed/items/{iid}.jpg', 'gallery': [f'seed/items/{iid}-2.jpg']})
-            if promo and not item.promos.exists():
+            if promo and created and not item.promos.exists():
                 ItemPromo.objects.create(item=item, rate=Decimal(promo[0]), tag=promo[1], ends_at=promo_end)
 
         for tid, name, frm in D.TIERS:
-            Tier.objects.update_or_create(id=tid, defaults={'name': name, 'from_points': frm})
+            upsert(Tier, {'id': tid}, {'name': name, 'from_points': frm})
         for i, (pid, tier, icon, title, short, desc) in enumerate(D.PRIVILEGES):
-            Privilege.objects.update_or_create(id=pid, defaults={
+            upsert(Privilege, {'id': pid}, {
                 'tier_id': tier, 'icon': icon, 'title': title, 'short': short, 'description': desc, 'sort_order': i})
 
         today = timezone.localdate()
         now = timezone.now()
         for a in D.ARTICLES:
-            Article.objects.update_or_create(id=a['id'], defaults={
+            upsert(Article, {'id': a['id']}, {
                 'category_id': a['category'], 'tag': a['tag'], 'title': a['title'], 'lead': a['lead'],
                 'body': a['body'], 'quote': a['quote'], 'minutes': a['minutes'], 'image': a['image'],
                 'date': today - timedelta(days=a['days_ago']), 'status': PublishStatus.PUBLISHED,
                 'use_ru_fallback': True, 'published_at': now})
         for i, (aid, subtitle, cta) in enumerate(D.PROMOS):
-            Promo.objects.update_or_create(article_id=aid, defaults={
+            upsert(Promo, {'article_id': aid}, {
                 'subtitle': subtitle, 'cta': cta, 'sort_order': i, 'status': PublishStatus.PUBLISHED,
                 'use_ru_fallback': True, 'published_at': now, 'cutout': f'seed/promos/{aid}.png'})
         for i, (aid, when, place) in enumerate(D.EVENTS):
-            ResortEvent.objects.update_or_create(article_id=aid, defaults={
+            upsert(ResortEvent, {'article_id': aid}, {
                 'when': when, 'place': place, 'sort_order': i, 'status': PublishStatus.PUBLISHED,
                 'use_ru_fallback': True, 'published_at': now})
         for i, (cat, (title, slides)) in enumerate(D.STORIES.items()):
-            story, _ = Story.objects.update_or_create(category_id=cat, defaults={
+            story, created = upsert(Story, {'category_id': cat}, {
                 'title': title, 'cover': f'seed/stories/{cat}.jpg', 'sort_order': i,
                 'status': PublishStatus.PUBLISHED, 'use_ru_fallback': True, 'published_at': now})
+            if not (created or reset):
+                continue
             story.slides.all().delete()
             for j, (st, text, item_id) in enumerate(slides):
                 StorySlide.objects.create(story=story, title=st, text=text, item_id=item_id, sort_order=j,
                                           image=f'seed/stories/{cat}-{j + 1}.jpg')
 
         for i, (cid, title) in enumerate(D.COMPLAINT_CATEGORIES):
-            ComplaintCategory.objects.update_or_create(id=cid, defaults={'title': title, 'sort_order': i})
+            upsert(ComplaintCategory, {'id': cid}, {'title': title, 'sort_order': i})
 
         for kind, (title, body) in DEFAULT_TEMPLATES.items():
             PushTemplate.objects.get_or_create(kind=kind, defaults={'title': title, 'body': body})
@@ -97,7 +109,7 @@ class Command(BaseCommand):
         # Страница удаления аккаунта без приложения — наша /account/delete (Google Play)
         from django.conf import settings
         page = f'{settings.PUBLIC_BASE_URL}/account/delete'
-        LegalDocument.objects.update_or_create(kind=LegalKind.DELETION, version='1.0', defaults={
+        upsert(LegalDocument, {'kind': LegalKind.DELETION, 'version': '1.0'}, {
             'url': l10n(f'{page}?lang=ru', f'{page}?lang=ky', f'{page}?lang=en'),
             'requires_acceptance': False, 'published_at': now})
 

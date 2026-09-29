@@ -77,3 +77,18 @@ class I18nTests(BaseAPITestCase):
 
     def test_fallback(self):
         self.assertEqual(tr({'ru': 'Номера', 'ky': '', 'en': 'Rooms'}, 'ky'), 'Номера')
+
+
+class SeedSafetyTests(BaseAPITestCase):
+    def test_rerun_keeps_admin_edits(self):
+        import io
+
+        from django.core.management import call_command
+
+        from apps.catalog.models import Item
+        Item.objects.filter(pk='room-deluxe').update(image='uploads/image/x.jpg', price=25000, sort_order=0)
+        call_command('seed', stdout=io.StringIO())
+        item = Item.objects.get(pk='room-deluxe')
+        self.assertEqual((item.image, item.price, item.sort_order), ('uploads/image/x.jpg', 25000, 0))
+        call_command('seed', '--reset', stdout=io.StringIO())
+        self.assertEqual(Item.objects.get(pk='room-deluxe').price, 23000)
