@@ -65,6 +65,12 @@ class Command(BaseCommand):
 
         member, created = Member.objects.get_or_create(phone=phone, defaults={
             'first_name': 'App', 'last_name': 'Review', 'birthday': date(1990, 1, 1), 'is_test': True})
+        # согласия с текущими версиями — иначе у проверяющих сразу откроется экран принятия условий
+        from apps.members.models import Consent, LegalDocument
+        for kind in ('terms', 'privacy'):
+            doc = LegalDocument.current(kind)
+            if doc:
+                Consent.objects.get_or_create(member=member, kind=kind, version=doc.version, granted=True)
         if not created:
             return
         wallet = lock_wallet(member)
