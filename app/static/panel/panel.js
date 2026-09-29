@@ -122,7 +122,7 @@
   });
 
   /* ---------------------------------------------------------------- боковая панель / нижний лист */
-  var sheet = $('[data-sheet]'), backdrop = $('[data-sheet-backdrop]'), body = $('[data-sheet-body]');
+  var sheet = $('[data-sheet-panel]'), backdrop = $('[data-sheet-backdrop]'), body = $('[data-sheet-body]');
   var lastFocus = null;
   function showSheet() {
     lastFocus = document.activeElement;
