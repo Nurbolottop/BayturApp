@@ -222,6 +222,26 @@
   });
 
   /* ---------------------------------------------------------------- перетаскивание (мышь и палец) */
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // FLIP: запомнить позиции → переставить → плавно довести элементы от старых позиций до новых
+  function flip(container, itemSel, mutate) {
+    var items = Array.prototype.filter.call(container.querySelectorAll(itemSel), function (el) {
+      return el.parentNode === container;
+    });
+    var before = items.map(function (el) { return el.getBoundingClientRect(); });
+    mutate();
+    if (reduceMotion || !Element.prototype.animate) return;
+    items.forEach(function (el, i) {
+      var a = before[i], b = el.getBoundingClientRect();
+      var dx = a.left - b.left, dy = a.top - b.top;
+      if (!dx && !dy) return;
+      if (el._flip) el._flip.cancel();
+      el._flip = el.animate([{transform: 'translate(' + dx + 'px,' + dy + 'px)'}, {transform: 'none'}],
+                            {duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)'});
+    });
+  }
+
   function sortable(container, itemSel, handleSel, onChange) {
     var dragging = null;
     container.addEventListener('pointerdown', function (e) {
@@ -229,7 +249,7 @@
       if (!item || !container.contains(item)) return;
       if (handleSel && !e.target.closest(handleSel)) return;
       if (e.target.closest('button,input,textarea,select') && !e.target.closest(handleSel || '__')) return;
-      dragging = item; item.classList.add('dragging');
+      dragging = item; item.classList.add('dragging'); container.classList.add('is-sorting');
       container.setPointerCapture && container.setPointerCapture(e.pointerId);
       e.preventDefault();
     });
@@ -241,11 +261,13 @@
       var r = over.getBoundingClientRect();
       var after = (r.width > r.height * 1.5) ? e.clientY > r.top + r.height / 2 : e.clientX > r.left + r.width / 2;
       if (r.width > r.height * 1.5 || container.classList.contains('rows-editor')) after = e.clientY > r.top + r.height / 2;
-      container.insertBefore(dragging, after ? over.nextSibling : over);
+      var target = after ? over.nextSibling : over;
+      if (target === dragging || target === dragging.nextSibling) return;  // уже на месте
+      flip(container, itemSel, function () { container.insertBefore(dragging, target); });
     });
     function end() {
       if (!dragging) return;
-      dragging.classList.remove('dragging'); dragging = null;
+      dragging.classList.remove('dragging'); dragging = null; container.classList.remove('is-sorting');
       onChange && onChange();
     }
     container.addEventListener('pointerup', end);

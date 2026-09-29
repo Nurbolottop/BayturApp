@@ -341,8 +341,25 @@ class PublishableForm(forms.ModelForm):
     pass
 
 
+_TRANSLIT = dict(zip('абвгдеёжзийклмнопрстуфхцчшщъыьэюяңөү',
+                     ['a', 'b', 'v', 'g', 'd', 'e', 'e', 'zh', 'z', 'i', 'y', 'k', 'l', 'm', 'n', 'o', 'p', 'r', 's',
+                      't', 'u', 'f', 'h', 'ts', 'ch', 'sh', 'sch', '', 'y', '', 'e', 'yu', 'ya', 'n', 'o', 'u']))
+
+
+def slug_from_title(title, model, max_length=80):
+    """Латинский slug из заголовка (кириллица транслитерируется), уникальный для модели."""
+    from django.utils.text import slugify
+    text = ''.join(_TRANSLIT.get(ch, ch) for ch in (title or '').lower())
+    base = (slugify(text) or 'article')[:max_length - 4].strip('-')
+    slug, n = base, 2
+    while model.objects.filter(pk=slug).exists():
+        slug, n = f'{base}-{n}', n + 1
+    return slug
+
+
 class ArticleForm(PublishableForm):
-    id = forms.SlugField(label='Slug (id)', max_length=80)
+    id = forms.SlugField(label='Slug (id)', max_length=80, required=False,
+                         help_text='Латиницей, для диплинков. Оставьте пустым — создастся из заголовка')
     tag = L10nField(label='Тег', required=False, max_length=40)
     title = L10nField(label='Заголовок', max_length=160)
     lead = L10nField(label='Подзаголовок', required=False, textarea=True, rows=2)
@@ -366,9 +383,18 @@ class ArticleForm(PublishableForm):
 
     def clean_id(self):
         v = self.cleaned_data['id']
-        if not (self.instance and self.instance.pk) and Article.objects.filter(pk=v).exists():
+        if self.instance and self.instance.pk:
+            return self.instance.pk
+        if v and Article.objects.filter(pk=v).exists():
             raise ValidationError('Такой slug уже есть')
         return v
+
+    def clean(self):
+        data = super().clean()
+        if not (self.instance and self.instance.pk) and not data.get('id'):
+            data['id'] = slug_from_title((data.get('title') or {}).get('ru'), Article)
+            self.instance.pk = data['id']
+        return data
 
 
 class PromoForm(PublishableForm):

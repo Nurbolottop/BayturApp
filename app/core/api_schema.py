@@ -57,6 +57,10 @@ def apply():
     doc(members.MeView, 'get', ME, 'Профиль', response=o.Profile)
     doc(members.MeView, 'patch', ME, 'Изменить профиль (телефон — только через ресепшен)', o.ProfilePatch, o.Profile,
         errors=(400, 401, 403))
+    avatar_in = inline_serializer('AvatarUpload', {'file': s.ImageField()})
+    doc(members.MeAvatarView, 'post', ME, 'Загрузить аватар (необязательно; JPEG/PNG/WebP/HEIC до 10 МБ)', avatar_in,
+        o.Profile, errors=(401, 422))
+    doc(members.MeAvatarView, 'delete', ME, 'Убрать аватар', response=o.Profile)
     doc(members.MeSettingsView, 'patch', ME, 'Настройки: язык и уведомления', o.SettingsPatch, o.Settings)
     doc(members.ConsentsView, 'post', ME, 'Принять новую версию документа',
         inline_serializer('ConsentInput', {'kind': s.ChoiceField(choices=['terms', 'privacy']),

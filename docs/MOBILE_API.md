@@ -264,6 +264,10 @@ GET /wallet/operations?limit=20&cursor=WyIy...  → следующая стра�
 ← 201 {"accessToken": "...", "refreshToken": "...", "expiresIn": 900, "profile": { ...как GET /me... }}
 ```
 
+**Аватарка (необязательно).** Чтобы передать фото сразу при регистрации, отправьте тот же запрос как
+`multipart/form-data` с файлом в поле `avatar` (JPEG/PNG/WebP/HEIC до 10 МБ); булевы поля в multipart —
+строками `"true"`/`"false"`. Без фото — обычный JSON, как выше. Добавить или сменить фото позже — §5.2.
+
 Ссылки на документы для галочки — из `GET /legal` (§5.4). **Дату рождения** клиент задаёт один раз —
 потом её меняет только ресепшен (иначе её меняли бы ради кешбека ×2). Номер телефона — это логин,
 клиент его не меняет (только ресепшен). Экраны «сменить номер» в приложении не нужны.
@@ -303,6 +307,7 @@ POST /auth/refresh  → {"refreshToken": "Zk9..."}
 
 ```json
 {
+  "avatar": "https://app.baytur.kg/media/uploads/avatar/2026/09/upl_x7k2....jpg",   // null — фото нет
   "firstName": "Урмат",
   "lastName": "Асанов",
   "phone": "+996555123456",
@@ -316,12 +321,23 @@ POST /auth/refresh  → {"refreshToken": "Zk9..."}
 }
 ```
 
-`memberId` — `BT-` + 6 цифр, не меняется; клиент называет его сотруднику. `email`, `birthday` могут быть `null`.
+`memberId` — `BT-` + 6 цифр, не меняется; клиент называет его сотруднику. `avatar`, `email`, `birthday` могут быть `null`
+(без аватарки показывайте инициалы, как сейчас).
 
 ### 5.2. `PATCH /me`
 
 Поля: `firstName`, `lastName`, `email`, `birthday` (только если сейчас `null`). Ответ — профиль целиком.
 `phone` → `403`; смена заданной даты рождения → `403 birthday_locked`.
+
+**Аватарка** (необязательная) — отдельными запросами:
+
+```
+POST   /me/avatar   multipart/form-data, поле "file" (JPEG/PNG/WebP/HEIC до 10 МБ) → профиль с новым avatar
+DELETE /me/avatar   → профиль, avatar = null
+```
+
+Сервер сам обрезает фото в квадрат 512×512 по центру, сжимает и удаляет EXIF (геолокацию). Кроп на клиенте
+не обязателен, но экономит трафик. Старое фото удаляется при замене. Ошибка — `422 file_invalid`.
 
 ### 5.3. `PATCH /me/settings`
 
@@ -899,13 +915,13 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 | Карточка заявки | `GET /cashback-requests/{id}`, `POST …/cancel`, `rejectReason`, `originalTotal` |
 | История | `GET /cashback-requests?status=all`, `GET /wallet/operations` |
 | Профиль: карточка участника | `GET /me`, `GET /me/summary`, `GET /me/member-qr` |
-| Профиль: редактирование | `PATCH /me` (без телефона; ДР — один раз) |
+| Профиль: редактирование | `PATCH /me` (без телефона; ДР — один раз), `POST/DELETE /me/avatar` |
 | Профиль: уведомления, язык | `PATCH /me/settings` |
 | Профиль: курорт, документы | `GET /resort/contacts` |
 | Профиль: выход | `POST /auth/logout` |
 | **Новые экраны** | |
 | Ввод номера и кода | `POST /auth/otp/request`, `POST /auth/otp/verify` |
-| Регистрация с согласиями | `POST /auth/register`, `GET /legal` |
+| Регистрация с согласиями и фото (необязательно) | `POST /auth/register` (JSON или multipart с `avatar`), `GET /legal` |
 | Принятие новой версии условий | `GET /me` → `pendingConsents`, `POST /me/consents` |
 | Удаление аккаунта | `GET/POST /me/deletion/request`, `POST /me/deletion/confirm` |
 | Восстановление при входе | `/auth/otp/verify` (deactivated), `POST /auth/restore`, `POST /auth/restart` |

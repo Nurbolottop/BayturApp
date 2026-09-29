@@ -51,3 +51,10 @@ LOGGING = {
         },
     },
 }
+
+# Хеш в именах статики (panel.3f2a1c.css): после выкладки браузеры сразу берут новые стили,
+# при этом nginx может кешировать их надолго. collectstatic выполняется в entrypoint.
+STORAGES = {
+    **globals().get('STORAGES', {'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'}}),
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'},
+}

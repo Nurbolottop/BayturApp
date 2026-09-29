@@ -36,6 +36,7 @@ def profile_payload(member):
         'phone': member.phone,
         'email': member.email or None,
         'birthday': member.birthday.isoformat() if member.birthday else None,
+        'avatar': member.avatar.url if member.avatar_id else None,
         'memberId': member.member_id,
         'memberSince': member.member_since.isoformat(),
         'settings': {
@@ -146,6 +147,50 @@ def legal_payload():
     return docs
 
 
+# ---------------------------------------------------------------- аватар
+
+AVATAR_MAX_SIZE = 10 * 1024 * 1024
+
+
+def set_avatar(member, uploaded_file):
+    """Необязательный аватар: JPEG/PNG/WebP/HEIC до 10 МБ → квадрат 512×512 без EXIF."""
+    from apps.common.media import process_avatar
+    from apps.common.models import Upload
+    if uploaded_file is None or uploaded_file.size > AVATAR_MAX_SIZE:
+        raise ApiError('file_invalid', 422)
+    content = process_avatar(uploaded_file)
+    if content is None:
+        raise ApiError('file_invalid', 422)
+    upload = Upload(kind=Upload.KIND_AVATAR, member=member, width=512, height=512)
+    upload.file.save(f'{upload.id}.jpg', content, save=False)
+    upload.save()
+    old = member.avatar
+    member.avatar = upload
+    member.save(update_fields=['avatar', 'updated_at'])
+    if old is not None:
+        old.file.delete(save=False)
+        old.delete()
+    return member
+
+
+def remove_avatar(member):
+    old = member.avatar
+    if old is None:
+        return member
+    member.avatar = None
+    member.save(update_fields=['avatar', 'updated_at'])
+    old.file.delete(save=False)
+    old.delete()
+    return member
+
+
+def _flag(value):
+    """Булево из JSON или multipart («true» / «1» / «on»)."""
+    if isinstance(value, str):
+        return value.strip().lower() in ('true', '1', 'on', 'yes')
+    return value is True
+
+
 # ---------------------------------------------------------------- вход
 
 def link_device(member, device_id):
@@ -176,17 +221,19 @@ def verify(phone, code, device_id=None):
     return auth.issue_tokens(member, device_id)
 
 
-def register(data, device_id=None, ip=None):
+def register(data, device_id=None, ip=None, avatar_file=None):
     token = auth.read_registration_token(data.get('registrationToken'))
     phone = token['phone']
-    if data.get('acceptTerms') is not True:
+    if not _flag(data.get('acceptTerms')):
         raise ApiError('terms_required', 422)
     first = _validate_name(data.get('firstName'), 'firstName')
     last = _validate_name(data.get('lastName'), 'lastName')
     email = _validate_email(data.get('email'))
     birthday = _parse_birthday(data.get('birthday'), required=True)
-    marketing = bool(data.get('marketingConsent'))
+    marketing = _flag(data.get('marketingConsent'))
     ps = ProgramSettings.get()
+    if avatar_file is not None and avatar_file.size > AVATAR_MAX_SIZE:
+        raise ApiError('file_invalid', 422)
 
     with transaction.atomic():
         existing = Member.objects.select_for_update().filter(phone=phone).exclude(
@@ -209,6 +256,8 @@ def register(data, device_id=None, ip=None):
                 doc = LegalDocument.current(kind)
                 Consent.objects.create(member=member, kind=kind, version=doc.version if doc else '', ip=ip)
             Consent.objects.create(member=member, kind=ConsentKind.MARKETING, granted=marketing, ip=ip)
+    if avatar_file is not None and member.avatar_id is None:
+        set_avatar(member, avatar_file)
     link_device(member, device_id or token.get('device'))
     return {**auth.issue_tokens(member, device_id), 'profile': profile_payload(member)}
 
@@ -326,6 +375,7 @@ def purge(member):
         member.marketing_consent = False
         member.notify_promos = False
         member.first_device_id = ''
+        member.avatar = None
         member.save()
         member.devices.all().delete()
         MemberRefreshToken.objects.filter(member=member).delete()

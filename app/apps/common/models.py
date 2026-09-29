@@ -141,7 +141,8 @@ class Upload(models.Model):
 
     KIND_IMAGE = 'image'
     KIND_COMPLAINT = 'complaint'
-    KINDS = [(KIND_IMAGE, 'Изображение'), (KIND_COMPLAINT, 'Фото к обращению')]
+    KIND_AVATAR = 'avatar'
+    KINDS = [(KIND_IMAGE, 'Изображение'), (KIND_COMPLAINT, 'Фото к обращению'), (KIND_AVATAR, 'Аватар')]
 
     id = models.CharField(primary_key=True, max_length=32, default=new_upload_id, editable=False)
     kind = models.CharField(max_length=20, choices=KINDS, default=KIND_IMAGE)

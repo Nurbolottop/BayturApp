@@ -17,7 +17,7 @@
   <thead><tr><th>Клиент</th><th>Уровень</th>{% if show_balance %}<th class="n">Баланс</th><th class="n hide-s">Lifetime</th>{% endif %}<th class="hide-s">С нами с</th><th>Статус</th></tr></thead>
   <tbody>{% for m in page %}
     <tr class="link" data-href="{% url 'panel:member' m.pk %}">
-      <td><div class="title-cell"><span class="ic-bubble s">{{ m.first_name|slice:":1"|default:"·" }}</span><div><b>{{ m.full_name|default:"—" }}</b><span class="small muted tabular">{{ m.member_id }} · {% if show_balance %}{{ m.phone|default:"—" }}{% else %}{{ m.phone|mask }}{% endif %}</span></div></div></td>
+      <td><div class="title-cell">{% if m.avatar_id %}<img class="avatar-s" src="{{ m.avatar.url }}" alt="">{% else %}<span class="ic-bubble s">{{ m.first_name|slice:":1"|default:"·" }}</span>{% endif %}<div><b>{{ m.full_name|default:"—" }}</b><span class="small muted tabular">{{ m.member_id }} · {% if show_balance %}{{ m.phone|default:"—" }}{% else %}{{ m.phone|mask }}{% endif %}</span></div></div></td>
       <td>{% tier_badge m.wallet.tier_id %}</td>
       {% if show_balance %}<td class="n">{{ m.wallet.balance|num }}</td><td class="n hide-s muted">{{ m.wallet.lifetime|num }}</td>{% endif %}
       <td class="hide-s tabular small">{{ m.member_since|date:"d.m.Y" }}</td>

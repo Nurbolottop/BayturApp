@@ -1770,6 +1770,100 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/me/avatar:
+    post:
+      operationId: me_avatar_create
+      description: 'Необязательный аватар: multipart, поле «file». DELETE — убрать.'
+      summary: Загрузить аватар (необязательно; JPEG/PNG/WebP/HEIC до 10 МБ)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvatarUploadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AvatarUploadRequest'
+        required: true
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+    delete:
+      operationId: me_avatar_destroy
+      description: 'Необязательный аватар: multipart, поле «file». DELETE — убрать.'
+      summary: Убрать аватар
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/me/consents:
     post:
       operationId: me_consents_create
@@ -3319,6 +3413,14 @@ components:
       - quote
       - tag
       - title
+    AvatarUploadRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+      required:
+      - file
     Bonus:
       type: object
       properties:
@@ -4421,6 +4523,11 @@ components:
     Profile:
       type: object
       properties:
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+          description: Квадрат 512×512; null — не задан
         firstName:
           type: string
         lastName:
@@ -4449,6 +4556,7 @@ components:
           items:
             $ref: '#/components/schemas/PendingConsent'
       required:
+      - avatar
       - birthday
       - email
       - firstName
@@ -4611,6 +4719,10 @@ components:
           type: boolean
         language:
           $ref: '#/components/schemas/Language'
+        avatar:
+          type: string
+          format: binary
+          description: Необязательно; только multipart/form-data
       required:
       - acceptTerms
       - birthday

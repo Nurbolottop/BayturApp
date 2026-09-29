@@ -65,6 +65,23 @@ class OtpLoginTests(BaseAPITestCase):
         OtpChallenge.objects.update(expires_at=timezone.now() - timedelta(seconds=1))
         self.assertEqual(self.verify(last_code(self.phone)).json()['error']['code'], 'otp_expired')
 
+    def test_register_multipart_with_optional_avatar(self):
+        import io
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.new('RGB', (100, 100), 'green').save(buf, 'PNG')
+        self.request_code()
+        token = self.verify(last_code(self.phone)).json()['registrationToken']
+        r = self.api.post(f'{A}/register', {
+            'registrationToken': token, 'firstName': 'Айгуль', 'lastName': 'Токтогулова', 'birthday': '1995-03-01',
+            'acceptTerms': 'true', 'marketingConsent': 'false',
+            'avatar': SimpleUploadedFile('me.png', buf.getvalue(), content_type='image/png')}, format='multipart')
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertIsNotNone(r.json()['profile']['avatar'])
+        self.assertFalse(r.json()['profile']['marketingConsent'])
+
     def test_register_validation(self):
         self.request_code()
         token = self.verify(last_code(self.phone)).json()['registrationToken']
@@ -133,8 +150,36 @@ class ProfileTests(BaseAPITestCase):
 
     def test_me_shape(self):
         d = self.api.get('/api/v1/me').json()
-        self.assertEqual(set(d), {'firstName', 'lastName', 'phone', 'email', 'birthday', 'memberId', 'memberSince',
+        self.assertEqual(set(d), {'avatar', 'firstName', 'lastName', 'phone', 'email', 'birthday', 'memberId', 'memberSince',
                                   'settings', 'marketingConsent', 'pendingConsents'})
+
+    def test_avatar_upload_replace_delete(self):
+        import io
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+
+        from apps.common.models import Upload
+
+        def photo(w, h):
+            buf = io.BytesIO()
+            Image.new('RGB', (w, h), 'blue').save(buf, 'JPEG')
+            return SimpleUploadedFile('a.jpg', buf.getvalue(), content_type='image/jpeg')
+
+        self.assertIsNone(self.api.get('/api/v1/me').json()['avatar'])
+        r = self.api.post('/api/v1/me/avatar', {'file': photo(800, 600)}, format='multipart')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertTrue(r.json()['avatar'].endswith('.jpg'))
+        up = Upload.objects.get(kind='avatar')
+        with up.file.open('rb') as fh:
+            self.assertEqual(Image.open(fh).size, (512, 512))
+        self.api.post('/api/v1/me/avatar', {'file': photo(300, 300)}, format='multipart')
+        self.assertEqual(Upload.objects.filter(kind='avatar').count(), 1)   # старый удалён
+        bad = SimpleUploadedFile('a.txt', b'not an image', content_type='text/plain')
+        self.assertEqual(self.api.post('/api/v1/me/avatar', {'file': bad}, format='multipart')
+                         .json()['error']['code'], 'file_invalid')
+        self.assertIsNone(self.api.delete('/api/v1/me/avatar').json()['avatar'])
+        self.assertEqual(Upload.objects.filter(kind='avatar').count(), 0)
 
     def test_birthday_set_once(self):
         r = self.api.patch('/api/v1/me', {'birthday': '1990-01-02'}, format='json')

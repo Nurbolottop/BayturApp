@@ -27,7 +27,7 @@ def members_list(request):
         found = search_members(q) if q else []
         return render(request, 'panel/members/list.html', {
             'page': found, 'f': g, 'limited': True, 'show_balance': False})
-    qs = Member.objects.select_related('wallet', 'wallet__tier')
+    qs = Member.objects.select_related('wallet', 'wallet__tier', 'avatar')
     if q:
         digits = ''.join(ch for ch in q if ch.isdigit())
         cond = Q(member_id__iexact=q) | Q(member_id__iexact=f'BT-{q}') | Q(first_name__icontains=q) | \

@@ -298,6 +298,7 @@ class PendingConsent(s.Serializer):
 
 
 class Profile(s.Serializer):
+    avatar = s.URLField(allow_null=True, help_text='Квадрат 512×512; null — не задан')
     firstName = s.CharField()
     lastName = s.CharField()
     phone = s.CharField()
@@ -350,6 +351,7 @@ class Register(s.Serializer):
     acceptTerms = s.BooleanField()
     marketingConsent = s.BooleanField(required=False)
     language = s.ChoiceField(choices=['ru', 'ky', 'en'], required=False)
+    avatar = s.ImageField(required=False, help_text='Необязательно; только multipart/form-data')
 
 
 class ProfilePatch(s.Serializer):

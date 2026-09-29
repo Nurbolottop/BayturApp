@@ -84,3 +84,25 @@ def process_upload(uploaded_file, strip_exif=True, max_side=2560):
         img.save(buf, 'JPEG', quality=85, optimize=True)  # без exif= → метаданные не пишутся
         ext = 'jpg'
     return ContentFile(buf.getvalue()), ext, img.width, img.height
+
+
+def process_avatar(uploaded_file, size=512):
+    """Аватар: квадрат по центру size×size, JPEG, без EXIF. None — не изображение."""
+    from PIL import Image, ImageOps, UnidentifiedImageError
+    try:
+        import pillow_heif
+        pillow_heif.register_heif_opener()
+    except ImportError:  # pragma: no cover
+        pass
+    try:
+        img = Image.open(uploaded_file)
+        img.load()
+    except (UnidentifiedImageError, OSError, ValueError):
+        return None
+    if (img.format or '').upper() not in ('JPEG', 'PNG', 'WEBP', 'HEIF', 'HEIC', 'MPO'):
+        return None
+    img = ImageOps.exif_transpose(img).convert('RGB')
+    img = ImageOps.fit(img, (size, size), method=Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, 'JPEG', quality=85, optimize=True)
+    return ContentFile(buf.getvalue())

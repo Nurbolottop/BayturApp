@@ -49,7 +49,8 @@ class OtpVerifyView(PublicAPIView):
 class RegisterView(PublicAPIView):
     def post(self, request):
         data = _body(request, 'registrationToken', 'firstName', 'lastName')
-        return Response(services.register(data, request._request.device_id, client_ip(request)), status=201)
+        return Response(services.register(data, request._request.device_id, client_ip(request),
+                                          avatar_file=request.FILES.get('avatar')), status=201)
 
 
 class RefreshView(PublicAPIView):
@@ -91,6 +92,18 @@ class MeView(MemberAPIView):
             raise ApiError('permission_denied', 403,
                            message='Номер меняет ресепшен после проверки личности')
         services.update_profile(request.user, data)
+        return Response(services.profile_payload(request.user))
+
+
+class MeAvatarView(MemberAPIView):
+    """Необязательный аватар: multipart, поле «file». DELETE — убрать."""
+
+    def post(self, request):
+        services.set_avatar(request.user, request.FILES.get('file'))
+        return Response(services.profile_payload(request.user))
+
+    def delete(self, request):
+        services.remove_avatar(request.user)
         return Response(services.profile_payload(request.user))
 
 

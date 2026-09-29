@@ -3,7 +3,7 @@
 {% block content %}
 <div class="topbar">
   <div><div class="crumbs"><a href="{% url 'panel:members' %}">{% icon 'arrow-left' 14 %} Клиенты</a></div>
-    <h1 class="page-title">{{ m.full_name|default:"—" }}</h1>
+    <div class="row" style="gap:14px">{% if m.avatar_id %}<img class="avatar-l" src="{{ m.avatar.url }}" alt="">{% endif %}<h1 class="page-title">{{ m.full_name|default:"—" }}</h1></div>
     <div class="row wrap" style="margin-top:8px"><span class="tabular muted">{{ m.member_id }}</span>{% pill 'member' m.status %}{% if m.is_test %}<span class="tag">тестовый аккаунт</span>{% endif %}</div>
   </div>
 </div>

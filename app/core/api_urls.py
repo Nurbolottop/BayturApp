@@ -26,6 +26,7 @@ client = [
     path('auth/restart', members.StartOverView.as_view()),
     path('me', members.MeView.as_view()),
     path('me/settings', members.MeSettingsView.as_view()),
+    path('me/avatar', members.MeAvatarView.as_view()),
     path('me/consents', members.ConsentsView.as_view()),
     path('me/devices', members.DevicesView.as_view()),
     path('me/devices/<path:token>', members.DeviceDeleteView.as_view()),

@@ -37,6 +37,8 @@ class Member(models.Model):
     email = models.EmailField('Email', blank=True)
     birthday = models.DateField('Дата рождения', null=True, blank=True)
     gender = models.CharField('Пол', max_length=10, blank=True)
+    avatar = models.ForeignKey('common.Upload', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+                               verbose_name='Аватар')
     member_since = models.DateField('Участник с', default=timezone.localdate)
     status = models.CharField('Статус', max_length=20, choices=MemberStatus.choices, default=MemberStatus.ACTIVE)
     blocked_reason = models.TextField(blank=True)

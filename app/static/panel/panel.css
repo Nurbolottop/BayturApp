@@ -209,8 +209,9 @@ table.table { width: 100%; border-collapse: collapse; }
 .field .err, .errorlist { color: var(--negative); font-size: 12px; margin: 0; padding: 0; list-style: none; }
 .input, .field input[type=text], .field input[type=email], .field input[type=password], .field input[type=number],
 .field input[type=url], .field input[type=date], .field input[type=datetime-local], .field input[type=time],
-.field input[type=tel], .field select, .field textarea, .input-plain {
+.field input[type=tel], .field input[type=search], .field select, .field textarea, .input-plain {
   width: 100%; min-height: 44px; padding: 10px 14px; border-radius: var(--r-chip); border: 0; background: var(--fill); outline: none;
+  color: var(--ink); font-family: inherit; font-size: inherit; -webkit-appearance: none; appearance: none;
   transition: box-shadow var(--motion-fast), background var(--motion-fast); font-weight: 500;
 }
 .field textarea { resize: vertical; line-height: 1.5; }
@@ -250,8 +251,12 @@ table.table { width: 100%; border-collapse: collapse; }
 .filters .field.grow { flex: 1 1 220px; }
 .filters .field > label { font-size: 12px; font-weight: 500; color: var(--muted); }
 .search { position: relative; }
-.search .ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+/* иконка — по центру самого поля (оно всегда внизу блока), а не всего блока вместе с подписью */
+.search .ic { position: absolute; left: 14px; bottom: 13px; color: var(--muted); pointer-events: none; }
 .search input { padding-left: 42px !important; }
+.search input::-webkit-search-decoration { -webkit-appearance: none; }
+.search input::-webkit-search-cancel-button { cursor: pointer; }
+.search input::placeholder, .field input::placeholder, .field textarea::placeholder { color: var(--muted); opacity: 1; }
 
 /* сетка иконок */
 .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 8px; }
@@ -460,3 +465,13 @@ table.table { width: 100%; border-collapse: collapse; }
   .pill .dot::after { display: none; }
   .chart .line { stroke-dashoffset: 0; }
 }
+
+/* перетаскивание строк и карточек: поднятая строка + плавная перестановка (FLIP в panel.js) */
+[data-handle], .re-handle { cursor: grab; touch-action: none; }
+.is-sorting, .is-sorting * { cursor: grabbing !important; user-select: none; }
+tr.dragging > td { background: var(--accent-soft); }
+tr.dragging > td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+tr.dragging { position: relative; z-index: 2; }
+.re-row.dragging, .g-item.dragging { box-shadow: 0 10px 28px rgba(0, 0, 0, .18); }
+.avatar-s { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex: none; }
+.avatar-l { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex: none; }
