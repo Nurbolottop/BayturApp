@@ -36,14 +36,14 @@ services:
   web:
     <<: *app
     # uvicorn-воркеры: HTTP + WebSocket (/api/v1/events, /api/v1/staff/events)
-    command: sh -c "/entrypoint.sh && gunicorn core.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile -"
+    command: sh -c "/entrypoint.sh && gunicorn core.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --workers ${WEB_WORKERS:-3} --timeout 120 --access-logfile -"
     ports:
       # наружу только через nginx на хосте
       - "127.0.0.1:${WEB_PORT:-8000}:8000"
 
   worker:
     <<: *app
-    command: celery -A core worker -l info --concurrency 4
+    command: celery -A core worker -l info --concurrency ${CELERY_CONCURRENCY:-4}
 
   beat:
     <<: *app
