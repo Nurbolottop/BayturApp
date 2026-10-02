@@ -161,9 +161,6 @@ table.table { width: 100%; border-collapse: collapse; }
 
 /* уровни */
 .tier-badge { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 4px; border-radius: var(--r-pill); color: #fff; font-size: 12px; font-weight: 700; text-shadow: 0 1px 1px rgba(0,0,0,.25); }
-.tier-bronze { background: var(--tier-bronze); } .tier-silver { background: var(--tier-silver); }
-.tier-gold { background: var(--tier-gold); } .tier-platinum { background: var(--tier-platinum); }
-.tier-diamond { background: var(--tier-diamond); }
 .tier-card { border-radius: var(--r-card); padding: var(--sp-l); color: #fff; position: relative; overflow: hidden; min-height: 132px; display: flex; flex-direction: column; justify-content: space-between; }
 .tier-card .medal { filter: drop-shadow(0 4px 10px rgba(0,0,0,.25)); }
 .tier-card .shine { position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.18) 45%, transparent 60%); pointer-events: none; }
@@ -479,3 +476,9 @@ tr.dragging { position: relative; z-index: 2; }
 .gallery .g-item.missing img { visibility: hidden; }
 .gallery .g-item.missing::before { content: 'Файл не найден'; position: absolute; inset: 0; display: grid; place-items: center;
   font-size: 12px; font-weight: 600; color: var(--muted); background: var(--fill); text-align: center; padding: 8px; }
+/* выбор цвета градиента уровня */
+.color-pick { display: inline-flex; align-items: center; gap: 10px; background: var(--fill); border-radius: var(--r-chip); padding: 6px 12px 6px 6px; cursor: pointer; }
+.color-input { width: 40px; height: 32px; padding: 0; border: 0; border-radius: 10px; background: none; cursor: pointer; }
+.color-input::-webkit-color-swatch-wrapper { padding: 0; }
+.color-input::-webkit-color-swatch { border: 0; border-radius: 10px; }
+.tier-card .tier-edit { background: rgba(255,255,255,.18); color: #fff; }

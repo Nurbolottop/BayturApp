@@ -218,20 +218,39 @@ def pill(kind, status, label=None):
 
 # ---------------------------------------------------------------- уровни
 
-TIER_NAMES = {'bronze': 'Бронза', 'silver': 'Серебро', 'gold': 'Золото', 'platinum': 'Платина',
-              'diamond': 'Бриллиант'}
+def _tiers():
+    from apps.loyalty.services import tier_styles
+    return tier_styles()
 
 
 @register.filter
 def tier_name(tier_id):
-    return TIER_NAMES.get(tier_id, tier_id or '—')
+    from apps.common.i18n import tr
+    t = _tiers().get(tier_id)
+    return tr(t['name'], 'ru') if t else (tier_id or '—')
+
+
+@register.simple_tag
+def tier_css():
+    """CSS всех уровней из БД: .tier-<id> (градиент) и --tier-<id>-0/1/2 — уровни можно добавлять в админке."""
+    rules, root = [], []
+    for tid, t in _tiers().items():
+        c0, c1, c2 = t['colors']
+        root.append(f'--tier-{tid}-0:{c0};--tier-{tid}-1:{c1};--tier-{tid}-2:{c2};'
+                    f'--tier-{tid}:linear-gradient(135deg,{c0} 0%,{c1} 55%,{c2} 100%);')
+        rules.append(f'.tier-{tid}{{background:var(--tier-{tid})}}')
+    return mark_safe(':root{' + ''.join(root) + '}' + ''.join(rules))
 
 
 @register.simple_tag
 def medal(tier_id, size=28):
-    """Медаль уровня — градиент tier_style.dart."""
+    """Медаль уровня: загруженная картинка или SVG в градиенте уровня."""
     if not tier_id:
         return ''
+    t = _tiers().get(tier_id)
+    if t and t.get('medal'):
+        return format_html('<img class="medal" src="{}" width="{}" height="{}" alt="" style="object-fit:contain">',
+                           t['medal'], size, size)
     gid = f'm-{tier_id}-{size}'
     return mark_safe(
         f'<svg class="medal" width="{size}" height="{size}" viewBox="0 0 32 32" aria-hidden="true">'

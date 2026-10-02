@@ -8,12 +8,11 @@ from django.views.decorators.http import require_POST
 from apps.cashback.desk import scoped_requests
 from apps.common.audit import audit
 from apps.common.models import ProgramSettings
-from apps.loyalty.models import TierId
 from apps.loyalty.services import expires_at, get_wallet, pending_cashback, tier_progress, tiers_ordered
 from apps.members.models import Member, MemberStatus
 
 from ..access import panel_view, run_action
-from ..forms import AdjustPointsForm, BirthdayForm
+from ..forms import AdjustPointsForm, BirthdayForm, tier_choices
 from .money import _date, page
 
 
@@ -51,7 +50,7 @@ def members_list(request):
     if g.get('test') != '1':
         qs = qs.filter(is_test=False)
     return render(request, 'panel/members/list.html', {
-        'page': page(request, qs.order_by('-created_at')), 'f': g, 'tiers': TierId.choices,
+        'page': page(request, qs.order_by('-created_at')), 'f': g, 'tiers': tier_choices(),
         'statuses': MemberStatus.choices, 'show_balance': request.user.can('members.history'),
     })
 

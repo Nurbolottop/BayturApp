@@ -3783,7 +3783,9 @@ components:
         balance:
           type: integer
         tier:
-          $ref: '#/components/schemas/TierId'
+          type: string
+          description: id уровня из GET /loyalty/program (набор уровней задаётся в
+            админке)
         purgeDays:
           type: integer
         purgeAt:
@@ -3807,7 +3809,9 @@ components:
         balance:
           type: integer
         tier:
-          $ref: '#/components/schemas/TierId'
+          type: string
+          description: id уровня из GET /loyalty/program (набор уровней задаётся в
+            админке)
         purgeDays:
           type: integer
         purgeAt:
@@ -4504,7 +4508,9 @@ components:
         id:
           type: string
         tier:
-          $ref: '#/components/schemas/TierId'
+          type: string
+          description: id уровня из GET /loyalty/program (набор уровней задаётся в
+            админке)
         icon:
           $ref: '#/components/schemas/PerkIcon'
         title:
@@ -5048,7 +5054,9 @@ components:
           nullable: true
           description: Со скрытыми цифрами
         tier:
-          $ref: '#/components/schemas/TierId'
+          type: string
+          description: id уровня из GET /loyalty/program (набор уровней задаётся в
+            админке)
         status:
           type: string
       required:
@@ -5072,7 +5080,9 @@ components:
           nullable: true
           description: Со скрытыми цифрами
         tier:
-          $ref: '#/components/schemas/TierId'
+          type: string
+          description: id уровня из GET /loyalty/program (набор уровней задаётся в
+            админке)
         status:
           type: string
         deletedNote:
@@ -5346,29 +5356,28 @@ components:
       type: object
       properties:
         id:
-          $ref: '#/components/schemas/TierId'
+          type: string
+          description: slug, например bronze; новые уровни добавляются в админке
         name:
           type: string
+        colors:
+          type: array
+          items:
+            type: string
+          description: 'градиент: 3 цвета #RRGGBB (тёмный → светлый)'
+        medal:
+          type: string
+          format: uri
+          nullable: true
+          description: картинка медали; null — рисовать стандартную в цветах colors
         from:
           type: integer
       required:
+      - colors
       - from
       - id
+      - medal
       - name
-    TierId:
-      enum:
-      - bronze
-      - silver
-      - gold
-      - platinum
-      - diamond
-      type: string
-      description: |-
-        * `bronze` - Бронза
-        * `silver` - Серебро
-        * `gold` - Золото
-        * `platinum` - Платина
-        * `diamond` - Бриллиант
     Tokens:
       type: object
       properties:
@@ -5421,14 +5430,16 @@ components:
         lifetime:
           type: integer
         tier:
-          $ref: '#/components/schemas/TierId'
+          type: string
+          description: id уровня из GET /loyalty/program (набор уровней задаётся в
+            админке)
         pendingCashback:
           type: integer
         nextTier:
+          type: string
           nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/TierId'
-          - $ref: '#/components/schemas/NullEnum'
+          description: id уровня из GET /loyalty/program (набор уровней задаётся в
+            админке)
         leftToNext:
           type: integer
         progress:

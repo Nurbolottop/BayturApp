@@ -51,6 +51,9 @@ urlpatterns = [
 
     # уровни
     path('tiers/', tiers.tiers, name='tiers'),
+    path('tiers/new/', tiers.tier_edit, name='tier-new'),
+    path('tiers/level/<slug:tier_id>/', tiers.tier_edit, name='tier'),
+    path('tiers/level/<slug:tier_id>/delete/', tiers.tier_delete, name='tier-delete'),
     path('tiers/privileges/new/', tiers.privilege_edit, name='privilege-new'),
     path('tiers/privileges/<slug:privilege_id>/', tiers.privilege_edit, name='privilege'),
     path('tiers/privileges/<slug:privilege_id>/delete/', tiers.privilege_delete, name='privilege-delete'),

@@ -7,7 +7,7 @@ from apps.common.ids import new_operation_id
 
 
 class TierId(models.TextChoices):
-    """Количество уровней фиксировано в мобилке (у каждого своя медаль)."""
+    """Уровни по умолчанию (сид). Набор уровней редактируется в админке: можно добавлять и удалять."""
     BRONZE = 'bronze', 'Бронза'
     SILVER = 'silver', 'Серебро'
     GOLD = 'gold', 'Золото'
@@ -21,10 +21,31 @@ PERK_ICONS = [
 ]
 
 
+# Градиенты уровней по умолчанию — из tier_style.dart мобилки (ТЗ §7.4)
+DEFAULT_TIER_COLORS = {
+    'bronze': ['#4A220F', '#99562C', '#D9976A'],
+    'silver': ['#3F4A56', '#7D8B99', '#C3CCD6'],
+    'gold': ['#5E4206', '#AE7E17', '#E6BF58'],
+    'platinum': ['#232C38', '#627488', '#B4C2D3'],
+    'diamond': ['#140F3A', '#4B3DB0', '#8FD8FF'],
+}
+FALLBACK_TIER_COLORS = ['#232C38', '#627488', '#B4C2D3']
+
+
 class Tier(models.Model):
-    id = models.CharField(primary_key=True, max_length=20, choices=TierId.choices)
+    """Уровень программы. Набор уровней задаётся в админке; оформление (градиент, медаль) — тоже."""
+
+    id = models.SlugField(primary_key=True, max_length=30)
     name = models.JSONField('Название', default=dict)
     from_points = models.PositiveBigIntegerField('Порог, баллов (lifetime)')
+    colors = models.JSONField('Градиент: 3 цвета #RRGGBB', default=list, blank=True)
+    medal = models.CharField('Картинка медали (необязательно)', max_length=500, blank=True)
+
+    @property
+    def gradient(self):
+        c = self.colors if isinstance(self.colors, list) and len(self.colors) == 3 else \
+            DEFAULT_TIER_COLORS.get(self.id, FALLBACK_TIER_COLORS)
+        return list(c)
 
     class Meta:
         ordering = ['from_points']

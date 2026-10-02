@@ -13,7 +13,7 @@ from apps.common.i18n import LANGS
 from apps.common.models import ProgramSettings
 from apps.complaints.models import ComplaintCategory, ReplyTemplate
 from apps.content.models import Article, Promo, ResortEvent, Story
-from apps.loyalty.models import PERK_ICONS, Privilege, Tier, TierId
+from apps.loyalty.models import PERK_ICONS, Privilege, Tier
 from apps.members.models import Language, LegalDocument
 from apps.notifications.models import Campaign, PushTemplate
 from apps.staff.models import StaffUser
@@ -309,6 +309,35 @@ class TierForm(PanelForm, forms.ModelForm):
         labels = {'from_points': 'Порог, баллов lifetime'}
 
 
+def tier_choices():
+    from apps.common.i18n import tr
+    return [(t.pk, tr(t.name, 'ru')) for t in Tier.objects.order_by('from_points')]
+
+
+COLOR = forms.TextInput(attrs={'type': 'color', 'class': 'color-input'})
+
+
+class TierStyleForm(PanelForm, forms.Form):
+    """Новый уровень или оформление существующего: название, порог (для нового), градиент, медаль."""
+
+    name = L10nField(label='Название', max_length=40)
+    from_points = forms.IntegerField(label='Порог, баллов lifetime', min_value=1, required=False)
+    color0 = forms.RegexField(label='Цвет 1 (тёмный)', regex=r'^#[0-9A-Fa-f]{6}$', widget=COLOR)
+    color1 = forms.RegexField(label='Цвет 2 (средний)', regex=r'^#[0-9A-Fa-f]{6}$', widget=COLOR)
+    color2 = forms.RegexField(label='Цвет 3 (светлый)', regex=r'^#[0-9A-Fa-f]{6}$', widget=COLOR)
+    medal = forms.CharField(required=False, widget=forms.HiddenInput)
+
+    def __init__(self, *args, creating=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['from_points'].required = creating
+        if not creating:
+            del self.fields['from_points']
+
+    @property
+    def colors(self):
+        return [self.cleaned_data[f'color{i}'].upper() for i in range(3)]
+
+
 class PrivilegeForm(PanelForm, forms.ModelForm):
     id = forms.SlugField(label='Id', max_length=40)
     icon = forms.ChoiceField(label='Иконка', choices=[(i, i) for i in PERK_ICONS], widget=IconGrid)
@@ -341,20 +370,7 @@ class PublishableForm(forms.ModelForm):
     pass
 
 
-_TRANSLIT = dict(zip('абвгдеёжзийклмнопрстуфхцчшщъыьэюяңөү',
-                     ['a', 'b', 'v', 'g', 'd', 'e', 'e', 'zh', 'z', 'i', 'y', 'k', 'l', 'm', 'n', 'o', 'p', 'r', 's',
-                      't', 'u', 'f', 'h', 'ts', 'ch', 'sh', 'sch', '', 'y', '', 'e', 'yu', 'ya', 'n', 'o', 'u']))
-
-
-def slug_from_title(title, model, max_length=80):
-    """Латинский slug из заголовка (кириллица транслитерируется), уникальный для модели."""
-    from django.utils.text import slugify
-    text = ''.join(_TRANSLIT.get(ch, ch) for ch in (title or '').lower())
-    base = (slugify(text) or 'article')[:max_length - 4].strip('-')
-    slug, n = base, 2
-    while model.objects.filter(pk=slug).exists():
-        slug, n = f'{base}-{n}', n + 1
-    return slug
+from apps.common.text import slug_from_title  # noqa: E402
 
 
 class ArticleForm(PublishableForm):
@@ -392,7 +408,7 @@ class ArticleForm(PublishableForm):
     def clean(self):
         data = super().clean()
         if not (self.instance and self.instance.pk) and not data.get('id'):
-            data['id'] = slug_from_title((data.get('title') or {}).get('ru'), Article)
+            data['id'] = slug_from_title((data.get('title') or {}).get('ru'), Article, fallback='article')
             self.instance.pk = data['id']
         return data
 
@@ -458,7 +474,7 @@ class StoryForm(PublishableForm):
 class CampaignForm(forms.ModelForm):
     title = L10nField(label='Заголовок', max_length=80)
     body = L10nField(label='Текст', textarea=True, rows=3, max_length=240)
-    tiers = forms.MultipleChoiceField(label='Уровни', choices=TierId.choices, required=False,
+    tiers = forms.MultipleChoiceField(label='Уровни', choices=(), required=False,
                                       widget=forms.CheckboxSelectMultiple)
     languages = forms.MultipleChoiceField(label='Языки', choices=Language.choices, required=False,
                                           widget=forms.CheckboxSelectMultiple)
@@ -471,6 +487,7 @@ class CampaignForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['tiers'].choices = tier_choices()
         seg = (self.instance.segment or {}) if self.instance else {}
         self.initial.setdefault('tiers', seg.get('tiers') or [])
         self.initial.setdefault('languages', seg.get('languages') or [])

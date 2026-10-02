@@ -1,26 +1,25 @@
 """
-Уровни и привилегии (ТЗ §7.2). Количество уровней фиксировано мобилкой — меняются только названия и пороги.
+Уровни и привилегии (ТЗ §7.2). Уровни можно добавлять, удалять и оформлять (градиент, медаль).
 Пороги строго возрастают, у первого — 0 (tiers_invalid). Смена порога → пересчёт уровней (только вверх).
 """
 from django.db import transaction
 from rest_framework import serializers
 from rest_framework.response import Response
 
-from apps.common.audit import audit
+from apps.common.audit import audit, model_snapshot
 from apps.common.errors import ApiError
 from apps.common.serializers import L10nField
 from apps.loyalty.models import Privilege, Tier
-from apps.loyalty.services import preview_tier_change, recalc_all_tiers
+from apps.loyalty.services import create_tier, delete_tier, preview_tier_change, recalc_all_tiers
 
 from ..base import AdminAPIView, CollectionView, DetailView, SortView, body, field_error, forbidden, not_found
-from ..serializers import TIER_ORDER, PrivilegeSerializer, TierSerializer
+from ..serializers import PrivilegeSerializer, TierSerializer
 
 TIERS_READ = ['tiers.texts', 'tiers.edit']
 
 
 def ordered_tiers():
-    rank = {t: i for i, t in enumerate(TIER_ORDER)}
-    return sorted(Tier.objects.all(), key=lambda t: rank.get(t.id, 99))
+    return list(Tier.objects.order_by('from_points'))
 
 
 def validate_thresholds(changes):
@@ -30,9 +29,10 @@ def validate_thresholds(changes):
     if unknown:
         raise field_error('tiers', f'неизвестные уровни: {", ".join(unknown)}')
     merged = {**current, **changes}
-    values = [merged[t] for t in TIER_ORDER if t in merged]
+    order = [t.id for t in ordered_tiers()]  # порядок уровней — по текущим порогам
+    values = [merged[t] for t in order]
     if not values or values[0] != 0 or any(b <= a for a, b in zip(values, values[1:])):
-        raise ApiError('tiers_invalid', 422, extra={'thresholds': {t: merged[t] for t in TIER_ORDER if t in merged}})
+        raise ApiError('tiers_invalid', 422, extra={'thresholds': {t: merged[t] for t in order}})
     return {k: v for k, v in changes.items() if current[k] != v}
 
 
@@ -97,7 +97,7 @@ def apply_tier_changes(request, rows):
 class TiersView(AdminAPIView):
     """GET — уровни по порядку; PUT/PATCH {tiers: [{id, name?, from?}]} — правка набора целиком."""
 
-    required_perms = {'GET': TIERS_READ, 'PUT': TIERS_READ, 'PATCH': TIERS_READ}
+    required_perms = {'GET': TIERS_READ, 'PUT': TIERS_READ, 'PATCH': TIERS_READ, 'POST': 'tiers.edit'}
 
     def get(self, request):
         return Response({'items': tiers_payload(self.ctx())})
@@ -108,9 +108,23 @@ class TiersView(AdminAPIView):
 
     put = patch
 
+    def post(self, request):
+        """Новый уровень: {name: {ru,ky,en}, from (>0, не совпадает с существующими), colors: [3 × #RRGGBB], medal?}."""
+        if not request.user.can('tiers.edit'):
+            raise forbidden(['tier'])
+        data = body(request)
+        s = TierSerializer(data={**data, 'from': data.get('from') or 0}, context=self.ctx())
+        s.is_valid(raise_exception=True)
+        v = s.validated_data
+        if not v.get('colors'):
+            raise field_error('colors', 'три цвета #RRGGBB')
+        tier, upgraded = create_tier(v['name'], data.get('from'), v['colors'], v.get('medal') or '', data.get('id'))
+        audit(request, 'tier.create', tier, after=model_snapshot(tier), comment=f'повышено клиентов: {upgraded}')
+        return Response({**TierSerializer(tier, context=self.ctx()).data, 'upgraded': upgraded}, status=201)
+
 
 class TierDetailView(AdminAPIView):
-    required_perms = {'GET': TIERS_READ, 'PATCH': TIERS_READ, 'PUT': TIERS_READ}
+    required_perms = {'GET': TIERS_READ, 'PATCH': TIERS_READ, 'PUT': TIERS_READ, 'DELETE': 'tiers.edit'}
 
     def get_object(self, pk):
         tier = Tier.objects.filter(pk=pk).first()
@@ -123,12 +137,34 @@ class TierDetailView(AdminAPIView):
 
     def patch(self, request, pk):
         tier = self.get_object(pk)
-        rows = parse_tier_input({'tiers': [{**body(request), 'id': tier.id}]})
+        data = body(request)
+        style = {k: data[k] for k in ('colors', 'medal') if k in data}
+        if style:
+            if not request.user.can('tiers.edit'):
+                raise forbidden(list(style))
+            s = TierSerializer(tier, data=style, partial=True, context=self.ctx())
+            s.is_valid(raise_exception=True)
+            before = model_snapshot(tier)
+            s.save()
+            audit(request, 'tier.update', tier, before=before, after=model_snapshot(tier))
+        rows = parse_tier_input({'tiers': [{**{k: v for k, v in data.items() if k not in style}, 'id': tier.id}]})
         upgraded = apply_tier_changes(request, rows)
         tier.refresh_from_db()
         return Response({**TierSerializer(tier, context=self.ctx()).data, 'upgraded': upgraded})
 
     put = patch
+
+    def delete(self, request, pk):
+        """?privilegesTo=<id> — перенести привилегии, иначе удалить их. Нижний уровень (порог 0) не удаляется."""
+        if not request.user.can('tiers.edit'):
+            raise forbidden(['tier'])
+        tier = self.get_object(pk)
+        target_id = request.query_params.get('privilegesTo') or (request.data or {}).get('privilegesTo')
+        target = self.get_object(target_id) if target_id else None
+        before = model_snapshot(tier)
+        result = delete_tier(tier, privileges_to=target)
+        audit(request, 'tier.delete', None, object_type='loyalty.tier', object_id=pk, before=before, after=result)
+        return Response(result)
 
 
 class TiersPreviewView(AdminAPIView):

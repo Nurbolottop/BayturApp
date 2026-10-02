@@ -3,6 +3,7 @@
 (select_for_update): balance и reserved не уходят в минус, reserved ≤ balance.
 """
 import logging
+import re
 from datetime import timedelta
 
 from django.db import transaction
@@ -272,3 +273,91 @@ def ledger_mismatches():
 
 def since(days):
     return timezone.now() - timedelta(days=days)
+
+
+# ---------------------------------------------------------------- управление набором уровней
+
+HEX = re.compile(r'^#[0-9A-Fa-f]{6}$')
+
+
+def thresholds_valid(values):
+    """Пороги по порядку уровней: первый — 0, дальше строго возрастают."""
+    return bool(values) and values[0] == 0 and all(b > a for a, b in zip(values, values[1:]))
+
+
+def clean_colors(colors):
+    if not isinstance(colors, (list, tuple)) or len(colors) != 3 or not all(HEX.match(str(c)) for c in colors):
+        raise ApiError('validation_error', 400, extra={'fields': {'colors': ['три цвета #RRGGBB']}})
+    return [c.upper() for c in colors]
+
+
+def create_tier(name, from_points, colors, medal='', tier_id=None):
+    """Новый уровень: порог не совпадает с существующими и > 0; клиентов, дотянувших до порога, повышаем."""
+    from apps.common.text import slug_from_title
+    from_points = int(from_points)
+    existing = sorted(Tier.objects.values_list('from_points', flat=True))
+    if not thresholds_valid(sorted(existing + [from_points])) or (existing and from_points == 0):
+        raise ApiError('tiers_invalid', 422)
+    with transaction.atomic():
+        tier = Tier.objects.create(
+            id=tier_id or slug_from_title((name or {}).get('ru'), Tier, max_length=30, fallback='tier'),
+            name=name, from_points=from_points, colors=clean_colors(colors), medal=medal or '')
+        upgraded = recalc_all_tiers()
+    return tier, upgraded
+
+
+def delete_tier_preview(tier):
+    """Куда перейдут клиенты удаляемого уровня: на ближайший уровень ниже (уровень по их lifetime)."""
+    others = [t for t in tiers_ordered() if t.pk != tier.pk]
+    affected = Wallet.objects.filter(tier=tier).count()
+    lower = [t for t in others if t.from_points <= tier.from_points]
+    return {'members': affected, 'fallback': lower[-1] if lower else None, 'privileges': tier.privileges.count(),
+            'others': others}
+
+
+def delete_tier(tier, privileges_to=None):
+    """
+    Удаление уровня. Нижний уровень (порог 0) удалить нельзя — у каждого клиента должен быть уровень.
+    Привилегии переносятся на privileges_to (Tier) или удаляются. Клиенты удалённого уровня получают уровень
+    по своему lifetime среди оставшихся. Из сегментов рассылок уровень убирается.
+    """
+    from apps.notifications.models import Campaign
+    if tier.from_points == 0:
+        raise ApiError('tiers_invalid', 422, message='Нижний уровень (порог 0) удалить нельзя')
+    if privileges_to is not None and privileges_to.pk == tier.pk:
+        raise ApiError('validation_error', 400, extra={'fields': {'privilegesTo': ['другой уровень']}})
+    with transaction.atomic():
+        moved = deleted = 0
+        if privileges_to is not None:
+            moved = tier.privileges.update(tier=privileges_to)
+        else:
+            deleted = tier.privileges.count()
+            tier.privileges.all().delete()
+        remaining = [t for t in tiers_ordered() if t.pk != tier.pk]
+        reassigned = 0
+        for w in Wallet.objects.select_for_update().filter(tier=tier):
+            w.tier = tier_for(w.lifetime, remaining)
+            w.save(update_fields=['tier', 'updated_at'])
+            reassigned += 1
+        for c in Campaign.objects.filter(segment__tiers__contains=[tier.pk]):
+            seg = dict(c.segment)
+            seg['tiers'] = [t for t in seg.get('tiers', []) if t != tier.pk]
+            c.segment = seg
+            c.save(update_fields=['segment'])
+        tier.delete()
+    return {'reassigned': reassigned, 'privilegesMoved': moved, 'privilegesDeleted': deleted}
+
+
+def tier_styles():
+    """{id: {name, colors, medal, from}} всех уровней — для отрисовки медалей и градиентов (кеш до изменения)."""
+    from django.core.cache import cache
+
+    from apps.common.caching import content_version
+    from apps.common.media import absolute_media_url
+    key = f'tier_styles:{content_version()}'
+    data = cache.get(key)
+    if data is None:
+        data = {t.pk: {'name': t.name, 'colors': t.gradient, 'medal': absolute_media_url(t.medal) if t.medal else None,
+                       'from': t.from_points} for t in tiers_ordered()}
+        cache.set(key, data, 3600)
+    return data

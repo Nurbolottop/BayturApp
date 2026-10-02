@@ -8,7 +8,7 @@ from drf_spectacular.utils import OpenApiParameter, inline_serializer
 from rest_framework import serializers as s
 
 from apps.catalog.models import FEATURE_ICONS, CategoryId, PaymentMethod
-from apps.loyalty.models import PERK_ICONS, OperationKind, TierId
+from apps.loyalty.models import PERK_ICONS, OperationKind
 
 
 class MemberBearer(OpenApiAuthenticationExtension):
@@ -109,16 +109,21 @@ class ServiceCategory(s.Serializer):
 
 # ---------------------------------------------------------------- лояльность
 
+TIER_HELP = 'id уровня из GET /loyalty/program (набор уровней задаётся в админке)'
+
+
 class Tier(s.Serializer):
-    id = s.ChoiceField(choices=TierId.choices)
+    id = s.CharField(help_text='slug, например bronze; новые уровни добавляются в админке')
     name = s.CharField()
+    colors = s.ListField(child=s.CharField(), help_text='градиент: 3 цвета #RRGGBB (тёмный → светлый)')
+    medal = s.URLField(allow_null=True, help_text='картинка медали; null — рисовать стандартную в цветах colors')
     # 'from' — зарезервированное слово Python
     vars()['from'] = s.IntegerField()
 
 
 class Privilege(s.Serializer):
     id = s.CharField()
-    tier = s.ChoiceField(choices=TierId.choices)
+    tier = s.CharField(help_text=TIER_HELP)
     icon = s.ChoiceField(choices=PERK_ICONS)
     title = s.CharField()
     short = s.CharField()
@@ -135,9 +140,9 @@ class Wallet(s.Serializer):
     reserved = s.IntegerField()
     available = s.IntegerField()
     lifetime = s.IntegerField()
-    tier = s.ChoiceField(choices=TierId.choices)
+    tier = s.CharField(help_text=TIER_HELP)
     pendingCashback = s.IntegerField()
-    nextTier = s.ChoiceField(choices=TierId.choices, allow_null=True)
+    nextTier = s.CharField(allow_null=True, help_text=TIER_HELP)
     leftToNext = s.IntegerField()
     progress = s.FloatField()
     expiresAt = s.DateTimeField(allow_null=True)
@@ -235,7 +240,7 @@ class StaffMemberBrief(s.Serializer):
     memberId = s.CharField()
     name = s.CharField()
     phone = s.CharField(allow_null=True, help_text='Со скрытыми цифрами')
-    tier = s.ChoiceField(choices=TierId.choices)
+    tier = s.CharField(help_text=TIER_HELP)
     status = s.CharField()
 
 
@@ -379,7 +384,7 @@ class Notification(s.Serializer):
 
 class DeletionInfo(s.Serializer):
     balance = s.IntegerField()
-    tier = s.ChoiceField(choices=TierId.choices)
+    tier = s.CharField(help_text=TIER_HELP)
     purgeDays = s.IntegerField()
     purgeAt = s.DateTimeField()
     keeps = s.ListField(child=s.DictField(), help_text='Брони и заявки, которые сохранятся')

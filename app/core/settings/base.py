@@ -265,7 +265,6 @@ SPECTACULAR_SETTINGS = {
     'ENUM_NAME_OVERRIDES': {
         'CategoryId': 'apps.catalog.models.CategoryId',
         'PaymentMethod': 'apps.catalog.models.PaymentMethod',
-        'TierId': 'apps.loyalty.models.TierId',
         'OperationKind': 'apps.loyalty.models.OperationKind',
         'FeatureIcon': 'apps.catalog.models.FEATURE_ICONS',
         'PerkIcon': 'apps.loyalty.models.PERK_ICONS',

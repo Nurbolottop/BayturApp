@@ -1,0 +1,83 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}{% if creating %}Новый уровень{% else %}{{ tier.name|tr }}{% endif %}{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:tiers' %}">{% icon 'arrow-left' 14 %} Уровни</a></div>
+  <h1 class="page-title">{% if creating %}Новый уровень{% else %}{{ tier.name|tr }}{% endif %}</h1>
+  {% if not creating %}<div class="muted" style="margin-top:6px">от <span class="tabular">{{ tier.from_points|num }}</span> баллов lifetime · порог меняется на странице уровней</div>{% endif %}</div></div>
+
+<div class="split">
+<div class="stack">
+  <form method="post" class="card stack appear" novalidate id="tier-form">
+    {% csrf_token %}
+    {% include 'panel/components/field.html' with f=form.name %}
+    {% if creating %}
+      {% include 'panel/components/field.html' with f=form.from_points %}
+      <div class="small muted">Существующие пороги: {% for t in existing %}{{ t.name|tr }} — <span class="tabular">{{ t.from_points|num }}</span>{% if not forloop.last %} · {% endif %}{% endfor %}.
+        Клиенты, у которых lifetime уже не ниже порога, сразу получат новый уровень (уровень только повышается).</div>
+    {% endif %}
+    <div><span class="label">Градиент карточки и медали</span>
+      <div class="row wrap" style="margin-top:8px;gap:14px">
+        {% for f in form %}{% if f.name == 'color0' or f.name == 'color1' or f.name == 'color2' %}
+          <label class="color-pick">{{ f }}<span class="small">{{ f.label }}</span></label>
+        {% endif %}{% endfor %}
+      </div>
+      {% for f in form %}{% if f.name == 'color0' or f.name == 'color1' or f.name == 'color2' %}{{ f.errors }}{% endif %}{% endfor %}
+    </div>
+    <div class="field"><span class="label">Медаль (необязательно)</span>
+      <div class="photo-field" data-photo="id_medal"><div class="ph">{% icon 'medal' 24 %}</div>
+        <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить PNG<input type="file" accept="image/png,image/webp,image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.medal }}
+      <div class="help">PNG с прозрачным фоном. Без картинки рисуется стандартная медаль в цветах уровня.</div></div>
+    <div class="form-actions"><a class="btn btn-ghost" href="{% url 'panel:tiers' %}">Отмена</a><button class="btn btn-accent btn-l">{% if creating %}Добавить уровень{% else %}Сохранить{% endif %}</button></div>
+  </form>
+
+  {% if deletion %}
+  <form method="post" action="{% url 'panel:tier-delete' tier.pk %}" class="card stack-s appear"
+        data-confirm="Удалить уровень «{{ tier.name|tr }}»? Это нельзя отменить.">
+    {% csrf_token %}
+    <div class="h3">Удалить уровень</div>
+    {% if tier.from_points == 0 %}
+      <div class="small muted">Нижний уровень (порог 0) удалить нельзя — у каждого клиента должен быть уровень.</div>
+    {% else %}
+      <div class="small">Клиентов на этом уровне: <b class="tabular">{{ deletion.members|num }}</b>{% if deletion.members %} — получат уровень по своим баллам{% if deletion.fallback %} (скорее всего «{{ deletion.fallback.name|tr }}»){% endif %}{% endif %}.</div>
+      {% if deletion.privileges %}
+      <div class="field"><label for="priv-to">Привилегии уровня ({{ deletion.privileges }})</label>
+        <select id="priv-to" name="privileges_to">
+          {% for t in deletion.others %}<option value="{{ t.pk }}"{% if deletion.fallback and t.pk == deletion.fallback.pk %} selected{% endif %}>Перенести на «{{ t.name|tr }}»</option>{% endfor %}
+          <option value="delete">Удалить вместе с уровнем</option>
+        </select></div>
+      {% endif %}
+      <div class="small muted">Уровень уберётся из сегментов рассылок. Мобильное приложение получит новый список уровней из API.</div>
+      <div class="form-actions" style="margin-top:6px"><button class="btn btn-danger">{% icon 'trash' 18 %} Удалить уровень</button></div>
+    {% endif %}
+  </form>
+  {% endif %}
+</div>
+
+<div class="stack">
+  <div class="label">Как будет выглядеть</div>
+  <div class="tier-card" id="tier-preview" style="min-height:150px"><div class="shine"></div>
+    <div class="row-between"><div><div class="small" style="opacity:.8" id="tp-from">{% if tier %}от {{ tier.from_points|num }}{% else %}от …{% endif %}</div>
+      <div class="h2" id="tp-name">{% if tier %}{{ tier.name|tr }}{% else %}Новый уровень{% endif %}</div></div>
+      <span id="tp-medal">{% if tier %}{% medal tier.pk 52 %}{% endif %}</span></div>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var f = document.getElementById('tier-form'), card = document.getElementById('tier-preview');
+  function v(n) { var el = f.querySelector('[name="' + n + '"]'); return el ? el.value : ''; }
+  function paint() {
+    var c = [v('color0'), v('color1'), v('color2')];
+    card.style.background = 'linear-gradient(135deg,' + c[0] + ' 0%,' + c[1] + ' 55%,' + c[2] + ' 100%)';
+    var name = v('name_ru'); if (name) document.getElementById('tp-name').textContent = name;
+    var from = v('from_points'); if (from) document.getElementById('tp-from').textContent = 'от ' + Number(from).toLocaleString('ru-RU');
+    var medal = v('medal'), box = document.getElementById('tp-medal');
+    if (medal) box.innerHTML = '<img src="' + (medal.indexOf('http') === 0 || medal[0] === '/' ? medal : '/media/' + medal) + '" width="52" height="52" alt="" style="object-fit:contain">';
+    else if (!box.querySelector('svg')) box.innerHTML = '';
+  }
+  f.addEventListener('input', paint); paint();
+});
+</script>
+{% endblock %}

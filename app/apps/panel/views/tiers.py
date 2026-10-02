@@ -4,12 +4,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.common.audit import audit, model_snapshot
-from apps.common.errors import message_for
 from apps.loyalty.models import PERK_ICONS, Privilege, Tier
-from apps.loyalty.services import preview_tier_change, recalc_all_tiers
+from apps.common.errors import ApiError, message_for
+from apps.loyalty.services import (create_tier, delete_tier, delete_tier_preview, preview_tier_change,
+                                   recalc_all_tiers)
 
 from ..access import panel_view
-from ..forms import PrivilegeForm, TierForm
+from ..forms import PrivilegeForm, TierForm, TierStyleForm
 
 
 def _tier_forms(request, tiers, data=None):
@@ -92,4 +93,67 @@ def privilege_delete(request, privilege_id):
     audit(request, 'privilege.delete', obj, before=model_snapshot(obj))
     obj.delete()
     messages.success(request, 'Привилегия удалена')
+    return redirect('panel:tiers')
+
+
+def _medal_path(value):
+    """URL из виджета загрузки → путь в хранилище."""
+    from django.conf import settings
+    value = value or ''
+    for prefix in (settings.PUBLIC_BASE_URL + settings.MEDIA_URL, settings.MEDIA_URL):
+        if value.startswith(prefix):
+            return value[len(prefix):]
+    return value
+
+
+@panel_view(perm='tiers.edit')
+def tier_edit(request, tier_id=None):
+    """Новый уровень или оформление существующего (название, градиент, медаль) + удаление."""
+    tier = get_object_or_404(Tier, pk=tier_id) if tier_id else None
+    creating = tier is None
+    initial = {}
+    if tier:
+        c = tier.gradient
+        initial = {'name': tier.name, 'color0': c[0], 'color1': c[1], 'color2': c[2], 'medal': tier.medal}
+    else:
+        initial = {'color0': '#232C38', 'color1': '#627488', 'color2': '#B4C2D3'}
+    form = TierStyleForm(request.POST or None, initial=initial, creating=creating)
+    if request.method == 'POST' and form.is_valid():
+        d = form.cleaned_data
+        try:
+            if creating:
+                saved, upgraded = create_tier(d['name'], d['from_points'], form.colors, _medal_path(d['medal']))
+                audit(request, 'tier.create', saved, after=model_snapshot(saved), comment=f'повышено клиентов: {upgraded}')
+                messages.success(request, f'Уровень «{saved.name.get("ru")}» добавлен'
+                                 + (f'. Уровень повышен у {upgraded} клиентов' if upgraded else ''))
+            else:
+                before = model_snapshot(tier)
+                tier.name, tier.colors, tier.medal = d['name'], form.colors, _medal_path(d['medal'])
+                tier.save()
+                audit(request, 'tier.update', tier, before=before, after=model_snapshot(tier))
+                messages.success(request, 'Уровень сохранён')
+            return redirect('panel:tiers')
+        except ApiError as e:
+            messages.error(request, e.message or message_for(e.code, 'ru'))
+    ctx = {'form': form, 'tier': tier, 'creating': creating,
+           'existing': list(Tier.objects.order_by('from_points'))}
+    if tier:
+        ctx['deletion'] = delete_tier_preview(tier)
+    return render(request, 'panel/tiers/tier.html', ctx)
+
+
+@require_POST
+@panel_view(perm='tiers.edit')
+def tier_delete(request, tier_id):
+    tier = get_object_or_404(Tier, pk=tier_id)
+    target_id = request.POST.get('privileges_to') or ''
+    target = Tier.objects.filter(pk=target_id).first() if target_id not in ('', 'delete') else None
+    before = model_snapshot(tier)
+    try:
+        result = delete_tier(tier, privileges_to=target)
+    except ApiError as e:
+        messages.error(request, e.message or message_for(e.code, 'ru'))
+        return redirect('panel:tier', tier_id=tier.pk)
+    audit(request, 'tier.delete', None, object_type='loyalty.tier', object_id=tier_id, before=before, after=result)
+    messages.success(request, f'Уровень удалён. Клиентов переведено: {result["reassigned"]}')
     return redirect('panel:tiers')

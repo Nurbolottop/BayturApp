@@ -16,7 +16,7 @@ from apps.common.models import ProgramSettings
 from apps.common.serializers import L10nField, MediaUrlField
 from apps.complaints.models import ComplaintCategory, ReplyTemplate
 from apps.content.models import Article, Promo, ResortEvent, Story, StorySlide
-from apps.loyalty.models import PERK_ICONS, Privilege, Tier, TierId
+from apps.loyalty.models import PERK_ICONS, Privilege, Tier
 from apps.members.models import LegalDocument, LegalKind
 from apps.notifications.models import Campaign, PushTemplate
 from apps.staff.models import StaffUser
@@ -261,7 +261,8 @@ class ItemSerializer(ImmutableIdMixin, serializers.ModelSerializer):
 
 # ---------------------------------------------------------------- уровни
 
-TIER_ORDER = list(TierId.values)
+def tier_ids():
+    return list(Tier.objects.order_by('from_points').values_list('id', flat=True))
 
 
 class TierSerializer(serializers.ModelSerializer):
@@ -271,13 +272,21 @@ class TierSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tier
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'colors', 'medal']
         read_only_fields = ['id']
 
     def get_fields(self):
         fields = super().get_fields()
         fields['from'] = serializers.IntegerField(source='from_points', min_value=0, required=False)
+        fields['medal'] = MediaUrlField(required=False)
         return fields
+
+    def validate_colors(self, value):
+        from apps.loyalty.services import clean_colors
+        try:
+            return clean_colors(value)
+        except ApiError:
+            raise serializers.ValidationError('три цвета #RRGGBB')
 
 
 class PrivilegeSerializer(ImmutableIdMixin, serializers.ModelSerializer):
@@ -433,8 +442,9 @@ class SegmentField(serializers.JSONField):
         out = {}
         tiers = data.get('tiers') or []
         langs = data.get('languages') or []
-        if not isinstance(tiers, list) or any(t not in TierId.values for t in tiers):
-            raise serializers.ValidationError(f'tiers: {", ".join(TierId.values)}')
+        known = tier_ids()
+        if not isinstance(tiers, list) or any(t not in known for t in tiers):
+            raise serializers.ValidationError(f'tiers: {", ".join(known)}')
         if not isinstance(langs, list) or any(lang not in LANGS for lang in langs):
             raise serializers.ValidationError(f'languages: {", ".join(LANGS)}')
         if tiers:

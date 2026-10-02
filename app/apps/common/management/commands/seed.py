@@ -37,7 +37,7 @@ class Command(BaseCommand):
         from apps.common.models import ProgramSettings
         from apps.complaints.models import ComplaintCategory
         from apps.content.models import Article, Promo, PublishStatus, ResortEvent, Story, StorySlide
-        from apps.loyalty.models import Privilege, Tier
+        from apps.loyalty.models import DEFAULT_TIER_COLORS, Privilege, Tier
         from apps.members.models import LegalDocument, LegalKind
         from apps.notifications.models import PushTemplate
         from apps.notifications.services import DEFAULT_TEMPLATES
@@ -62,7 +62,7 @@ class Command(BaseCommand):
                 ItemPromo.objects.create(item=item, rate=Decimal(promo[0]), tag=promo[1], ends_at=promo_end)
 
         for tid, name, frm in D.TIERS:
-            upsert(Tier, {'id': tid}, {'name': name, 'from_points': frm})
+            upsert(Tier, {'id': tid}, {'name': name, 'from_points': frm, 'colors': DEFAULT_TIER_COLORS[tid]})
         for i, (pid, tier, icon, title, short, desc) in enumerate(D.PRIVILEGES):
             upsert(Privilege, {'id': pid}, {
                 'tier_id': tier, 'icon': icon, 'title': title, 'short': short, 'description': desc, 'sort_order': i})

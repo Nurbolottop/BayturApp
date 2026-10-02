@@ -13,6 +13,9 @@ class BaseAPITestCase(TestCase):
     def setUpTestData(cls):
         import io
         call_command('seed', stdout=io.StringIO())
+        # акция из сида ограничена датой («до 30 сентября») — в тестах она должна действовать всегда
+        from apps.catalog.models import ItemPromo
+        ItemPromo.objects.update(starts_at=None, ends_at=None)
 
     def setUp(self):
         from django.core.cache import cache

@@ -10,7 +10,9 @@ from .services import get_wallet, wallet_payload
 
 def build_program():
     return {
-        'tiers': [{'id': t.id, 'name': tr(t.name), 'from': t.from_points} for t in Tier.objects.order_by('from_points')],
+        'tiers': [{'id': t.id, 'name': tr(t.name), 'from': t.from_points, 'colors': t.gradient,
+                   'medal': absolute_media_url(t.medal) if t.medal else None}
+                  for t in Tier.objects.order_by('from_points')],
         'privileges': [{
             'id': p.id, 'tier': p.tier_id, 'icon': p.icon, 'title': tr(p.title), 'short': tr(p.short),
             'description': tr(p.description),

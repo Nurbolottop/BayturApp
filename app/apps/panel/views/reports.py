@@ -12,9 +12,9 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.catalog.models import Category, Outlet
-from apps.loyalty.models import TierId
 
 from ..access import forbidden, panel_view
+from ..forms import tier_choices
 from ..sections import ANALYTICS_BLOCKS
 
 
@@ -52,7 +52,7 @@ def filters_ctx(request):
         'f': request.GET,
         'categories': Category.objects.all(),
         'outlets': Outlet.objects.all(),
-        'tiers': TierId.choices,
+        'tiers': tier_choices(),
         'group_by': [('day', 'Дни'), ('week', 'Недели'), ('month', 'Месяцы')],
         'platforms': [('ios', 'iOS'), ('android', 'Android')],
         'languages': [('ru', 'RU'), ('ky', 'KY'), ('en', 'EN')],

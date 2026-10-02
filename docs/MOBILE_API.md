@@ -47,6 +47,10 @@
    Имена enum-значений в JSON совпадают с Dart (`rooms`, `pending`, `freedomPay`) — маппинг-словари не нужны.
 4. **Неизвестные enum-значения не должны ронять парсинг:** бек может добавить новые `kind`/иконки —
    пропускай или показывай дефолт.
+   **Уровни не фиксированы:** курорт может добавлять, удалять и переименовывать уровни в админке. Не храни
+   список уровней в коде (enum `TierId` на 5 значений) — бери его из `GET /loyalty/program`, а градиент и медаль
+   рисуй по полям `colors` и `medal` (см. §6.3). Медали из `assets/images/tiers/` можно оставить как
+   оформление для известных id (`bronze`…`diamond`), но для любого другого id нужен вариант из `colors`/`medal`.
 5. **Каждый запрос** отправляй с заголовками из §2.1; ошибки обрабатывай по `error.code` (§3), текст
    показывай из `error.message` — он уже на языке пользователя.
 6. **Токены** храни в Keychain / Keystore (flutter_secure_storage), не в SharedPreferences.
@@ -450,11 +454,11 @@ DELETE /me/devices/{token}   → 204
 ```json
 {
   "tiers": [
-    {"id": "bronze", "name": "Бронза", "from": 0},
-    {"id": "silver", "name": "Серебро", "from": 200000},
-    {"id": "gold", "name": "Золото", "from": 500000},
-    {"id": "platinum", "name": "Платина", "from": 960000},
-    {"id": "diamond", "name": "Бриллиант", "from": 2000000}
+    {"id": "bronze", "name": "Бронза", "from": 0, "colors": ["#4A220F", "#99562C", "#D9976A"], "medal": null},
+    {"id": "silver", "name": "Серебро", "from": 200000, "colors": ["#3F4A56", "#7D8B99", "#C3CCD6"], "medal": null},
+    {"id": "gold", "name": "Золото", "from": 500000, "colors": ["#5E4206", "#AE7E17", "#E6BF58"], "medal": null},
+    {"id": "platinum", "name": "Платина", "from": 960000, "colors": ["#232C38", "#627488", "#B4C2D3"], "medal": null},
+    {"id": "diamond", "name": "Бриллиант", "from": 2000000, "colors": ["#140F3A", "#4B3DB0", "#8FD8FF"], "medal": null}
   ],
   "privileges": [
     {"id": "cashback", "tier": "bronze", "icon": "cashback", "title": "Кешбек баллами", "short": "Кешбек",
@@ -463,7 +467,13 @@ DELETE /me/devices/{token}   → 204
 }
 ```
 
-Медали и оформление уровней остаются в приложении (по `tier.id`). Прогресс не считайте — он в `GET /wallet`.
+- Уровни уже отсортированы по порогу `from`. **Их количество и id не фиксированы** — курорт добавляет и удаляет
+  уровни в админке; новый уровень появится в этом ответе.
+- `colors` — градиент карточки и медали уровня: 3 цвета `#RRGGBB` от тёмного к светлому
+  (как `tier_style.dart`: `LinearGradient` 135°, остановки 0 / 0.55 / 1).
+- `medal` — URL картинки медали (PNG с прозрачностью) или `null` — тогда рисуйте стандартную медаль в цветах `colors`.
+- Если уровень удалили, клиенты автоматически получают уровень по своим баллам — придёт `wallet.updated`.
+- Прогресс не считайте — он в `GET /wallet` (`tier`, `nextTier`, `leftToNext`, `progress`).
 
 ### 6.4. Контент
 
@@ -942,7 +952,7 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 |---|---|
 | `CategoryId` | `rooms`, `spa`, `food`, `pools`, `sport` |
 | `PaymentMethod` | `cash`, `finik`, `freedomPay`, `elqr` |
-| `TierId` | `bronze`, `silver`, `gold`, `platinum`, `diamond` |
+| Уровень (`tier`) | **не enum** — строка-id из `GET /loyalty/program`; по умолчанию `bronze`, `silver`, `gold`, `platinum`, `diamond`, но курорт может добавлять и удалять уровни |
 | `RequestStatus` | `pending`, `confirmed`, `credited`, `rejected`, `cancelled` |
 | `OperationKind` | `cashback`, `spend`, `refund`, `adjustment`, `expire`, `forfeit` |
 | `PaymentStatus` | `created`, `pending`, `paid`, `failed`, `expired`, `refunded` |
