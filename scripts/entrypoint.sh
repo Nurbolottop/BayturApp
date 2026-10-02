@@ -16,6 +16,9 @@ echo "База данных доступна. Применяем миграци�
 # и создаются разработчиком, а не генерируются на сервере.
 python manage.py migrate --noinput
 
+# После выкладки формат ответов мог измениться — сбрасываем кеш справочников
+python manage.py bump_cache
+
 echo "Собираем статические файлы..."
 python manage.py collectstatic --noinput
 
