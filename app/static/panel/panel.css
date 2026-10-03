@@ -482,3 +482,19 @@ tr.dragging { position: relative; z-index: 2; }
 .color-input::-webkit-color-swatch-wrapper { padding: 0; }
 .color-input::-webkit-color-swatch { border: 0; border-radius: 10px; }
 .tier-card .tier-edit { background: rgba(255,255,255,.18); color: #fff; }
+/* оплата баллами по QR */
+.pay-box { background: var(--accent-soft); border-radius: var(--r-card); padding: var(--sp-l); }
+.pay-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--sp-m); }
+@media (max-width: 700px) { .pay-grid { grid-template-columns: minmax(0, 1fr); } }
+.pay-result { background: var(--surface); border-radius: var(--r-chip); padding: 14px 16px; display: grid; gap: 6px; }
+.pay-sum { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pay-status { font-weight: 800; font-size: 18px; }
+.pay-status.ok { color: var(--positive); }
+.pay-status.bad { color: var(--negative); }
+.pay-result.bad { box-shadow: inset 0 0 0 2px rgba(var(--negative-rgb), .45); }
+.btn-xl { min-height: 56px; font-size: 17px; padding: 0 26px; }
+.paid { max-width: 520px; margin: 40px auto; text-align: center; display: grid; gap: 14px; justify-items: center; }
+.paid-check { width: 88px; height: 88px; border-radius: 50%; background: var(--accent); color: var(--on-accent, #12140F); display: grid; place-items: center; }
+.paid-sum { font-size: 36px; font-weight: 700; }
+.paid-card { width: 100%; text-align: left; }
+.pay-box .btn-accent:disabled { background: var(--fill); color: var(--muted); opacity: 1; cursor: not-allowed; }

@@ -747,6 +747,7 @@ Firebase-проект — **`baytur-2add6`**: конфиги `google-services.js
 |---|---|---|
 | `request.credited` | `requestId`, `points` | карточка заявки |
 | `request.rejected` | `requestId` | карточка заявки |
+| `request.paid` | `requestId`, `points` (отрицательное) | карточка заявки — «Оплачено баллами» (§14.2) |
 | `tier.upgraded` | `tier` | экран «Уровни» |
 | `points.expiring` | `days` | главная / кошелёк |
 | `points.expired` | — | история |
@@ -888,6 +889,16 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 Нарисуйте QR из `token` в профиле и обновляйте за ~10 с до `expiresAt` (живёт ~90 с — скриншот чужого QR не сработает).
 Сотрудник сканирует его на планшете.
 
+**Оплата баллами по QR.** Клиент заказал услугу и показывает QR — сотрудник сканирует его, выбирает услугу,
+и если баллов хватает, списывает их (иначе просит оплатить деньгами). Для мобилки это обычная заявка:
+
+- приходит `request.updated` (статус `confirmed`, `method: null`, `split.moneySom = 0`, `split.cashback = 0`)
+  и `wallet.updated`, затем push/уведомление **`request.paid`** «Оплачено баллами: −N баллов за …»;
+- в истории — операция `spend` с `requestId`; в списке заявок — заявка этой услуги.
+
+Отдельного экрана в приложении не нужно: достаточно, чтобы QR в профиле открывался быстро (кнопка на главной
+или в профиле) и чтобы `request.paid` показывался в ленте.
+
 ---
 
 ## 15. Тестовые данные и ограничения staging
@@ -965,7 +976,7 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 | `ComplaintStatus` | `new`, `in_progress`, `answered`, `closed` |
 | `ComplaintSubtype` | `not_credited`, `credited_less`, `overcharged`, `other` |
 | `ConsentKind` | `terms`, `privacy` |
-| Push / realtime `type` | `request.updated`, `wallet.updated`, `notification.created`, `payment.updated`, `complaint.updated`, `request.credited`, `request.rejected`, `tier.upgraded`, `points.expiring`, `points.expired`, `points.adjusted`, `complaint.reply`, `campaign` |
+| Push / realtime `type` | `request.updated`, `wallet.updated`, `notification.created`, `payment.updated`, `complaint.updated`, `request.credited`, `request.rejected`, `request.paid`, `tier.upgraded`, `points.expiring`, `points.expired`, `points.adjusted`, `complaint.reply`, `campaign` |
 
 Новые значения `FeatureIcon` / `PerkIcon` / способов оплаты появляются только вместе с релизом мобилки;
 остальные enum могут расширяться — неизвестное значение не должно ломать парсинг.

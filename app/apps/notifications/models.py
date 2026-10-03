@@ -9,6 +9,7 @@ class PushKind(models.TextChoices):
     """Ключи шаблонов push — тексты редактируются в админке."""
     REQUEST_CREDITED = 'request.credited', 'Кешбек начислен'
     REQUEST_REJECTED = 'request.rejected', 'Заявка отклонена'
+    REQUEST_PAID = 'request.paid', 'Оплачено баллами'
     TIER_UPGRADED = 'tier.upgraded', 'Новый уровень'
     POINTS_EXPIRING = 'points.expiring', 'Баллы скоро сгорят'
     POINTS_EXPIRED = 'points.expired', 'Баллы сгорели'
@@ -18,7 +19,7 @@ class PushKind(models.TextChoices):
 
 
 # Операции с баллами идут и в тихие часы
-POINTS_KINDS = {PushKind.REQUEST_CREDITED, PushKind.REQUEST_REJECTED, PushKind.POINTS_ADJUSTED,
+POINTS_KINDS = {PushKind.REQUEST_CREDITED, PushKind.REQUEST_REJECTED, PushKind.REQUEST_PAID, PushKind.POINTS_ADJUSTED,
                 PushKind.POINTS_EXPIRED}
 
 

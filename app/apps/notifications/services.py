@@ -27,6 +27,9 @@ DEFAULT_TEMPLATES = {
     PushKind.REQUEST_REJECTED: (
         {'ru': 'Заявка отклонена', 'ky': 'Өтүнмө четке кагылды', 'en': 'Request rejected'},
         {'ru': '«{item}»: {reason}', 'ky': '«{item}»: {reason}', 'en': '“{item}”: {reason}'}),
+    PushKind.REQUEST_PAID: (
+        {'ru': 'Оплачено баллами', 'ky': 'Упай менен төлөндү', 'en': 'Paid with points'},
+        {'ru': '−{points} баллов за «{item}»', 'ky': '«{item}» үчүн −{points} упай', 'en': '−{points} points for “{item}”'}),
     PushKind.TIER_UPGRADED: (
         {'ru': 'Новый уровень!', 'ky': 'Жаңы деңгээл!', 'en': 'New tier!'},
         {'ru': 'Вам открыт уровень «{tier}»', 'ky': 'Сизге «{tier}» деңгээли ачылды', 'en': 'You reached the {tier} tier'}),
@@ -180,6 +183,13 @@ def notify_request_credited(req_id):
     from apps.cashback.models import CashbackRequest
     req = CashbackRequest.objects.select_related('member').get(pk=req_id)
     m = req.member
+    if not req.cashback:
+        # оплачено целиком баллами — кешбека нет, сообщаем о списании
+        title, body = render(PushKind.REQUEST_PAID, m.language, points=req.points,
+                             item=tr(req.item_snapshot.get('title'), m.language))
+        notify(m, PushKind.REQUEST_PAID, title, body, {'requestId': req.pk, 'points': -req.points},
+               push=m.notify_cashback)
+        return
     title, body = render(PushKind.REQUEST_CREDITED, m.language, points=req.cashback,
                          item=tr(req.item_snapshot.get('title'), m.language))
     notify(m, PushKind.REQUEST_CREDITED, title, body, {'requestId': req.pk, 'points': req.cashback},

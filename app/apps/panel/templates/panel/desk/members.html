@@ -34,6 +34,31 @@
       <div class="row">{% tier_badge r.tier %}{% pill 'member' r.member.status %}</div>
     </div>
     {% if r.member.status == 'deactivated' %}<div class="banner warn">{% icon 'warning' 18 %}<span>Аккаунт удалён, будет стёрт {{ r.member.purge_at|local:"d.m.Y" }}</span></div>{% endif %}
+    {% if pay_token and r.member.status == 'active' %}
+    <form class="pay-box stack-s" method="post" action="{% url 'panel:desk-pay-charge' %}" data-pay
+          data-quote-url="{% url 'panel:desk-pay-quote' %}">
+      {% csrf_token %}<input type="hidden" name="pay_token" value="{{ pay_token }}">
+      <div class="row-between wrap"><div class="h3">{% icon 'cashback' 20 %} Оплата баллами</div>
+        <span class="small muted" data-pay-timer>QR действует 10 мин</span></div>
+      <div class="pay-grid">
+        <div class="field"><label for="pay-item">Услуга</label>
+          <select id="pay-item" name="item" required>
+            <option value="">Выберите услугу…</option>
+            {% for title, items in pay_groups %}<optgroup label="{{ title }}">
+              {% for i in items %}<option value="{{ i.pk }}" data-type="{{ i.pricing_type }}" data-price="{{ i.price }}"
+                data-min="{{ i.pricing_bounds.0 }}" data-max="{{ i.pricing_bounds.1 }}">{{ i.title|tr }}{% if i.pricing_type == 'unit' %} · {{ i.price|som }}{% endif %}</option>{% endfor %}
+            </optgroup>{% endfor %}
+          </select></div>
+        <div class="field" data-pay-qty hidden><label for="pay-qty">Количество</label>
+          <input id="pay-qty" type="number" name="quantity" value="1" min="1" inputmode="numeric"></div>
+        <div class="field" data-pay-check hidden><label for="pay-check">Сумма чека, сом</label>
+          <input id="pay-check" type="number" name="check_amount" min="1" inputmode="numeric" placeholder="например, 3500"></div>
+      </div>
+      <div class="pay-result" data-pay-result hidden></div>
+      <button class="btn btn-accent btn-xl" data-pay-submit disabled>Списать баллы</button>
+      <p class="small muted">Баланс клиента не показывается — только хватает ли баллов. Оплата проводится заявкой «оплачено баллами» и попадает в итог смены.</p>
+    </form>
+    {% endif %}
     <div>
       <div class="small muted" style="margin-bottom:6px">Заявки в ваших точках</div>
       {% if r.requests %}
@@ -48,4 +73,4 @@
   {% if q %}<div class="card empty" style="margin-top:18px"><span class="ic-bubble">{% icon 'search' 22 %}</span>Никого не нашли по «{{ q }}»</div>{% endif %}
 {% endfor %}
 {% endblock %}
-{% block scripts %}<script src="{% static 'panel/desk.js' %}" defer></script>{% endblock %}
+{% block scripts %}<script src="{% static 'panel/desk.js' %}" defer></script><script src="{% static 'panel/pay.js' %}" defer></script>{% endblock %}

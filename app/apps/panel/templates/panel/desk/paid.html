@@ -1,0 +1,18 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Оплачено баллами{% endblock %}
+{% block content %}
+<div class="paid appear">
+  <div class="paid-check">{% icon 'check' 44 %}</div>
+  <h1 class="page-title">Оплачено баллами</h1>
+  <div class="paid-sum tabular">−{{ req.points|num }} баллов</div>
+  <div class="card stack-s paid-card">
+    <div class="row-between"><span class="muted">Услуга</span><b>{{ req.item_snapshot.title|tr }}{% if req.quantity > 1 %} × {{ req.quantity }}{% endif %}</b></div>
+    <div class="row-between"><span class="muted">Сумма</span><b class="tabular">{{ req.total|som }}</b></div>
+    <div class="row-between"><span class="muted">Клиент</span><b>{{ req.member.full_name }} · {{ req.member.member_id }}</b></div>
+    <div class="row-between"><span class="muted">Заявка</span><span class="tabular small">{{ req.pk }}</span></div>
+  </div>
+  <p class="muted small">Клиенту пришло уведомление, баллы списаны. Деньги не принимаются.</p>
+  <div class="row" style="justify-content:center"><a class="btn btn-accent btn-xl" href="{% url 'panel:desk-members' %}">{% icon 'qr' 20 %} Следующий клиент</a>
+    <a class="btn btn-xl" href="{% url 'panel:desk-shift' %}">Итог смены</a></div>
+</div>
+{% endblock %}

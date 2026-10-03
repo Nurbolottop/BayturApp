@@ -81,6 +81,9 @@ staff = [
     path('staff/members', staffdesk.MemberSearchView.as_view()),
     path('staff/scan', staffdesk.ScanView.as_view()),
     path('staff/shift', staffdesk.ShiftView.as_view()),
+    path('staff/points/items', staffdesk.PayItemsView.as_view()),
+    path('staff/points/quote', staffdesk.PayQuoteView.as_view()),
+    path('staff/points/charge', staffdesk.PayChargeView.as_view()),
 ]
 
 admin_auth = [

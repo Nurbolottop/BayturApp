@@ -2671,6 +2671,191 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/staff/points/charge:
+    post:
+      operationId: staff_points_charge_create
+      description: 'Списать баллы: заявка «оплачено баллами», подтверждённая этим
+        сотрудником.'
+      summary: 'Оплата баллами: списать (payToken из /staff/scan, 10 мин)'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PayInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffRequest'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/points/items:
+    get:
+      operationId: staff_points_items_retrieve
+      description: Услуги точек сотрудника для оплаты баллами.
+      summary: Услуги своих точек для оплаты баллами
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayItems'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/points/quote:
+    post:
+      operationId: staff_points_quote_create
+      description: 'Хватает ли баллов клиента на услугу: {enough, total, points, shortSom,
+        reason: limit|balance}.'
+      summary: 'Оплата баллами: хватает ли баллов (баланс не раскрывается)'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PayInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayQuote'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/staff/queue:
     get:
       operationId: staff_queue_retrieve
@@ -3048,7 +3233,7 @@ paths:
     post:
       operationId: staff_scan_create
       description: QR участника → клиент (токен живёт 1–2 мин).
-      summary: QR участника → клиент
+      summary: QR участника → клиент + payToken для оплаты баллами
       parameters:
       - in: header
         name: Accept-Language
@@ -3082,7 +3267,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StaffMemberCard'
+                $ref: '#/components/schemas/ScanResult'
           description: ''
         '400':
           content:
@@ -4289,6 +4474,85 @@ components:
           type: boolean
         notifyPromos:
           type: boolean
+    PayInputRequest:
+      type: object
+      properties:
+        payToken:
+          type: string
+          minLength: 1
+        itemId:
+          type: string
+          minLength: 1
+        quantity:
+          type: integer
+        checkAmount:
+          type: integer
+      required:
+      - itemId
+      - payToken
+    PayItem:
+      type: object
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+        title:
+          type: string
+        price:
+          type: integer
+        pricing:
+          $ref: '#/components/schemas/Pricing'
+        outlet:
+          type: string
+          nullable: true
+      required:
+      - category
+      - id
+      - outlet
+      - price
+      - pricing
+      - title
+    PayItems:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayItem'
+      required:
+      - items
+    PayQuote:
+      type: object
+      properties:
+        itemId:
+          type: string
+        total:
+          type: integer
+        quantity:
+          type: integer
+        points:
+          type: integer
+        enough:
+          type: boolean
+        shortSom:
+          type: integer
+        reason:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/ReasonEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        limitPercent:
+          type: integer
+      required:
+      - enough
+      - itemId
+      - limitPercent
+      - points
+      - quantity
+      - reason
+      - shortSom
+      - total
     Payment:
       type: object
       properties:
@@ -4674,6 +4938,14 @@ components:
           type: integer
       required:
       - unread
+    ReasonEnum:
+      enum:
+      - limit
+      - balance
+      type: string
+      description: |-
+        * `limit` - limit
+        * `balance` - balance
     Receipt:
       type: object
       properties:
@@ -4889,6 +5161,45 @@ components:
           minLength: 1
       required:
       - token
+    ScanResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        memberId:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+          description: Со скрытыми цифрами
+        tier:
+          type: string
+          description: id уровня из GET /loyalty/program (набор уровней задаётся в
+            админке)
+        status:
+          type: string
+        deletedNote:
+          type: string
+          format: date-time
+          nullable: true
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffRequest'
+        payToken:
+          type: string
+      required:
+      - deletedNote
+      - id
+      - memberId
+      - name
+      - payToken
+      - phone
+      - requests
+      - status
+      - tier
     ServiceCategory:
       type: object
       properties:

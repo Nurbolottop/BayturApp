@@ -5,6 +5,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.cashback.serializers import REJECT_LABELS
+from apps.cashback import desk as desk_service
 from apps.cashback.desk import get_scoped, needs_manager, scoped_requests
 from apps.catalog.models import Outlet
 from apps.common.audit import audit
@@ -149,8 +150,48 @@ def desk_scan(request):
         messages.error(request, api_error_message(e))
         return redirect('panel:desk-members')
     audit(request, 'member.scan', member)
-    return render(request, 'panel/desk/members.html', {'q': member.member_id, 'scanned': True,
-                                                       'results': [_member_view(request.user, member)]})
+    ctx = {'q': member.member_id, 'scanned': True, 'results': [_member_view(request.user, member)]}
+    if request.user.can('requests.process'):
+        from itertools import groupby
+
+        from apps.common.i18n import tr
+        items = list(desk_service.pay_items(request.user))
+        ctx.update({
+            'pay_token': desk_service.make_pay_token(request.user, member),
+            'pay_groups': [(tr(cat.title, 'ru'), list(group))
+                           for cat, group in groupby(items, key=lambda i: i.category)],
+        })
+    return render(request, 'panel/desk/members.html', ctx)
+
+
+def _pay_args(request):
+    return (request.POST.get('pay_token'), request.POST.get('item'),
+            _int(request.POST.get('quantity')), _int(request.POST.get('check_amount')))
+
+
+@require_POST
+@panel_view(perm='requests.process')
+def desk_pay_quote(request):
+    """JSON: хватает ли баллов клиента на выбранную услугу (баланс сотруднику не показывается)."""
+    token, item_id, qty, check = _pay_args(request)
+    try:
+        member = desk_service.read_pay_token(request.user, token)
+        return JsonResponse(desk_service.points_quote(request.user, member, item_id, qty, check))
+    except ApiError as e:
+        return JsonResponse({'error': {'code': e.code, 'message': api_error_message(e), **e.extra}}, status=400)
+
+
+@require_POST
+@panel_view(perm='requests.process')
+def desk_pay_charge(request):
+    """Списать баллы по QR клиента → экран результата."""
+    token, item_id, qty, check = _pay_args(request)
+    try:
+        req = desk_service.charge_points(request, token, item_id, qty, check)
+    except ApiError as e:
+        messages.error(request, api_error_message(e))
+        return redirect('panel:desk-members')
+    return render(request, 'panel/desk/paid.html', {'req': req})
 
 
 @panel_view('desk')

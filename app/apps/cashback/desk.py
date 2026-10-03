@@ -47,16 +47,20 @@ def get_scoped(user, request_id):
     return req
 
 
-def check_not_own(user, req):
+def check_not_own_member(user, member):
     from apps.members.auth import normalize_phone
-    if not user.phone or not req.member.phone:
+    if not user.phone or not member.phone:
         return
     try:
         phone = normalize_phone(user.phone)
     except ApiError:
         phone = user.phone
-    if phone == req.member.phone:
+    if phone == member.phone:
         raise ApiError('own_account', 403)
+
+
+def check_not_own(user, req):
+    check_not_own_member(user, req.member)
 
 
 def needs_manager(user):
@@ -247,3 +251,96 @@ def shift(user):
         'cash_total': confirmed.filter(method='cash').aggregate(s=Sum('money_som'))['s'] or 0,
         'cashback_total': confirmed.aggregate(s=Sum('cashback'))['s'] or 0,
     }
+
+
+# ---------------------------------------------------------------- оплата баллами по QR клиента
+
+PAY_SALT = 'baytur.desk-pay'
+PAY_TTL = 600  # 10 минут после скана QR
+
+
+def make_pay_token(user, member):
+    """Разрешение на списание: выдаётся только при скане свежего QR с телефона клиента."""
+    from django.core import signing
+    return signing.dumps({'m': member.pk, 's': user.pk}, salt=PAY_SALT)
+
+
+def read_pay_token(user, token):
+    from django.core import signing
+
+    from apps.members.models import Member, MemberStatus
+    try:
+        data = signing.loads(token or '', salt=PAY_SALT, max_age=PAY_TTL)
+    except signing.BadSignature:
+        raise ApiError('qr_invalid', 400, message='Отсканируйте QR клиента ещё раз')
+    if data.get('s') != user.pk:
+        raise ApiError('qr_invalid', 400, message='Отсканируйте QR клиента ещё раз')
+    member = Member.objects.filter(pk=data['m'], status=MemberStatus.ACTIVE).first()
+    if member is None:
+        raise ApiError('account_frozen', 403)
+    return member
+
+
+def pay_items(user):
+    """Услуги, которые сотрудник может провести: только своих точек (владелец/менеджер — все)."""
+    from apps.catalog.models import Item
+    qs = Item.objects.active().select_related('category', 'outlet').order_by('category__sort_order', 'sort_order')
+    scope = outlet_scope(user)
+    return qs.filter(outlet_id__in=scope) if scope is not None else qs
+
+
+def _pay_item(user, item_id):
+    item = pay_items(user).prefetch_related('promos').filter(pk=item_id).first()
+    if item is None:
+        raise ApiError('item_not_found', 404)
+    return item
+
+
+def points_quote(user, member, item_id, quantity=None, check_amount=None):
+    """
+    Хватает ли баллов, чтобы оплатить услугу целиком. Баланс клиента сотруднику не показывается —
+    только «хватает» или «не хватает N сом» и причина (лимит раздела или баланс).
+    """
+    from django.utils import timezone
+
+    from apps.loyalty.services import get_wallet
+
+    from .calc import compute_total, floor_int, max_points_som, resolve_rules
+    item = _pay_item(user, item_id)
+    rules = resolve_rules(item, member, ProgramSettings.get(), timezone.now())
+    total, quantity = compute_total(item, quantity, check_amount)
+    available = get_wallet(member).available
+    by_share = floor_int(total * rules.max_points_share)
+    payable = max_points_som(total, rules, available)
+    enough = payable >= total
+    reason = None
+    if not enough:
+        reason = 'limit' if by_share < total and payable == by_share else 'balance'
+    return {
+        'itemId': item.pk, 'total': total, 'quantity': quantity, 'points': total * rules.points_per_som,
+        'enough': enough, 'shortSom': max(0, total - payable), 'reason': reason,
+        'limitPercent': int(rules.max_points_share * 100),
+    }
+
+
+def charge_points(request, pay_token, item_id, quantity=None, check_amount=None):
+    """
+    Оплата баллами по QR: заявка «оплачено баллами» сразу подтверждается этим сотрудником (баллы списываются,
+    кешбек 0). Напрямую сотрудник баллы не списывает — только через заявку (ТЗ §8.3).
+    """
+    user = request.user
+    member = read_pay_token(user, pay_token)
+    quote = points_quote(user, member, item_id, quantity, check_amount)
+    if not quote['enough']:
+        code = 'points_limit_exceeded' if quote['reason'] == 'limit' else 'insufficient_points'
+        raise ApiError(code, 422, extra={'shortSom': quote['shortSom']})
+    check_not_own_member(user, member)
+    with transaction.atomic():  # заявка и подтверждение — вместе, без «висящего» резерва при сбое
+        req, _ = services.create_request(member, {
+            'itemId': item_id, 'quantity': quote['quantity'],
+            'checkAmount': quote['total'] if check_amount is not None else None,
+            'pointsSom': quote['total'], 'method': None})
+        req = services.confirm_request(req.pk, staff=user, cash_received=True)
+    audit(request, 'request.points_payment', req,
+          after={'member': member.member_id, 'total': req.total, 'points': req.points})
+    return req

@@ -117,7 +117,8 @@ class ScanView(StaffAPIView):
     def post(self, request):
         member = read_member_qr(request.data.get('token'))
         audit(request, 'member.scan', member)
-        return Response(member_brief(member, request.user))
+        # payToken — разрешение на оплату баллами этого клиента в течение 10 минут после скана
+        return Response({**member_brief(member, request.user), 'payToken': desk.make_pay_token(request.user, member)})
 
 
 class ShiftView(StaffAPIView):
@@ -132,3 +133,47 @@ class ShiftView(StaffAPIView):
             'adjustedCount': s['adjusted_count'],
             'cashTotal': s['cash_total'],
         })
+
+
+# ---------------------------------------------------------------- оплата баллами по QR клиента
+
+class PayInput(serializers.Serializer):
+    payToken = serializers.CharField()
+    itemId = serializers.CharField(max_length=60)
+    quantity = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    checkAmount = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+
+
+def _pay_input(request):
+    s = PayInput(data=request.data)
+    s.is_valid(raise_exception=True)
+    return s.validated_data
+
+
+class PayItemsView(StaffAPIView):
+    """Услуги точек сотрудника для оплаты баллами."""
+
+    def get(self, request):
+        from apps.catalog.serializers import pricing_payload
+        from apps.common.i18n import tr
+        return Response({'items': [{
+            'id': i.pk, 'category': i.category_id, 'title': tr(i.title, 'ru'), 'price': i.price,
+            'pricing': pricing_payload(i), 'outlet': i.outlet_id} for i in desk.pay_items(request.user)]})
+
+
+class PayQuoteView(StaffAPIView):
+    """Хватает ли баллов клиента на услугу: {enough, total, points, shortSom, reason: limit|balance}."""
+
+    def post(self, request):
+        d = _pay_input(request)
+        member = desk.read_pay_token(request.user, d['payToken'])
+        return Response(desk.points_quote(request.user, member, d['itemId'], d.get('quantity'), d.get('checkAmount')))
+
+
+class PayChargeView(StaffAPIView):
+    """Списать баллы: заявка «оплачено баллами», подтверждённая этим сотрудником."""
+
+    def post(self, request):
+        d = _pay_input(request)
+        req = desk.charge_points(request, d['payToken'], d['itemId'], d.get('quantity'), d.get('checkAmount'))
+        return Response(payload(req), status=201)

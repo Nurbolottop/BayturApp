@@ -24,6 +24,8 @@ urlpatterns = [
     path('desk/members/', desk.desk_members, name='desk-members'),
     path('desk/scan/', desk.desk_scan, name='desk-scan'),
     path('desk/shift/', desk.desk_shift, name='desk-shift'),
+    path('desk/pay/quote/', desk.desk_pay_quote, name='desk-pay-quote'),
+    path('desk/pay/charge/', desk.desk_pay_charge, name='desk-pay-charge'),
     path('r/<str:request_id>/preview/', desk.adjust_preview, name='request-preview'),
     path('r/<str:request_id>/<slug:action>/', desk.request_action, name='request-action'),
 

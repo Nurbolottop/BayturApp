@@ -182,8 +182,24 @@ def apply():
     doc(staffdesk.MemberSearchView, 'get', STAFF, 'Поиск клиента по memberId / телефону',
         response=inline_serializer('StaffMemberSearch', {'items': brief.__class__(many=True)}),
         params=[OpenApiParameter('q', str)])
-    doc(staffdesk.ScanView, 'post', STAFF, 'QR участника → клиент',
-        inline_serializer('ScanInput', {'token': s.CharField()}), brief)
+    doc(staffdesk.ScanView, 'post', STAFF, 'QR участника → клиент + payToken для оплаты баллами',
+        inline_serializer('ScanInput', {'token': s.CharField()}),
+        inline_serializer('ScanResult', {**brief.fields, 'payToken': s.CharField()}))
+    pay_in = inline_serializer('PayInput', {'payToken': s.CharField(), 'itemId': s.CharField(),
+                                           'quantity': s.IntegerField(required=False),
+                                           'checkAmount': s.IntegerField(required=False)})
+    doc(staffdesk.PayItemsView, 'get', STAFF, 'Услуги своих точек для оплаты баллами',
+        response=inline_serializer('PayItems', {'items': inline_serializer('PayItem', {
+            'id': s.CharField(), 'category': s.CharField(), 'title': s.CharField(), 'price': s.IntegerField(),
+            'pricing': o.Pricing(), 'outlet': s.CharField(allow_null=True)}, many=True)}))
+    doc(staffdesk.PayQuoteView, 'post', STAFF, 'Оплата баллами: хватает ли баллов (баланс не раскрывается)', pay_in,
+        inline_serializer('PayQuote', {'itemId': s.CharField(), 'total': s.IntegerField(), 'quantity': s.IntegerField(),
+                                       'points': s.IntegerField(), 'enough': s.BooleanField(),
+                                       'shortSom': s.IntegerField(), 'reason': s.ChoiceField(
+                                           choices=['limit', 'balance'], allow_null=True),
+                                       'limitPercent': s.IntegerField()}), errors=(400, 401, 403, 404, 422))
+    doc(staffdesk.PayChargeView, 'post', STAFF, 'Оплата баллами: списать (payToken из /staff/scan, 10 мин)', pay_in,
+        o.StaffRequest, status=201, errors=(400, 401, 403, 404, 422))
     doc(staffdesk.ShiftView, 'get', STAFF, 'Итог смены',
         response=inline_serializer('Shift', {'date': s.DateField(), 'confirmed': o.StaffRequest(many=True),
                                              'rejected': o.StaffRequest(many=True), 'adjustedCount': s.IntegerField(),
