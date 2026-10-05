@@ -71,7 +71,7 @@ def payment_return(request, payment_id):
     payment = get_object_or_404(Payment, pk=payment_id)
     # Результат вебхука может прийти на пару секунд позже редиректа — страница ждёт его (pending)
     status = {PaymentStatus.PAID: 'paid', PaymentStatus.CREATED: 'pending',
-              PaymentStatus.PENDING: 'pending'}.get(payment.status, 'failed')
+              PaymentStatus.PENDING: 'pending', PaymentStatus.REFUNDED: 'refunded'}.get(payment.status, 'failed')
     if status == 'pending' and payment.created_at < timezone.now() - timedelta(minutes=40):
         status = 'failed'
     return render(request, 'payments/return.html', {'return_url': f'baytur://payment/{payment.pk}', 'status': status,

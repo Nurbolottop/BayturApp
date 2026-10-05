@@ -14,6 +14,7 @@ p{color:var(--muted);margin:0 0 6px;line-height:1.45}.amount{font-size:28px;font
 <img class="logo" src="{% static 'payments/baytur-logo.png' %}" alt="BAYTUR">
 {% if status == 'paid' %}<h1 class="ok">Оплата прошла</h1><p>Спасибо! Вернитесь в приложение — заявка оформится автоматически.</p>
 {% elif status == 'pending' %}<h1>Проверяем оплату…</h1><p>Обычно это занимает несколько секунд.</p>
+{% elif status == 'refunded' %}<h1>Оплата возвращена</h1><p>Деньги вернутся на карту — обычно в течение нескольких дней.</p>
 {% else %}<h1 class="fail">Оплата не прошла</h1><p>Деньги не списаны. Вернитесь в приложение и попробуйте ещё раз.</p>{% endif %}
 <div class="amount">{{ amount }} сом</div>
 <a class="btn" href="{{ return_url }}">Вернуться в приложение</a>
