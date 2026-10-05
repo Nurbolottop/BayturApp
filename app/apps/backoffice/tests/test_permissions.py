@@ -111,6 +111,8 @@ class CashierAppLoginTests(AdminTestCase):
     def setUp(self):
         super().setUp()
         self.staff.phone = '+996700111222'
+        self.staff.email = None              # как в жизни: у администратора кассы нет email и пароля
+        self.staff.set_unusable_password()
         self.staff.set_pin('480215')
         self.staff.save()
         self.client.credentials()
@@ -154,6 +156,7 @@ class CashierAppLoginTests(AdminTestCase):
         self.assertStatus(self.login(pin='730519'), 200)
 
     def test_administrator_cannot_sign_in_to_web(self):
+        self.staff.email = 'cashier@baytur.kg'
         self.staff.set_password('Passw0rd!x-long')
         self.staff.save()
         r = self.client.post('/api/v1/admin/auth/login', {'email': self.staff.email, 'password': 'Passw0rd!x-long'},

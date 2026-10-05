@@ -30,7 +30,7 @@ def audit(request_or_actor, action, obj=None, before=None, after=None, comment='
         object_id = object_id or str(obj.pk)
     return AuditLog.objects.create(
         actor=actor,
-        actor_label=(actor.email if actor else 'system'),
+        actor_label=((actor.email or actor.phone or actor.full_name) if actor else 'system'),
         ip=ip,
         action=action,
         object_type=object_type or '',
