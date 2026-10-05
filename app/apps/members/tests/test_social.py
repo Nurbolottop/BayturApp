@@ -267,7 +267,7 @@ class AppleRevocationTests(BaseAPITestCase):
         self.assertEqual(self.revoked(), ['rt-1', 'rt-2'])
         self.assertFalse(SocialAccount.objects.exists())
 
-    @override_settings(APPLE_PRIVATE_KEY_FILE='')
+    @override_settings(APPLE_PRIVATE_KEY_FILE='/secrets/missing.p8')
     def test_without_key_login_still_works(self):
         self.assertTrue(self.apple().json()['needPhone'])
         self.assertEqual(self.posts, [])

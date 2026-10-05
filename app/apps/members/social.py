@@ -7,6 +7,7 @@ Apple: authorizationCode обменивается на refresh-токен, чт�
 """
 import hashlib
 import logging
+import os
 import time
 
 import jwt
@@ -69,7 +70,8 @@ def verify_token(provider, token, nonce=None):
 # ---------------------------------------------------------------- Apple: обмен кода и отзыв
 
 def apple_revocation_enabled():
-    return bool(settings.APPLE_TEAM_ID and settings.APPLE_KEY_ID and settings.APPLE_PRIVATE_KEY_FILE)
+    return bool(settings.APPLE_TEAM_ID and settings.APPLE_KEY_ID and settings.APPLE_PRIVATE_KEY_FILE
+                and os.path.isfile(settings.APPLE_PRIVATE_KEY_FILE))
 
 
 def _apple_client_secret(client_id):
