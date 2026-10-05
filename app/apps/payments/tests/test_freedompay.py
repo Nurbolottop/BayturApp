@@ -99,6 +99,9 @@ class FreedomPayTests(BaseAPITestCase):
         p = self.pay().json()
         r = self.client.get(f'/api/v1/payments/{p["id"]}/return')
         self.assertContains(r, f'baytur://payment/{p["id"]}')
+        self.assertContains(r, 'Проверяем оплату')
+        self.callback(p)
+        self.assertContains(self.client.get(f'/api/v1/payments/{p["id"]}/return'), 'Оплата прошла')
 
     @override_settings(FREEDOMPAY_MERCHANT_ID='')
     def test_disabled_falls_back(self):

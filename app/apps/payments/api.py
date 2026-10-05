@@ -1,6 +1,9 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import serializers
 from rest_framework.response import Response
@@ -66,7 +69,13 @@ class WebhookView(APIView):
 def payment_return(request, payment_id):
     """pg_success_url / pg_failure_url провайдера: браузер оплаты → диплинк baytur://payment/{id}."""
     payment = get_object_or_404(Payment, pk=payment_id)
-    return render(request, 'payments/return.html', {'return_url': f'baytur://payment/{payment.pk}'})
+    # Результат вебхука может прийти на пару секунд позже редиректа — страница ждёт его (pending)
+    status = {PaymentStatus.PAID: 'paid', PaymentStatus.CREATED: 'pending',
+              PaymentStatus.PENDING: 'pending'}.get(payment.status, 'failed')
+    if status == 'pending' and payment.created_at < timezone.now() - timedelta(minutes=40):
+        status = 'failed'
+    return render(request, 'payments/return.html', {'return_url': f'baytur://payment/{payment.pk}', 'status': status,
+                                                    'amount': payment.amount, 'payment_id': payment.pk})
 
 
 @csrf_exempt
