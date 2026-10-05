@@ -58,10 +58,15 @@ class WebhookView(APIView):
 
     def post(self, request, provider):
         try:
-            services.handle_webhook(provider, request._request)
+            return services.handle_webhook(provider, request._request)
         except WebhookSignatureError:
             raise ApiError('token_invalid', 401, message='bad signature')
-        return Response({'ok': True})
+
+
+def payment_return(request, payment_id):
+    """pg_success_url / pg_failure_url провайдера: браузер оплаты → диплинк baytur://payment/{id}."""
+    payment = get_object_or_404(Payment, pk=payment_id)
+    return render(request, 'payments/return.html', {'return_url': f'baytur://payment/{payment.pk}'})
 
 
 @csrf_exempt

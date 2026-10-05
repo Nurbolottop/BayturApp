@@ -43,6 +43,7 @@ MESSAGES = {
     'method_not_allowed': {'ru': 'Способ оплаты недоступен для услуги', 'ky': 'Бул кызмат үчүн төлөм ыкмасы жеткиликсиз', 'en': 'Payment method is not available for this service'},
     'amount_out_of_range': {'ru': 'Сумма / количество вне диапазона', 'ky': 'Сумма / саны чектен тышкары', 'en': 'Amount / quantity out of range'},
     'payment_invalid': {'ru': 'Оплата не найдена или сумма не совпадает', 'ky': 'Төлөм табылган жок же сумма дал келбейт', 'en': 'Payment not found or amount mismatch'},
+    'payment_unavailable': {'ru': 'Оплата сейчас недоступна, попробуйте позже', 'ky': 'Төлөм азыр жеткиликсиз, кийинчерээк аракет кылыңыз', 'en': 'Payment is unavailable right now, try again later'},
     'payment_required': {'ru': 'Сначала оплатите денежную часть', 'ky': 'Адегенде акчалай бөлүгүн төлөңүз', 'en': 'Pay the money part first'},
     'item_not_found': {'ru': 'Услуга недоступна', 'ky': 'Кызмат жеткиликсиз', 'en': 'Service unavailable'},
     'invalid_status': {'ru': 'Действие недоступно в текущем статусе', 'ky': 'Учурдагы статуста бул аракет жеткиликсиз', 'en': 'Action is not available in the current status'},

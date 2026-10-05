@@ -60,6 +60,7 @@ client = [
     path('payments/fake/<str:payment_id>/checkout', payments.fake_checkout),
     path('payments/<str:payment_id>', payments.PaymentDetailView.as_view()),
     path('payments/<str:payment_id>/check', payments.PaymentCheckView.as_view()),
+    path('payments/<str:payment_id>/return', payments.payment_return),
     # обращения (§9)
     path('complaints/categories', complaints.CategoriesView.as_view()),
     path('uploads/complaint-photo', complaints.UploadPhotoView.as_view()),

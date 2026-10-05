@@ -301,6 +301,11 @@ PUSH_BACKEND = os.getenv('PUSH_BACKEND', 'console')    # console | fcm
 FCM_CREDENTIALS_FILE = os.getenv('FCM_CREDENTIALS_FILE', '')
 PAYMENT_BACKEND = os.getenv('PAYMENT_BACKEND', 'fake')  # fake | (реальные — после выбора провайдеров)
 PAYMENT_WEBHOOK_SECRET = os.getenv('PAYMENT_WEBHOOK_SECRET', SECRET_KEY)
+# Freedom Pay (метод freedomPay). Пусто — метод идёт через PAYMENT_BACKEND
+FREEDOMPAY_MERCHANT_ID = os.getenv('FREEDOMPAY_MERCHANT_ID', '')
+FREEDOMPAY_SECRET_KEY = os.getenv('FREEDOMPAY_SECRET_KEY', '')
+FREEDOMPAY_API_URL = os.getenv('FREEDOMPAY_API_URL', 'https://api.freedompay.kg').rstrip('/')
+FREEDOMPAY_TESTING_MODE = os.getenv('FREEDOMPAY_TESTING_MODE', '0') == '1'
 
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@baytur.kg')

@@ -9,7 +9,7 @@ from apps.catalog.models import ONLINE_METHODS
 from apps.common.errors import ApiError
 from apps.common.realtime import publish_member
 
-from .gateways import gateway_by_provider, gateway_for
+from .gateways import GatewayError, gateway_by_provider, gateway_for, gateway_of
 from .models import FINAL_STATUSES, Payment, PaymentStatus, Refund, WebhookEvent
 
 log = logging.getLogger(__name__)
@@ -55,7 +55,14 @@ def create_payment(member, data):
         params={'itemId': item.pk, 'quantity': data.get('quantity'), 'checkAmount': data.get('checkAmount'),
                 'pointsSom': split.points_som, 'method': method},
     )
-    result = gateway_for(method).create(payment)
+    gateway = gateway_for(method)
+    payment.provider = gateway.code
+    try:
+        result = gateway.create(payment)
+    except GatewayError:
+        payment.status = PaymentStatus.FAILED
+        payment.save(update_fields=['provider', 'status', 'updated_at'])
+        raise ApiError('payment_unavailable', 503)
     payment.provider_ref = result.provider_ref
     payment.redirect_url = result.redirect_url
     payment.qr_payload = result.qr_payload
@@ -87,10 +94,15 @@ def set_status(payment_id, status, amount=None):
 
 
 def handle_webhook(provider, request):
+    """→ ответ провайдеру (у каждого шлюза свой формат)."""
     gw = gateway_by_provider(provider)
     if gw is None:
         raise ApiError('not_found', 404)
     result = gw.parse_webhook(request)  # WebhookSignatureError → 401 во view
+    return gw.webhook_response(result, _apply_webhook(provider, result))
+
+
+def _apply_webhook(provider, result):
     try:
         with transaction.atomic():
             WebhookEvent.objects.create(provider=provider, event_id=result.event_id,
@@ -107,7 +119,7 @@ def handle_webhook(provider, request):
 def check_payment(payment):
     """«Я оплатил» — спросить провайдера."""
     if payment.status in (PaymentStatus.CREATED, PaymentStatus.PENDING):
-        status = gateway_for(payment.method).check(payment)
+        status = gateway_of(payment).check(payment)
         if status:
             payment = set_status(payment.pk, status, payment.amount if status == PaymentStatus.PAID else None)
     return payment
@@ -122,7 +134,7 @@ def refund_payment(payment_id, amount, reason='', author=None):
         if amount <= 0 or p.status not in (PaymentStatus.PAID,):
             return None
         refund = Refund.objects.create(payment=p, amount=amount, reason=reason, author=author)
-    ok, ref = gateway_for(p.method).refund(p, amount)
+    ok, ref = gateway_of(p).refund(p, amount)
     with transaction.atomic():
         p = Payment.objects.select_for_update().get(pk=payment_id)
         refund.status = 'done' if ok else 'failed'

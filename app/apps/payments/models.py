@@ -23,6 +23,7 @@ class Payment(models.Model):
     id = models.CharField(primary_key=True, max_length=32, default=new_payment_id, editable=False)
     member = models.ForeignKey('members.Member', on_delete=models.PROTECT, related_name='payments')
     method = models.CharField(max_length=20)
+    provider = models.CharField('Шлюз', max_length=20, blank=True)  # fake | freedompay; пусто — PAYMENT_BACKEND
     amount = models.PositiveIntegerField('Сумма, сом')
     status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.CREATED,
                               db_index=True)

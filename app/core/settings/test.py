@@ -19,6 +19,8 @@ SMS_BACKEND = 'console'
 PUSH_BACKEND = 'console'
 PAYMENT_BACKEND = 'fake'
 PAYMENT_WEBHOOK_SECRET = 'test-secret'
+FREEDOMPAY_MERCHANT_ID = ''
+FREEDOMPAY_SECRET_KEY = ''
 PUBLIC_BASE_URL = 'https://api.test'
 MEDIA_ROOT = '/tmp/baytur-test-media'
 

@@ -96,6 +96,13 @@ PAYMENT_BACKEND=fake
 FCM_CREDENTIALS_FILE=
 # Секрет подписи вебхуков фейкового шлюза / провайдеров
 PAYMENT_WEBHOOK_SECRET=change_me
+# [МЕНЯТЬ] Freedom Pay (метод freedomPay): ID магазина и секретный ключ «для приёма платежей» из ЛК
+# Freedom Pay. Пусто — freedomPay идёт через PAYMENT_BACKEND. В ЛК Freedom Pay ничего настраивать не нужно:
+# result_url = {PUBLIC_BASE_URL}/api/v1/payments/webhooks/freedompay передаётся в каждом платеже.
+FREEDOMPAY_MERCHANT_ID=
+FREEDOMPAY_SECRET_KEY=
+# 1 — тестовые платежи (pg_testing_mode), деньги не списываются
+FREEDOMPAY_TESTING_MODE=0
 
 # [НЕ ТРОГАТЬ без нужды] S3-совместимое хранилище. Пусто — локальный media/
 S3_BUCKET=
