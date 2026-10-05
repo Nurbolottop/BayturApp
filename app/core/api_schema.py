@@ -89,6 +89,9 @@ def apply():
         inline_serializer('ReadInput', {'id': s.CharField(required=False), 'all': s.BooleanField(required=False)}),
         inline_serializer('ReadOutput', {'unread': s.IntegerField()}))
     doc(loyalty.SummaryView, 'get', ME, 'Цифры в профиле', response=o.Summary)
+    doc(loyalty.AchievementsView, 'get', ME, 'Прогресс по видимым заданиям', response=o.Achievements)
+    doc(loyalty.LoyaltyHistoryView, 'get', ME, 'Баллы за всё время: итоги по годам и история уровней',
+        response=o.LoyaltyHistory)
 
     # справочники
     doc(members.LegalView, 'get', SYS, 'Версии и URL документов', auth=False,
@@ -109,7 +112,7 @@ def apply():
     doc(content.ArticleView, 'get', CNT, 'Статья (диплинк / push)', response=o.Article, auth=False, errors=(404,))
 
     # кошелёк и заявки
-    doc(loyalty.WalletView, 'get', LOY, 'Кошелёк с уровнем и прогрессом', response=o.Wallet)
+    doc(loyalty.WalletView, 'get', LOY, 'Счётчики, уровень, удержание — единственный источник цифр', response=o.Wallet)
     doc(loyalty.OperationsView, 'get', LOY, 'История операций, новые сверху',
         response=o.page_of('OperationsPage', o.Operation), params=[o.CURSOR, o.LIMIT])
     doc(cashback.QuoteView, 'post', CB, 'Расчёт оплаты и кешбека (на каждое изменение ввода)', o.RequestInput,

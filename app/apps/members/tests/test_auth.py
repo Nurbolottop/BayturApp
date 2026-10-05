@@ -206,7 +206,8 @@ class ProfileTests(BaseAPITestCase):
         self.assertEqual(r.json()['pendingConsents'], [p for p in pending if p['kind'] != 'terms'])
 
     def test_summary_and_member_qr(self):
-        self.assertEqual(self.api.get('/api/v1/me/summary').json(), {'available': 0, 'lifetime': 0, 'requestsCount': 0})
+        self.assertEqual(self.api.get('/api/v1/me/summary').json(), {'available': 0, 'current': 0, 'lifetime': 0,
+                                                                    'requestsCount': 0})
         qr = self.api.get('/api/v1/me/member-qr').json()
         from apps.members.auth import read_member_qr
         self.assertEqual(read_member_qr(qr['token']).pk, self.member.pk)

@@ -33,9 +33,7 @@ class ProgramSettings(models.Model):
     staff_cashback_limit_points = models.PositiveIntegerField(
         'Кешбек выше лимита — подтверждает менеджер, баллов', default=1_000_000)
 
-    # Сгорание и удаление
-    expiry_months = models.PositiveSmallIntegerField('Сгорание баллов без активности, мес', default=12)
-    expiry_warn_days = models.JSONField('Предупреждать о сгорании за N дней', default=list)
+    # Удаление аккаунта (баллы не сгорают — ТЗ лояльности §2.2)
     purge_days = models.PositiveSmallIntegerField('Хранение удалённого аккаунта, дней', default=30)
 
     # Вход по SMS
@@ -88,8 +86,6 @@ class ProgramSettings(models.Model):
 
     def save(self, *args, **kwargs):
         self.pk = 1
-        if not self.expiry_warn_days:
-            self.expiry_warn_days = [30, 7]
         super().save(*args, **kwargs)
         cache.delete(self.CACHE_KEY)
 
@@ -97,7 +93,7 @@ class ProgramSettings(models.Model):
     def get(cls):
         obj = cache.get(cls.CACHE_KEY)
         if obj is None:
-            obj, _ = cls.objects.get_or_create(pk=1, defaults={'expiry_warn_days': [30, 7]})
+            obj, _ = cls.objects.get_or_create(pk=1)
             cache.set(cls.CACHE_KEY, obj, 30)
         return obj
 

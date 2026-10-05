@@ -305,13 +305,13 @@ class TierForm(PanelForm, forms.ModelForm):
 
     class Meta:
         model = Tier
-        fields = ['name', 'from_points']
-        labels = {'from_points': 'Порог, баллов lifetime'}
+        fields = ['name', 'threshold']
+        labels = {'threshold': 'Порог: «Нынешних» за год на предыдущем уровне'}
 
 
 def tier_choices():
     from apps.common.i18n import tr
-    return [(t.pk, tr(t.name, 'ru')) for t in Tier.objects.order_by('from_points')]
+    return [(t.pk, tr(t.name, 'ru')) for t in Tier.objects.live().order_by('order')]
 
 
 COLOR = forms.TextInput(attrs={'type': 'color', 'class': 'color-input'})
@@ -321,7 +321,8 @@ class TierStyleForm(PanelForm, forms.Form):
     """Новый уровень или оформление существующего: название, порог (для нового), градиент, медаль."""
 
     name = L10nField(label='Название', max_length=40)
-    from_points = forms.IntegerField(label='Порог, баллов lifetime', min_value=1, required=False)
+    threshold = forms.IntegerField(label='Порог: «Нынешних» за год на предыдущем уровне', min_value=1,
+                                   required=False)
     color0 = forms.RegexField(label='Цвет 1 (тёмный)', regex=r'^#[0-9A-Fa-f]{6}$', widget=COLOR)
     color1 = forms.RegexField(label='Цвет 2 (средний)', regex=r'^#[0-9A-Fa-f]{6}$', widget=COLOR)
     color2 = forms.RegexField(label='Цвет 3 (светлый)', regex=r'^#[0-9A-Fa-f]{6}$', widget=COLOR)
@@ -329,9 +330,9 @@ class TierStyleForm(PanelForm, forms.Form):
 
     def __init__(self, *args, creating=False, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['from_points'].required = creating
+        self.fields['threshold'].required = creating
         if not creating:
-            del self.fields['from_points']
+            del self.fields['threshold']
 
     @property
     def colors(self):
@@ -548,7 +549,6 @@ class ComplaintCategoryForm(forms.ModelForm):
 # ---------------------------------------------------------------- настройки
 
 class ProgramSettingsForm(forms.ModelForm):
-    expiry_warn_days = CSVListField(label='Предупреждать о сгорании за N дней', cast=int)
     complaint_alert_emails = CSVListField(label='Email для уведомлений об обращениях')
     maintenance_message = L10nField(label='Текст о техработах', required=False, textarea=True, rows=2)
 
@@ -563,7 +563,7 @@ class ProgramSettingsForm(forms.ModelForm):
         ('Жизненный цикл заявки', ['auto_confirm', 'auto_confirm_cash', 'confirm_delay_ms', 'credit_delay_ms',
                                    'pending_ttl_hours', 'staff_adjust_threshold_percent',
                                    'staff_cashback_limit_points']),
-        ('Сгорание и удаление', ['expiry_months', 'expiry_warn_days', 'purge_days']),
+        ('Удаление аккаунта', ['purge_days']),
         ('Вход по SMS', ['otp_length', 'otp_ttl_seconds', 'otp_retry_seconds', 'otp_max_attempts',
                          'otp_per_phone_day', 'otp_per_ip_hour', 'min_age']),
         ('Приложение', ['min_version_ios', 'min_version_android', 'maintenance', 'maintenance_message']),

@@ -262,21 +262,21 @@ class TierTests(PanelBase):
     def test_thresholds_validated_and_previewed(self):
         from apps.loyalty.models import Tier
         c = self.login(self.make_staff('owner'))
-        tiers = list(Tier.objects.order_by('from_points'))
+        tiers = list(Tier.objects.live().order_by('order'))
 
         def payload(values):
             d = {}
             for t, v in zip(tiers, values):
                 d[f'{t.pk}-name_ru'] = t.name.get('ru') or t.pk
-                d[f'{t.pk}-from_points'] = v
+                d[f'{t.pk}-threshold'] = v
             return d
-        r = c.post('/panel/tiers/', payload([0, 300, 200, 900, 1000]))
-        self.assertContains(r, 'строго возрастать')
-        r = c.post('/panel/tiers/', payload([0, 100, 200, 300, 400]))
-        self.assertContains(r, 'клиентов сменят уровень')
-        self.assertEqual(Tier.objects.get(pk=tiers[1].pk).from_points, tiers[1].from_points)
-        c.post('/panel/tiers/', {**payload([0, 100, 200, 300, 400]), 'confirm': '1'})
-        self.assertEqual(Tier.objects.get(pk=tiers[1].pk).from_points, 100)
+        r = c.post('/panel/tiers/', payload([0, 0, 200, 900, 1000, 2000]))
+        self.assertContains(r, 'у остальных — больше 0')
+        r = c.post('/panel/tiers/', payload([0, 300, 200, 300, 400, 500]))
+        self.assertContains(r, 'клиентов получат новый уровень')
+        self.assertEqual(Tier.objects.get(pk=tiers[1].pk).threshold, tiers[1].threshold)
+        c.post('/panel/tiers/', {**payload([0, 300, 200, 300, 400, 500]), 'confirm': '1'})
+        self.assertEqual(Tier.objects.get(pk=tiers[1].pk).threshold, 300)
 
 
 class TokensTests(PanelBase):

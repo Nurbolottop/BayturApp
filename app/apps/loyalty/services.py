@@ -1,6 +1,6 @@
 """
-Кошелёк и журнал баллов. Все движения — в транзакции с блокировкой кошелька
-(select_for_update): balance и reserved не уходят в минус, reserved ≤ balance.
+Кошелёк клиента и ответы API. Правила балловой системы — в engine.py, здесь — чтение состояния,
+ответ GET /wallet (ТЗ лояльности §4.1), управление набором уровней и совместимые обёртки.
 """
 import logging
 import re
@@ -10,9 +10,12 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.common.errors import ApiError
-from apps.common.models import ProgramSettings
 
-from .models import Operation, OperationKind, Tier, Wallet
+from . import engine
+from .engine import (Ladder, accrue, change_reserved, ladder_floor, lock_wallet, post_operation,  # noqa: F401
+                     spend_reserved, wallet_period_key)
+from .models import (AchievementUsage, LoyaltySettings, Operation, Retention, Tier, TierChange, TierChangeCause,
+                     TierLimit, Wallet)
 
 log = logging.getLogger(__name__)
 
@@ -20,88 +23,148 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------- уровни
 
 def tiers_ordered():
-    return list(Tier.objects.order_by('from_points'))
+    """Все не удалённые уровни снизу вверх (для админки)."""
+    return list(Tier.objects.live().order_by('order', 'id'))
 
 
-def tier_for(lifetime, tiers=None):
-    """Уровень = последний tier с from ≤ lifetime."""
-    tiers = tiers if tiers is not None else tiers_ordered()
-    current = None
+def cumulative_from(tiers):
+    """Совместимость: старое поле from = накопленная сумма порогов."""
+    total, out = 0, {}
     for t in tiers:
-        if t.from_points <= lifetime:
-            current = t
-    return current or (tiers[0] if tiers else None)
-
-
-def tier_progress(lifetime, tiers=None):
-    tiers = tiers if tiers is not None else tiers_ordered()
-    current = tier_for(lifetime, tiers)
-    if current is None:
-        return None, None, 0, 1.0
-    idx = tiers.index(current)
-    nxt = tiers[idx + 1] if idx + 1 < len(tiers) else None
-    if nxt is None:
-        return current, None, 0, 1.0
-    left = max(0, nxt.from_points - lifetime)
-    span = nxt.from_points - current.from_points
-    progress = (lifetime - current.from_points) / span if span else 1.0
-    return current, nxt, left, round(max(0.0, min(1.0, progress)), 4)
+        total += t.threshold
+        out[t.pk] = total
+    return out
 
 
 # ---------------------------------------------------------------- кошелёк
 
 def get_wallet(member):
-    wallet, _ = Wallet.objects.get_or_create(member=member, defaults={'tier': tier_for(0)})
+    wallet, created = Wallet.objects.get_or_create(member=member)
+    if wallet.tier_id is None or wallet.period_start is None or wallet.tier_since is None:
+        if engine.init_wallet(wallet):
+            wallet.save()
     return wallet
 
 
-def lock_wallet(member):
-    """Только внутри transaction.atomic()."""
-    get_wallet(member)
-    return Wallet.objects.select_for_update().get(member=member)
-
-
-def expires_at(wallet):
-    """Дата сгорания: 12 мес. без реального действия (если есть что сжигать)."""
-    if wallet.balance <= 0 or not wallet.last_activity_at:
-        return None
-    months = ProgramSettings.get().expiry_months
-    return _add_months(wallet.last_activity_at, months)
-
-
-def _add_months(dt, months):
-    month = dt.month - 1 + months
-    year = dt.year + month // 12
-    month = month % 12 + 1
-    import calendar
-    day = min(dt.day, calendar.monthrange(year, month)[1])
-    return dt.replace(year=year, month=month, day=day)
-
-
 def pending_cashback(member):
-    from apps.cashback.models import ACTIVE_STATUSES
     from django.db.models import Sum
+
+    from apps.cashback.models import ACTIVE_STATUSES
     return member.cashback_requests.filter(status__in=ACTIVE_STATUSES).aggregate(s=Sum('cashback'))['s'] or 0
 
 
-def wallet_payload(member, wallet=None):
-    from apps.common.i18n import iso, tr
-    wallet = wallet or get_wallet(member)
-    tiers = tiers_ordered()
-    current, nxt, left, progress = tier_progress(wallet.lifetime, tiers)
-    exp = expires_at(wallet)
+def _ratio(value, total):
+    return round(min(1.0, value / total), 4) if total else 1.0
+
+
+def _iso_end(end):
+    from apps.common.i18n import iso
+    return iso(end - timedelta(seconds=1)) if end else None
+
+
+def retention_state(wallet, ls=None, ladder=None, now=None):
+    """
+    Блок удержания текущего уровня. reason: check — в конце периода проверка; floor — уровень вечный;
+    new_this_period — получен в этом периоде; not_required — уровень без подтверждения.
+    """
+    ls = ls or LoyaltySettings.get()
+    ladder = ladder or Ladder()
+    now = now or timezone.now()
+    tier = ladder.resolve(wallet.tier)
+    floor = ladder_floor(wallet, ladder, ls)
+    if tier is None or ladder.is_base(tier) or tier.retention == Retention.NONE:
+        reason = 'not_required'
+    elif floor is not None and tier.order <= floor.order:
+        reason = 'floor'
+    elif wallet.tier_since and wallet.period_start and wallet.tier_since >= wallet.period_start:
+        reason = 'new_this_period'
+    else:
+        reason = 'check'
+    state = {'required': reason == 'check', 'reason': reason, 'periodEnd': _iso_end(wallet.period_end)}
+    if reason != 'check':
+        return state
+    limit = engine.current_limit(wallet.member_id, tier)
+    limit = limit if limit is not None else tier.min_limit
+    need, done = engine.achievement_counts(wallet.member_id, tier, AchievementUsage.RETENTION,
+                                           wallet_period_key(wallet, ls))
+    days_left = (wallet.period_end - now).days if wallet.period_end else None
+    collected = wallet.current
+    state.update({
+        'limit': limit,
+        'collected': collected,
+        'left': max(0, limit - collected),
+        'progress': _ratio(collected, limit),
+        'atRisk': days_left is not None and days_left < ls.at_risk_days and (
+            collected < limit or done < need),
+        'dropTo': ladder.drop_target(tier, floor).pk,
+        'achievements': {'required': need, 'done': min(done, need)},
+    })
+    return state
+
+
+def tier_state(wallet, ls=None, ladder=None, now=None):
+    from apps.common.i18n import iso
+    ls = ls or LoyaltySettings.get()
+    ladder = ladder or Ladder()
+    tier = ladder.resolve(wallet.tier)
+    if tier is None:
+        return None
+    floor = ladder_floor(wallet, ladder, ls)
+    nxt = ladder.next(tier)
+    next_state = None
+    if nxt is not None:
+        need, done = engine.achievement_counts(wallet.member_id, nxt, AchievementUsage.ENTRY,
+                                               wallet_period_key(wallet, ls))
+        next_state = {
+            'id': nxt.pk,
+            'threshold': nxt.threshold,
+            'left': max(0, nxt.threshold - wallet.current),
+            'progress': _ratio(wallet.current, nxt.threshold),
+            'achievements': {'required': need, 'done': min(done, need)},
+        }
     return {
-        'balance': wallet.balance,
-        'reserved': wallet.reserved,
-        'available': wallet.available,
-        'lifetime': wallet.lifetime,
-        'tier': current.id if current else None,
-        'pendingCashback': pending_cashback(member),
-        'nextTier': nxt.id if nxt else None,
-        'leftToNext': left,
-        'progress': progress,
-        'expiresAt': iso(exp) if exp else None,
+        'id': tier.pk,
+        'since': iso(wallet.tier_since),
+        'floor': floor.pk if floor else None,
+        'isFloor': floor is not None and tier.order <= floor.order,
+        'maxReached': wallet.max_reached_id or tier.pk,
+        'next': next_state,
+        'retention': retention_state(wallet, ls, ladder, now),
     }
+
+
+def wallet_payload(member, wallet=None):
+    from apps.common.i18n import iso
+    wallet = wallet or get_wallet(member)
+    ls = LoyaltySettings.get()
+    ladder = Ladder()
+    tier = tier_state(wallet, ls, ladder)
+    nxt = (tier or {}).get('next')
+    return {
+        'available': wallet.available,
+        'reserved': wallet.reserved,
+        'current': wallet.current,
+        'lifetime': wallet.lifetime,
+        'pendingCashback': pending_cashback(member),
+        'tier': tier,
+        'period': {'key': wallet_period_key(wallet, ls), 'start': iso(wallet.period_start),
+                   'end': _iso_end(wallet.period_end)},
+        # совместимость со старыми версиями приложения (до minVersion с новой системой)
+        'balance': wallet.balance,
+        'nextTier': nxt['id'] if nxt else None,
+        'leftToNext': nxt['left'] if nxt else 0,
+        'progress': nxt['progress'] if nxt else 1.0,
+    }
+
+
+def refresh_wallet(member):
+    """Перед показом: если период истёк, а фоновое закрытие ещё не дошло до клиента — закрыть сейчас."""
+    wallet = get_wallet(member)
+    if wallet.period_end and wallet.period_end <= timezone.now():
+        with transaction.atomic():
+            wallet = lock_wallet(member)
+            engine.ensure_period(wallet)
+    return wallet
 
 
 def publish_wallet(member, wallet=None):
@@ -109,180 +172,86 @@ def publish_wallet(member, wallet=None):
     publish_member(member.pk, 'wallet.updated', wallet_payload(member, wallet))
 
 
-def _touch_activity(wallet, at=None):
-    wallet.last_activity_at = at or timezone.now()
-    wallet.expiry_warned = []
-
-
-def post_operation(wallet, kind, points, *, request=None, item_id=None, category=None, title=None, reason='',
-                   related=None, author=None, complaint=None, affects_lifetime=False, activity=True, at=None):
-    """
-    Пишет операцию в журнал и меняет баланс заблокированного кошелька.
-    wallet должен быть получен через lock_wallet() в текущей транзакции.
-    """
-    at = at or timezone.now()
-    new_balance = wallet.balance + points
-    if new_balance < 0 or new_balance < wallet.reserved:
-        raise ApiError('insufficient_points', 422)
-    op = Operation.objects.create(
-        member_id=wallet.member_id, kind=kind, points=points, at=at, request=request, item_id=item_id,
-        category=category, title=title, reason=reason, related=related, author=author, complaint=complaint,
-        affects_lifetime=affects_lifetime,
-    )
-    wallet.balance = new_balance
-    old_tier_id = wallet.tier_id
-    if affects_lifetime and points > 0:
-        wallet.lifetime += points
-        new_tier = tier_for(wallet.lifetime)
-        # уровень не понижается никогда
-        if new_tier and (wallet.tier is None or new_tier.from_points > wallet.tier.from_points):
-            wallet.tier = new_tier
-    if activity:
-        _touch_activity(wallet, at)
-    wallet.save()
-    if wallet.tier_id != old_tier_id and old_tier_id is not None:
-        from apps.notifications.services import notify_tier_upgraded
-        transaction.on_commit(lambda: notify_tier_upgraded(wallet.member_id, wallet.tier_id))
-    return op
-
-
-def change_reserved(wallet, delta):
-    new_reserved = wallet.reserved + delta
-    if new_reserved < 0:
-        log.error('reserved would go negative for member %s', wallet.member_id)
-        new_reserved = 0
-    if new_reserved > wallet.balance:
-        raise ApiError('insufficient_points', 422)
-    wallet.reserved = new_reserved
-    wallet.save(update_fields=['reserved', 'updated_at'])
-
-
 # ---------------------------------------------------------------- ручные корректировки (админка)
 
-def manual_adjustment(member, points, reason, author, complaint=None, related=None):
-    if not reason or not reason.strip():
-        raise ApiError('validation_error', 400, extra={'fields': {'comment': ['обязательно']}})
-    if points == 0:
-        raise ApiError('validation_error', 400, extra={'fields': {'points': ['не может быть 0']}})
-    with transaction.atomic():
-        wallet = lock_wallet(member)
-        op = post_operation(wallet, OperationKind.ADJUSTMENT, points, reason=reason.strip(), author=author,
-                            complaint=complaint, related=related, activity=False)
-    publish_wallet(member, wallet)
-    from apps.notifications.services import notify_points_adjusted
-    transaction.on_commit(lambda: notify_points_adjusted(member.pk, points))
-    return op
+def manual_adjustment(member, points, reason, author, complaint=None, related=None, counters=('available',),
+                      idempotency_key=None):
+    """Корректировка: по умолчанию только «Доступные» (как компенсации по обращениям)."""
+    return engine.adjust(member, points, counters, reason, author=author, idempotency_key=idempotency_key,
+                         complaint=complaint, related=related)
 
 
-# ---------------------------------------------------------------- пересчёт уровней после смены порогов
+# ---------------------------------------------------------------- пересчёт повышений после смены порогов
 
 def preview_tier_change(new_thresholds):
-    """new_thresholds: {tier_id: from}. Сколько клиентов сменит уровень (только вверх — вниз не понижаем)."""
-    from django.db.models import Count
-    tiers = sorted(tiers_ordered(), key=lambda t: new_thresholds.get(t.id, t.from_points))
-    for t in tiers:
-        t.from_points = new_thresholds.get(t.id, t.from_points)
+    """
+    new_thresholds: {tier_id: threshold}. Сколько клиентов повысится при «Пересчитать сейчас» (вниз не понижаем).
+    Задания не учитываются — это оценка.
+    """
+    ladder = Ladder()
+    for t in ladder.tiers:
+        if t.pk in new_thresholds:
+            t.threshold = int(new_thresholds[t.pk])
     changes = {}
-    for w in Wallet.objects.select_related('tier').only('lifetime', 'tier').iterator():
-        new = tier_for(w.lifetime, tiers)
-        if new and new.id != w.tier_id and (w.tier is None or new.from_points > _order(w.tier_id, tiers)):
-            key = f'{w.tier_id}->{new.id}'
+    for w in Wallet.objects.select_related('tier').only('current', 'tier').iterator():
+        tier = ladder.resolve(w.tier)
+        nxt = ladder.next(tier)
+        if nxt is not None and w.current >= nxt.threshold:
+            key = f'{w.tier_id}->{nxt.pk}'
             changes[key] = changes.get(key, 0) + 1
     return {'total': sum(changes.values()), 'changes': changes}
 
 
-def _order(tier_id, tiers):
-    for t in tiers:
-        if t.id == tier_id:
-            return t.from_points
-    return -1
-
-
 def recalc_all_tiers():
-    """После смены порогов: поднять уровень тем, кто теперь выше. Уровень не понижается."""
-    tiers = tiers_ordered()
-    rank = {t.id: i for i, t in enumerate(tiers)}
-    upgraded = 0
-    for w in Wallet.objects.all().iterator():
-        new = tier_for(w.lifetime, tiers)
-        if new and (w.tier_id is None or rank[new.id] > rank.get(w.tier_id, -1)):
-            Wallet.objects.filter(pk=w.pk).update(tier=new)
-            upgraded += 1
-    return upgraded
+    """Проверка повышения для всех клиентов. Уровень не понижается."""
+    return engine.recalc_promotions()
 
 
-# ---------------------------------------------------------------- сгорание баллов
-
-def expire_inactive_wallets(now=None):
-    """Весь баланс сгорает операцией expire после N мес. без реального действия. Уровень не меняется."""
-    now = now or timezone.now()
-    months = ProgramSettings.get().expiry_months
-    count = 0
-    candidates = Wallet.objects.filter(balance__gt=0, last_activity_at__isnull=False,
-                                       member__is_test=False)
-    for w in candidates.iterator():
-        if _add_months(w.last_activity_at, months) > now:
-            continue
-        with transaction.atomic():
-            wallet = Wallet.objects.select_for_update().get(pk=w.pk)
-            burn = wallet.balance - wallet.reserved
-            if burn <= 0 or _add_months(wallet.last_activity_at, months) > now:
-                continue
-            post_operation(wallet, OperationKind.EXPIRE, -burn, activity=False,
-                           reason=f'{months} мес. без активности')
-        publish_wallet(wallet.member, wallet)
-        from apps.notifications.services import notify_points_expired
-        transaction.on_commit(lambda m=wallet.member_id, p=burn: notify_points_expired(m, p))
-        count += 1
-    return count
-
-
-def warn_expiring_points(now=None):
-    """Push за 30 и за 7 дней до сгорания (однократно на каждый порог)."""
-    now = now or timezone.now()
-    ps = ProgramSettings.get()
-    warn_days = sorted(ps.expiry_warn_days or [30, 7], reverse=True)
-    sent = 0
-    from apps.notifications.services import notify_points_expiring
-    for w in Wallet.objects.filter(balance__gt=0, last_activity_at__isnull=False, member__is_test=False).iterator():
-        exp = _add_months(w.last_activity_at, ps.expiry_months)
-        days_left = (exp - now).days
-        if days_left < 0:
-            continue
-        crossed = [d for d in warn_days if days_left <= d]
-        fresh = [d for d in crossed if d not in (w.expiry_warned or [])]
-        if not fresh:
-            continue
-        # пересекли сразу несколько порогов — одно предупреждение, все пороги отмечены
-        Wallet.objects.filter(pk=w.pk).update(expiry_warned=sorted(set((w.expiry_warned or []) + crossed)))
-        notify_points_expiring(w.member_id, w.balance, days_left)
-        sent += 1
-    return sent
-
+# ---------------------------------------------------------------- сверка журнала (§3.3)
 
 def ledger_mismatches():
-    """Сверка: balance == Σ operations.points для каждого кошелька."""
+    """Каждый счётчик кошелька равен сумме своей колонки в журнале; 0 ≤ reserved ≤ balance; пол ≤ уровень ≤ max."""
     from django.db.models import Sum
+    sums = {r['member_id']: r for r in Operation.objects.values('member_id').annotate(
+        a=Sum('points'), c=Sum('d_current'), l=Sum('d_lifetime'), r=Sum('d_reserved'))}
     bad = []
-    sums = dict(Operation.objects.values_list('member_id').annotate(s=Sum('points')))
     for w in Wallet.objects.all():
-        if w.balance != sums.get(w.member_id, 0):
-            bad.append((w.member_id, w.balance, sums.get(w.member_id, 0)))
+        s = sums.get(w.member_id) or {}
+        expected = (s.get('a') or 0, s.get('c') or 0, s.get('l') or 0, s.get('r') or 0)
+        actual = (w.balance, w.current, w.lifetime, w.reserved)
+        if expected != actual:
+            bad.append((w.member_id, actual, expected))
     return bad
 
 
-def since(days):
-    return timezone.now() - timedelta(days=days)
+def invariant_violations():
+    """Нарушения порядка уровней: пол ≤ уровень ≤ наивысший достигнутый."""
+    ls, ladder = LoyaltySettings.get(), Ladder()
+    bad = []
+    for w in Wallet.objects.select_related('tier', 'max_reached'):
+        if w.tier is None:
+            continue
+        floor = ladder_floor(w, ladder, ls)
+        if (floor and w.tier.order < floor.order) or (w.max_reached and w.tier.order > w.max_reached.order):
+            bad.append((w.member_id, w.tier_id, floor.pk if floor else None, w.max_reached_id))
+    return bad
+
+
+def reconcile():
+    """Ночная сверка: расхождения — в лог (алерт), автоматически ничего не исправляем."""
+    from apps.common.audit import audit_system
+    mismatches = ledger_mismatches()
+    violations = invariant_violations()
+    if mismatches or violations:
+        log.error('loyalty reconcile: %s ledger mismatches, %s tier violations', len(mismatches), len(violations))
+        audit_system('loyalty.reconcile', after={'ledger': [list(map(str, m)) for m in mismatches[:100]],
+                                                 'tiers': [list(map(str, v)) for v in violations[:100]]})
+    return {'ledger': mismatches, 'tiers': violations}
 
 
 # ---------------------------------------------------------------- управление набором уровней
 
 HEX = re.compile(r'^#[0-9A-Fa-f]{6}$')
-
-
-def thresholds_valid(values):
-    """Пороги по порядку уровней: первый — 0, дальше строго возрастают."""
-    return bool(values) and values[0] == 0 and all(b > a for a, b in zip(values, values[1:]))
 
 
 def clean_colors(colors):
@@ -291,41 +260,46 @@ def clean_colors(colors):
     return [c.upper() for c in colors]
 
 
-def create_tier(name, from_points, colors, medal='', tier_id=None):
-    """Новый уровень: порог не совпадает с существующими и > 0; клиентов, дотянувших до порога, повышаем."""
+def create_tier(name, threshold, colors, medal='', tier_id=None, **fields):
+    """Новый уровень — наверх лестницы. Порог > 0; повышение по нему — при следующем начислении (§2.9)."""
+    from django.db.models import Max
+
     from apps.common.text import slug_from_title
-    from_points = int(from_points)
-    existing = sorted(Tier.objects.values_list('from_points', flat=True))
-    if not thresholds_valid(sorted(existing + [from_points])) or (existing and from_points == 0):
-        raise ApiError('tiers_invalid', 422)
-    with transaction.atomic():
-        tier = Tier.objects.create(
-            id=tier_id or slug_from_title((name or {}).get('ru'), Tier, max_length=30, fallback='tier'),
-            name=name, from_points=from_points, colors=clean_colors(colors), medal=medal or '')
-        upgraded = recalc_all_tiers()
-    return tier, upgraded
+    threshold = int(threshold or 0)
+    if threshold <= 0:
+        raise ApiError('validation_error', 400, extra={'fields': {'threshold': ['целое > 0']}})
+    top = Tier.objects.live().aggregate(m=Max('order'))['m']
+    tier = Tier.objects.create(
+        id=tier_id or slug_from_title((name or {}).get('ru'), Tier, max_length=30, fallback='tier'),
+        order=(top + 1) if top is not None else 0, name=name, threshold=threshold, colors=clean_colors(colors),
+        medal=medal or '', **fields)
+    return tier, 0
 
 
 def delete_tier_preview(tier):
-    """Куда перейдут клиенты удаляемого уровня: на ближайший уровень ниже (уровень по их lifetime)."""
     others = [t for t in tiers_ordered() if t.pk != tier.pk]
     affected = Wallet.objects.filter(tier=tier).count()
-    lower = [t for t in others if t.from_points <= tier.from_points]
+    lower = [t for t in others if t.order < tier.order]
     return {'members': affected, 'fallback': lower[-1] if lower else None, 'privileges': tier.privileges.count(),
             'others': others}
 
 
-def delete_tier(tier, privileges_to=None):
+def delete_tier(tier, privileges_to=None, move_clients_to=None, actor=None):
     """
-    Удаление уровня. Нижний уровень (порог 0) удалить нельзя — у каждого клиента должен быть уровень.
-    Привилегии переносятся на privileges_to (Tier) или удаляются. Клиенты удалённого уровня получают уровень
-    по своему lifetime среди оставшихся. Из сегментов рассылок уровень убирается.
+    Мягкое удаление уровня. Базовый уровень удалить нельзя. Клиенты переводятся на move_clients_to
+    (по умолчанию — ближайший уровень ниже), привилегии переносятся на privileges_to или удаляются,
+    уровень убирается из сегментов рассылок.
     """
     from apps.notifications.models import Campaign
-    if tier.from_points == 0:
-        raise ApiError('tiers_invalid', 422, message='Нижний уровень (порог 0) удалить нельзя')
+    base = Ladder().base
+    if base is not None and tier.pk == base.pk:
+        raise ApiError('base_tier_protected', 422)
     if privileges_to is not None and privileges_to.pk == tier.pk:
         raise ApiError('validation_error', 400, extra={'fields': {'privilegesTo': ['другой уровень']}})
+    if move_clients_to is not None and move_clients_to.pk == tier.pk:
+        raise ApiError('validation_error', 400, extra={'fields': {'moveClientsTo': ['другой уровень']}})
+    target = move_clients_to or delete_tier_preview(tier)['fallback'] or base
+    now = timezone.now()
     with transaction.atomic():
         moved = deleted = 0
         if privileges_to is not None:
@@ -333,23 +307,28 @@ def delete_tier(tier, privileges_to=None):
         else:
             deleted = tier.privileges.count()
             tier.privileges.all().delete()
-        remaining = [t for t in tiers_ordered() if t.pk != tier.pk]
         reassigned = 0
         for w in Wallet.objects.select_for_update().filter(tier=tier):
-            w.tier = tier_for(w.lifetime, remaining)
-            w.save(update_fields=['tier', 'updated_at'])
+            TierChange.objects.create(member_id=w.member_id, from_tier=tier, to_tier=target, at=now,
+                                      cause=TierChangeCause.ADMIN, reason=f'Уровень «{tier}» удалён', actor=actor)
+            w.tier, w.tier_since = target, now
+            w.save(update_fields=['tier', 'tier_since', 'updated_at'])
             reassigned += 1
+        Wallet.objects.filter(max_reached=tier).update(max_reached=target)
         for c in Campaign.objects.filter(segment__tiers__contains=[tier.pk]):
             seg = dict(c.segment)
             seg['tiers'] = [t for t in seg.get('tiers', []) if t != tier.pk]
             c.segment = seg
             c.save(update_fields=['segment'])
-        tier.delete()
-    return {'reassigned': reassigned, 'privilegesMoved': moved, 'privilegesDeleted': deleted}
+        Tier.objects.filter(drop_to=tier).update(drop_to=None)
+        tier.deleted_at, tier.active = now, False
+        tier.save(update_fields=['deleted_at', 'active'])
+    return {'reassigned': reassigned, 'privilegesMoved': moved, 'privilegesDeleted': deleted,
+            'movedTo': target.pk if target else None}
 
 
 def tier_styles():
-    """{id: {name, colors, medal, from}} всех уровней — для отрисовки медалей и градиентов (кеш до изменения)."""
+    """{id: {name, colors, medal, threshold}} всех уровней — для медалей и градиентов (кеш до изменения)."""
     from django.core.cache import cache
 
     from apps.common.caching import content_version
@@ -358,6 +337,10 @@ def tier_styles():
     data = cache.get(key)
     if data is None:
         data = {t.pk: {'name': t.name, 'colors': t.gradient, 'medal': absolute_media_url(t.medal) if t.medal else None,
-                       'from': t.from_points} for t in tiers_ordered()}
+                       'threshold': t.threshold} for t in Tier.objects.order_by('order', 'id')}
         cache.set(key, data, 3600)
     return data
+
+
+def member_limits(member):
+    return {r.tier_id: r.limit for r in TierLimit.objects.filter(member=member)}

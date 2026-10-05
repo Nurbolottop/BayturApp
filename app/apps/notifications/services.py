@@ -33,12 +33,18 @@ DEFAULT_TEMPLATES = {
     PushKind.TIER_UPGRADED: (
         {'ru': 'Новый уровень!', 'ky': 'Жаңы деңгээл!', 'en': 'New tier!'},
         {'ru': 'Вам открыт уровень «{tier}»', 'ky': 'Сизге «{tier}» деңгээли ачылды', 'en': 'You reached the {tier} tier'}),
-    PushKind.POINTS_EXPIRING: (
-        {'ru': 'Баллы скоро сгорят', 'ky': 'Упайлар жакында күйүп кетет', 'en': 'Points expire soon'},
-        {'ru': '{points} баллов сгорят через {days} дн. Воспользуйтесь ими', 'ky': '{points} упай {days} күндөн кийин күйөт', 'en': '{points} points expire in {days} days'}),
-    PushKind.POINTS_EXPIRED: (
-        {'ru': 'Баллы сгорели', 'ky': 'Упайлар күйүп кетти', 'en': 'Points expired'},
-        {'ru': '{points} баллов сгорели из-за отсутствия активности', 'ky': '{points} упай активдүүлүк болбогондуктан күйдү', 'en': '{points} points expired due to inactivity'}),
+    PushKind.TIER_DOWNGRADED: (
+        {'ru': 'Ваш уровень — «{tier}»', 'ky': 'Сиздин деңгээл — «{tier}»', 'en': 'Your tier is now {tier}'},
+        {'ru': 'В {year} году вы собрали {points} из {limit}. Соберите баллы, чтобы вернуть прежний уровень', 'ky': '{year}-жылы {limit} ичинен {points} чогулттуңуз. Мурунку деңгээлди кайтаруу үчүн упай чогултуңуз', 'en': 'In {year} you collected {points} of {limit}. Earn points to get your tier back'}),
+    PushKind.TIER_RETAINED: (
+        {'ru': 'Уровень подтверждён', 'ky': 'Деңгээл ырасталды', 'en': 'Tier confirmed'},
+        {'ru': 'Уровень «{tier}» остаётся с вами ещё на год', 'ky': '«{tier}» деңгээли дагы бир жылга сизде калат', 'en': 'Your {tier} tier is kept for another year'}),
+    PushKind.TIER_AT_RISK: (
+        {'ru': 'Подтвердите «{tier}»', 'ky': '«{tier}» деңгээлин ырастаңыз', 'en': 'Confirm your {tier} tier'},
+        {'ru': 'Осталось собрать {left} баллов за {days} дн.', 'ky': '{days} күндө дагы {left} упай чогултуу керек', 'en': 'Collect {left} more points in {days} days'}),
+    PushKind.ACHIEVEMENT_COMPLETED: (
+        {'ru': 'Задание выполнено', 'ky': 'Тапшырма аткарылды', 'en': 'Achievement unlocked'},
+        {'ru': '«{achievement}»', 'ky': '«{achievement}»', 'en': '“{achievement}”'}),
     PushKind.POINTS_ADJUSTED: (
         {'ru': 'Баланс изменён', 'ky': 'Баланс өзгөрдү', 'en': 'Balance updated'},
         {'ru': 'Корректировка: {points} баллов', 'ky': 'Оңдоо: {points} упай', 'en': 'Adjustment: {points} points'}),
@@ -206,30 +212,72 @@ def notify_request_rejected(req_id):
     notify(m, PushKind.REQUEST_REJECTED, title, body, {'requestId': req.pk}, push=True)
 
 
-def notify_tier_upgraded(member_pk, tier_id):
+def _publish_event(member_pk, kind, data):
+    """События уровня и заданий — ещё и отдельным типом в WebSocket /events (§4.3)."""
+    publish_member(member_pk, kind, {'type': kind, **data})
+
+
+def notify_tier_upgraded(member_pk, tier_id, from_tier_id=None):
     from apps.loyalty.models import Tier
     m = _member(member_pk)
     tier = Tier.objects.filter(pk=tier_id).first()
     if not m or not tier:
         return
+    data = {'tierId': tier_id, 'tier': tier_id, **({'fromTierId': from_tier_id} if from_tier_id else {})}
     title, body = render(PushKind.TIER_UPGRADED, m.language, tier=tr(tier.name, m.language))
-    notify(m, PushKind.TIER_UPGRADED, title, body, {'tier': tier_id}, push=m.notify_cashback)
+    notify(m, PushKind.TIER_UPGRADED, title, body, data, push=m.notify_cashback)
+    _publish_event(m.pk, PushKind.TIER_UPGRADED, data)
 
 
-def notify_points_expiring(member_pk, points, days):
+def notify_tier_downgraded(member_pk, tier_id, from_tier_id, period_key, collected, limit):
+    from apps.loyalty.models import Tier
     m = _member(member_pk)
-    if not m:
+    tier = Tier.objects.filter(pk=tier_id).first()
+    if not m or not tier:
         return
-    title, body = render(PushKind.POINTS_EXPIRING, m.language, points=points, days=days)
-    notify(m, PushKind.POINTS_EXPIRING, title, body, {'days': days}, push=m.notify_cashback)
+    data = {'tierId': tier_id, 'fromTierId': from_tier_id}
+    title, body = render(PushKind.TIER_DOWNGRADED, m.language, tier=tr(tier.name, m.language),
+                         year=str(period_key)[:4], points=int(collected), limit=int(limit))
+    notify(m, PushKind.TIER_DOWNGRADED, title, body, data, push=True)
+    _publish_event(m.pk, PushKind.TIER_DOWNGRADED, data)
 
 
-def notify_points_expired(member_pk, points):
+def notify_tier_retained(member_pk, tier_id):
+    from apps.loyalty.models import Tier
     m = _member(member_pk)
-    if not m:
+    tier = Tier.objects.filter(pk=tier_id).first()
+    if not m or not tier:
         return
-    title, body = render(PushKind.POINTS_EXPIRED, m.language, points=points)
-    notify(m, PushKind.POINTS_EXPIRED, title, body, {}, push=m.notify_cashback)
+    data = {'tierId': tier_id}
+    title, body = render(PushKind.TIER_RETAINED, m.language, tier=tr(tier.name, m.language))
+    notify(m, PushKind.TIER_RETAINED, title, body, data, push=m.notify_cashback)
+    _publish_event(m.pk, PushKind.TIER_RETAINED, data)
+
+
+def notify_tier_at_risk(member_pk, tier_id, left, days, drop_to=None):
+    """Только push (настройка «Акции и события»), в ленту не пишется."""
+    from apps.loyalty.models import Tier
+    m = _member(member_pk)
+    tier = Tier.objects.filter(pk=tier_id).first()
+    if not m or not tier or not m.notify_promos:
+        return
+    data = {'tierId': tier_id, **({'dropTo': drop_to} if drop_to else {})}
+    title, body = render(PushKind.TIER_AT_RISK, m.language, tier=tr(tier.name, m.language), left=int(left),
+                         days=int(days))
+    notify(m, PushKind.TIER_AT_RISK, title, body, data, push=True, store=False)
+
+
+def notify_achievement_completed(member_pk, achievement_id):
+    from apps.loyalty.models import Achievement
+    m = _member(member_pk)
+    ach = Achievement.objects.filter(pk=achievement_id).first()
+    if not m or not ach:
+        return
+    link = ach.tier_links.filter(tier__deleted_at__isnull=True).order_by('tier__order').first()
+    data = {'achievementId': achievement_id, **({'tierId': link.tier_id} if link else {})}
+    title, body = render(PushKind.ACHIEVEMENT_COMPLETED, m.language, achievement=tr(ach.title, m.language))
+    notify(m, PushKind.ACHIEVEMENT_COMPLETED, title, body, data, push=m.notify_cashback and ach.visible)
+    _publish_event(m.pk, PushKind.ACHIEVEMENT_COMPLETED, data)
 
 
 def notify_points_adjusted(member_pk, points):

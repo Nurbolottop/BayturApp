@@ -62,7 +62,7 @@ class CampaignTests(AdminTestCase):
         # заранее создаём строку и сбрасываем кеш (см. отчёт: баг в common.models.ProgramSettings.get)
         from django.core.cache import cache
         from apps.common.models import ProgramSettings
-        ProgramSettings.objects.get_or_create(pk=1, defaults={'expiry_warn_days': [30, 7]})
+        ProgramSettings.objects.get_or_create(pk=1)
         cache.delete(ProgramSettings.CACHE_KEY)
         cid = self.create(self.editor)
         self.assertStatus(self.post(self.editor, f'/campaigns/{cid}/test'), 422)

@@ -51,3 +51,9 @@ def model_snapshot(obj, fields=None):
             value = value.name
         data[f.attname] = value
     return _jsonable(data)
+
+
+def audit_system(action, before=None, after=None, comment='', object_type='', object_id=''):
+    """Запись от имени системы (фоновые задачи, сверки)."""
+    return audit(None, action, before=before, after=after, comment=comment, object_type=object_type,
+                 object_id=object_id)

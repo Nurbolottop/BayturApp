@@ -35,16 +35,20 @@ class Command(BaseCommand):
                 (OperationKind.CASHBACK, 24_500, 'spa-stone', 'spa', 3),
             ]
             for kind, points, item, cat, days in ops:
+                earned = points if points > 0 else 0
                 Operation.objects.create(member=member, kind=kind, points=points, item_id=item, category=cat,
-                                         at=now - timedelta(days=days), affects_lifetime=points > 0)
+                                         at=now - timedelta(days=days), d_lifetime=earned, d_current=earned)
             # Итог по ТЗ: баланс 845 000, lifetime 845 000. Операций в сиде три, поэтому остаток
             # до 845 000 оформлен начальной корректировкой (перенос баланса демо-профиля).
             balance = sum(p for _, p, *_ in ops)
+            earned = sum(p for _, p, *_ in ops if p > 0)
             Operation.objects.create(member=member, kind=OperationKind.ADJUSTMENT, points=845_000 - balance,
-                                     reason='Перенос баланса демо-профиля', at=now - timedelta(days=30))
+                                     d_lifetime=845_000 - earned, reason='Перенос баланса демо-профиля',
+                                     at=now - timedelta(days=30))
+            gold = Tier.objects.get(pk='gold')
             Wallet.objects.update_or_create(member=member, defaults={
-                'balance': 845_000, 'reserved': 0, 'lifetime': 845_000, 'tier': Tier.objects.get(pk='gold'),
-                'last_activity_at': now - timedelta(days=3)})
+                'balance': 845_000, 'reserved': 0, 'lifetime': 845_000, 'current': earned, 'tier': gold,
+                'max_reached': gold, 'last_activity_at': now - timedelta(days=3)})
 
         ps = ProgramSettings.get()
         ps.test_enabled = True
@@ -73,8 +77,10 @@ class Command(BaseCommand):
                 Consent.objects.get_or_create(member=member, kind=kind, version=doc.version, granted=True)
         if not created:
             return
-        wallet = lock_wallet(member)
-        post_operation(wallet, OperationKind.ADJUSTMENT, 300_000, reason='Тестовый баланс для проверки сторов')
+        from django.db import transaction
+        with transaction.atomic():
+            post_operation(lock_wallet(member), OperationKind.ADJUSTMENT, 300_000,
+                           reason='Тестовый баланс для проверки сторов', activity=False)
         make = lambda item, qty=1, pts=0, method='cash': cs.create_request(  # noqa: E731
             member, {'itemId': item, 'quantity': qty, 'pointsSom': pts, 'method': method})[0]
         pending = make('spa-stone')                              # pending — оставляем без автоподтверждения

@@ -11,22 +11,24 @@ class PushKind(models.TextChoices):
     REQUEST_REJECTED = 'request.rejected', 'Заявка отклонена'
     REQUEST_PAID = 'request.paid', 'Оплачено баллами'
     TIER_UPGRADED = 'tier.upgraded', 'Новый уровень'
-    POINTS_EXPIRING = 'points.expiring', 'Баллы скоро сгорят'
-    POINTS_EXPIRED = 'points.expired', 'Баллы сгорели'
+    TIER_DOWNGRADED = 'tier.downgraded', 'Уровень понижен'
+    TIER_RETAINED = 'tier.retained', 'Уровень подтверждён'
+    TIER_AT_RISK = 'tier.at_risk', 'Подтвердите уровень'
+    ACHIEVEMENT_COMPLETED = 'achievement.completed', 'Задание выполнено'
     POINTS_ADJUSTED = 'points.adjusted', 'Корректировка баллов'
     COMPLAINT_REPLY = 'complaint.reply', 'Ответ на обращение'
     CAMPAIGN = 'campaign', 'Рассылка'
 
 
 # Операции с баллами идут и в тихие часы
-POINTS_KINDS = {PushKind.REQUEST_CREDITED, PushKind.REQUEST_REJECTED, PushKind.REQUEST_PAID, PushKind.POINTS_ADJUSTED,
-                PushKind.POINTS_EXPIRED}
+POINTS_KINDS = {PushKind.REQUEST_CREDITED, PushKind.REQUEST_REJECTED, PushKind.REQUEST_PAID, PushKind.POINTS_ADJUSTED}
 
 
 class PushTemplate(models.Model):
     kind = models.CharField(primary_key=True, max_length=40, choices=PushKind.choices)
     title = models.JSONField(default=dict)
-    body = models.JSONField(default=dict, help_text='Плейсхолдеры: {points}, {tier}, {number}, {days}, {item}')
+    body = models.JSONField(default=dict, help_text='Плейсхолдеры: {points}, {tier}, {number}, {days}, {item}, {left}, {limit}, {year}, '
+                                                             '{achievement}')
 
     class Meta:
         verbose_name = 'Шаблон push'

@@ -26,21 +26,24 @@
     {% if full %}
       <div class="hero appear">
         <div class="glow"></div>
-        <div class="row-between"><span class="label">Баланс, баллов</span>{% tier_badge tier %}</div>
-        <div class="big" data-countup="{{ wallet.balance }}">{{ wallet.balance|num }}</div>
-        <div class="sub tabular">≈ {{ balance_som|som }} · доступно {{ wallet.available|num }}</div>
+        <div class="row-between"><span class="label">Доступные, баллов</span>{% tier_badge tier %}</div>
+        <div class="big" data-countup="{{ wallet.available }}">{{ wallet.available|num }}</div>
+        <div class="sub tabular">≈ {{ balance_som|som }} · в резерве {{ wallet.reserved|num }} · ожидает +{{ pending_cashback|num }}</div>
         <div class="hero-grid">
-          <div class="cell"><span class="label">В резерве</span><b>{{ wallet.reserved|num }}</b></div>
-          <div class="cell"><span class="label">Ожидает начисления</span><b class="tabular">+{{ pending_cashback|num }}</b></div>
-          <div class="cell"><span class="label">Lifetime</span><b>{{ wallet.lifetime|num }}</b></div>
-          <div class="cell"><span class="label">Сгорание</span><b style="font-size:15px">{{ expires|local:"d.m.Y" }}</b></div>
+          <div class="cell"><span class="label">Нынешние</span><b>{{ wallet.current|num }}</b></div>
+          <div class="cell"><span class="label">За всё время</span><b>{{ wallet.lifetime|num }}</b></div>
+          <div class="cell"><span class="label">Лимит уровня</span><b class="tabular">{% if retention.limit is not None %}{{ retention.limit|num }}{% else %}—{% endif %}</b></div>
+          <div class="cell"><span class="label">Пол (вечный)</span><b style="font-size:15px">{{ tier_state.floor|tier_name }}</b></div>
         </div>
       </div>
       {% if tier %}
       <div class="tier-card tier-{{ tier }} appear">
         <div class="shine"></div>
         <div class="row-between"><div><div class="small" style="opacity:.8">Уровень</div><div class="h2">{{ tier|tier_name }}</div></div>{% medal tier 56 %}</div>
-        <div>{% if next_tier %}<div class="row-between small" style="margin-bottom:6px;opacity:.9"><span>до «{{ next_tier.name|tr }}»</span><span class="tabular">{{ left|num }} баллов</span></div><div class="progress"><i style="width:{{ progress }}%"></i></div>{% else %}<div class="small" style="opacity:.9">Максимальный уровень</div>{% endif %}</div>
+        <div>{% if next_tier %}<div class="row-between small" style="margin-bottom:6px;opacity:.9"><span>до «{{ next_tier|tier_name }}» за год</span><span class="tabular">{{ left|num }} баллов</span></div><div class="progress"><i style="width:{{ progress }}%"></i></div>{% else %}<div class="small" style="opacity:.9">Максимальный уровень</div>{% endif %}
+          {% if retention.reason == 'check' %}<div class="row-between small" style="margin:10px 0 6px;opacity:.9"><span>Подтверждение{% if retention.atRisk %} · в зоне риска{% endif %}</span><span class="tabular">{{ retention.collected|num }} из {{ retention.limit|num }}</span></div><div class="progress"><i style="width:{{ retention_progress }}%"></i></div>
+          {% elif retention.reason == 'floor' %}<div class="small" style="margin-top:10px;opacity:.9">Уровень вечный</div>
+          {% elif retention.reason == 'new_this_period' %}<div class="small" style="margin-top:10px;opacity:.9">Новый в этом году — подтверждать не нужно</div>{% endif %}</div>
       </div>
       {% endif %}
     {% else %}

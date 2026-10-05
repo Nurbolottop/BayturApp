@@ -61,8 +61,11 @@ class Command(BaseCommand):
             if promo and created and not item.promos.exists():
                 ItemPromo.objects.create(item=item, rate=Decimal(promo[0]), tag=promo[1], ends_at=promo_end)
 
-        for tid, name, frm in D.TIERS:
-            upsert(Tier, {'id': tid}, {'name': name, 'from_points': frm, 'colors': DEFAULT_TIER_COLORS[tid]})
+        # при потере уровень падает на один ниже: Амбассадор → Титан, Титан → Платина (§2.6)
+        for order, (tid, name, threshold, can_be_floor, retention) in enumerate(D.TIERS):
+            upsert(Tier, {'id': tid}, {
+                'order': order, 'name': name, 'threshold': threshold, 'can_be_floor': can_be_floor,
+                'retention': retention, 'colors': DEFAULT_TIER_COLORS[tid]})
         for i, (pid, tier, icon, title, short, desc) in enumerate(D.PRIVILEGES):
             upsert(Privilege, {'id': pid}, {
                 'tier_id': tier, 'icon': icon, 'title': title, 'short': short, 'description': desc, 'sort_order': i})

@@ -148,6 +148,8 @@ CHANNEL_LAYERS = {
     }
 }
 
+from celery.schedules import crontab  # noqa: E402
+
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = None
 CELERY_TASK_ACKS_LATE = True
@@ -164,6 +166,13 @@ CELERY_BEAT_SCHEDULE = {
     'campaigns-send-scheduled': {'task': 'apps.notifications.tasks.send_scheduled_campaigns', 'schedule': 60.0},
     'complaints-overdue': {'task': 'apps.complaints.tasks.notify_overdue', 'schedule': 600.0},
     'daily-maintenance': {'task': 'apps.common.tasks.daily_maintenance', 'schedule': 3600.0},
+    # Балловая система: закрытие периода (каждые 5 мин подхватывает всех, у кого период истёк — с 00:00
+    # 1 января или по годовщине), задания по дате, сверка журнала, предупреждения о риске потери уровня
+    'loyalty-close-periods': {'task': 'apps.loyalty.tasks.close_periods', 'schedule': 300.0},
+    'loyalty-achievements': {'task': 'apps.loyalty.tasks.daily_achievements', 'schedule': crontab(hour=3, minute=0)},
+    'loyalty-reconcile': {'task': 'apps.loyalty.tasks.reconcile', 'schedule': crontab(hour=4, minute=0)},
+    'loyalty-at-risk': {'task': 'apps.loyalty.tasks.warn_at_risk', 'schedule': crontab(hour=11, minute=0)},
+    'loyalty-close-preview': {'task': 'apps.loyalty.tasks.preview_close', 'schedule': crontab(hour=5, minute=0)},
 }
 
 # =============================================================================

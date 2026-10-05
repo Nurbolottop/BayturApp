@@ -1770,6 +1770,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/me/achievements:
+    get:
+      operationId: me_achievements_retrieve
+      description: 'Прогресс клиента по видимым заданиям: сохранённое выполнение или
+        текущий прогресс.'
+      summary: Прогресс по видимым заданиям
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Achievements'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/me/avatar:
     post:
       operationId: me_avatar_create
@@ -2133,6 +2177,49 @@ paths:
       responses:
         '204':
           description: Без тела
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me/loyalty/history:
+    get:
+      operationId: me_loyalty_history_retrieve
+      description: 'Экран «Баллы за всё время»: итоги по периодам и история уровней.'
+      summary: 'Баллы за всё время: итоги по годам и история уровней'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoyaltyHistory'
+          description: ''
         '400':
           content:
             application/json:
@@ -3381,7 +3468,7 @@ paths:
     get:
       operationId: wallet_retrieve
       description: 'Личные эндпоинты: без токена → 401 auth_required.'
-      summary: Кошелёк с уровнем и прогрессом
+      summary: Счётчики, уровень, удержание — единственный источник цифр
       parameters:
       - in: header
         name: Accept-Language
@@ -3474,6 +3561,75 @@ paths:
           description: ''
 components:
   schemas:
+    Achievement:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        scope:
+          allOf:
+          - $ref: '#/components/schemas/ScopeEnum'
+          description: |-
+            за всё время / за текущий период (год)
+
+            * `lifetime` - lifetime
+            * `period` - period
+      required:
+      - description
+      - icon
+      - id
+      - scope
+      - title
+    AchievementCount:
+      type: object
+      properties:
+        required:
+          type: integer
+        done:
+          type: integer
+      required:
+      - done
+      - required
+    AchievementProgress:
+      type: object
+      properties:
+        id:
+          type: string
+        progress:
+          type: integer
+        target:
+          type: integer
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        periodKey:
+          type: string
+          nullable: true
+          description: для заданий «за период»
+      required:
+      - completedAt
+      - id
+      - periodKey
+      - progress
+      - target
+    Achievements:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AchievementProgress'
+      required:
+      - items
     AdjustInputRequest:
       type: object
       properties:
@@ -3723,6 +3879,18 @@ components:
         * `food` - Рестораны
         * `pools` - Бассейны
         * `sport` - Спорт
+    CauseEnum:
+      enum:
+      - promotion
+      - period_drop
+      - admin
+      - migration
+      type: string
+      description: |-
+        * `promotion` - promotion
+        * `period_drop` - period_drop
+        * `admin` - admin
+        * `migration` - migration
     Complaint:
       type: object
       properties:
@@ -4034,6 +4202,24 @@ components:
       required:
       - platform
       - token
+    EntryRule:
+      type: object
+      properties:
+        mode:
+          allOf:
+          - $ref: '#/components/schemas/ModeEnum'
+          description: |-
+            как считаются задания «для получения»
+
+            * `all` - all
+            * `any_n` - any_n
+        n:
+          type: integer
+          nullable: true
+          description: для any_n — сколько заданий из привязанных
+      required:
+      - mode
+      - n
     Error:
       type: object
       properties:
@@ -4237,6 +4423,29 @@ components:
         pushToken:
           type: string
           minLength: 1
+    LoyaltyHistory:
+      type: object
+      properties:
+        lifetime:
+          type: integer
+        memberSince:
+          type: string
+          format: date
+        periods:
+          type: array
+          items:
+            $ref: '#/components/schemas/PeriodSummary'
+          description: новые сверху
+        tierChanges:
+          type: array
+          items:
+            $ref: '#/components/schemas/TierChangeItem'
+          description: новые сверху
+      required:
+      - lifetime
+      - memberSince
+      - periods
+      - tierChanges
     MemberQr:
       type: object
       properties:
@@ -4256,6 +4465,14 @@ components:
       description: |-
         * `client` - client
         * `resort` - resort
+    ModeEnum:
+      enum:
+      - all
+      - any_n
+      type: string
+      description: |-
+        * `all` - all
+        * `any_n` - any_n
     Notification:
       type: object
       properties:
@@ -4318,9 +4535,21 @@ components:
         id:
           type: string
         kind:
-          $ref: '#/components/schemas/OperationKind'
+          allOf:
+          - $ref: '#/components/schemas/OperationKindEnum'
+          description: |-
+            только движения «Доступных»; expire — лишь в старых записях
+
+            * `cashback` - cashback
+            * `spend` - spend
+            * `refund` - refund
+            * `reversal` - reversal
+            * `adjustment` - adjustment
+            * `forfeit` - forfeit
+            * `expire` - expire
         points:
           type: integer
+          description: изменение «Доступных»
         at:
           type: string
           format: date-time
@@ -4355,22 +4584,24 @@ components:
       - relatedId
       - requestId
       - title
-    OperationKind:
+    OperationKindEnum:
       enum:
       - cashback
       - spend
       - refund
+      - reversal
       - adjustment
-      - expire
       - forfeit
+      - expire
       type: string
       description: |-
-        * `cashback` - Начисление
-        * `spend` - Списание
-        * `refund` - Возврат
-        * `adjustment` - Корректировка
-        * `expire` - Сгорание
-        * `forfeit` - Списание при удалении
+        * `cashback` - cashback
+        * `spend` - spend
+        * `refund` - refund
+        * `reversal` - reversal
+        * `adjustment` - adjustment
+        * `forfeit` - forfeit
+        * `expire` - expire
     OperationsPage:
       type: object
       properties:
@@ -4540,7 +4771,7 @@ components:
         reason:
           nullable: true
           oneOf:
-          - $ref: '#/components/schemas/ReasonEnum'
+          - $ref: '#/components/schemas/PayQuoteReasonEnum'
           - $ref: '#/components/schemas/NullEnum'
         limitPercent:
           type: integer
@@ -4553,6 +4784,14 @@ components:
       - reason
       - shortSom
       - total
+    PayQuoteReasonEnum:
+      enum:
+      - limit
+      - balance
+      type: string
+      description: |-
+        * `limit` - limit
+        * `balance` - balance
     Payment:
       type: object
       properties:
@@ -4679,6 +4918,53 @@ components:
       - kind
       - url
       - version
+    Period:
+      type: object
+      properties:
+        key:
+          type: string
+          description: например 2027
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+      required:
+      - end
+      - key
+      - start
+    PeriodSummary:
+      type: object
+      properties:
+        key:
+          type: string
+        tierStart:
+          type: string
+        tierEnd:
+          type: string
+        collected:
+          type: integer
+        limit:
+          type: integer
+          nullable: true
+        result:
+          $ref: '#/components/schemas/ResultEnum'
+      required:
+      - collected
+      - key
+      - limit
+      - result
+      - tierEnd
+      - tierStart
+    PeriodTypeEnum:
+      enum:
+      - calendar_year
+      - anniversary
+      type: string
+      description: |-
+        * `calendar_year` - calendar_year
+        * `anniversary` - anniversary
     PerkIcon:
       enum:
       - cashback
@@ -4848,9 +5134,28 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Privilege'
+        achievements:
+          type: array
+          items:
+            $ref: '#/components/schemas/Achievement'
+        settings:
+          $ref: '#/components/schemas/ProgramSettings'
       required:
+      - achievements
       - privileges
+      - settings
       - tiers
+    ProgramSettings:
+      type: object
+      properties:
+        periodType:
+          $ref: '#/components/schemas/PeriodTypeEnum'
+        floorDepth:
+          type: integer
+          description: на сколько уровней ниже наивысшего вечного лежит пол
+      required:
+      - floorDepth
+      - periodType
     Promo:
       type: object
       properties:
@@ -4938,14 +5243,6 @@ components:
           type: integer
       required:
       - unread
-    ReasonEnum:
-      enum:
-      - limit
-      - balance
-      type: string
-      description: |-
-        * `limit` - limit
-        * `balance` - balance
     Receipt:
       type: object
       properties:
@@ -5153,6 +5450,30 @@ components:
           minLength: 1
       required:
       - restoreToken
+    ResultEnum:
+      enum:
+      - retained
+      - dropped
+      - promoted_in_period
+      - floor
+      - not_required
+      type: string
+      description: |-
+        * `retained` - retained
+        * `dropped` - dropped
+        * `promoted_in_period` - promoted_in_period
+        * `floor` - floor
+        * `not_required` - not_required
+    RetentionEnum:
+      enum:
+      - none
+      - points
+      - points_and_achievements
+      type: string
+      description: |-
+        * `none` - none
+        * `points` - points
+        * `points_and_achievements` - points_and_achievements
     ScanInputRequest:
       type: object
       properties:
@@ -5200,6 +5521,14 @@ components:
       - requests
       - status
       - tier
+    ScopeEnum:
+      enum:
+      - lifetime
+      - period
+      type: string
+      description: |-
+        * `lifetime` - lifetime
+        * `period` - period
     ServiceCategory:
       type: object
       properties:
@@ -5655,12 +5984,16 @@ components:
       properties:
         available:
           type: integer
+        current:
+          type: integer
         lifetime:
           type: integer
+          description: на главных экранах не показывается
         requestsCount:
           type: integer
       required:
       - available
+      - current
       - lifetime
       - requestsCount
     Tier:
@@ -5668,27 +6001,226 @@ components:
       properties:
         id:
           type: string
-          description: slug, например bronze; новые уровни добавляются в админке
+          description: 'slug: bronze, silver, gold, platinum, titanium, ambassador
+            или новый из админки'
+        order:
+          type: integer
+          description: порядок снизу вверх, у базового 0
         name:
           type: string
+        threshold:
+          type: integer
+          description: сколько «Нынешних» собрать за год на предыдущем уровне; у базового
+            0
+        canBeFloor:
+          type: boolean
+          description: может стать вечным уровнем
+        retention:
+          allOf:
+          - $ref: '#/components/schemas/RetentionEnum'
+          description: |-
+            как удерживать уровень каждый год
+
+            * `none` - none
+            * `points` - points
+            * `points_and_achievements` - points_and_achievements
+        entryRule:
+          $ref: '#/components/schemas/EntryRule'
+        style:
+          $ref: '#/components/schemas/TierStyle'
+        achievements:
+          type: array
+          items:
+            $ref: '#/components/schemas/TierAchievementLink'
         colors:
           type: array
           items:
             type: string
-          description: 'градиент: 3 цвета #RRGGBB (тёмный → светлый)'
+          description: 'устарело: = style.gradient'
         medal:
           type: string
           format: uri
           nullable: true
-          description: картинка медали; null — рисовать стандартную в цветах colors
+          description: 'устарело: = style.medalUrl'
         from:
           type: integer
+          description: 'устарело: накопленная сумма порогов (для старых версий)'
       required:
+      - achievements
+      - canBeFloor
       - colors
+      - entryRule
       - from
       - id
       - medal
       - name
+      - order
+      - retention
+      - style
+      - threshold
+    TierAchievementLink:
+      type: object
+      properties:
+        id:
+          type: string
+          description: id задания из achievements[]
+        usage:
+          $ref: '#/components/schemas/UsageEnum'
+      required:
+      - id
+      - usage
+    TierChangeItem:
+      type: object
+      properties:
+        to:
+          type: string
+        at:
+          type: string
+          format: date-time
+        cause:
+          $ref: '#/components/schemas/CauseEnum'
+        from:
+          type: string
+          nullable: true
+      required:
+      - at
+      - cause
+      - from
+      - to
+    TierNext:
+      type: object
+      properties:
+        id:
+          type: string
+          description: id уровня из GET /loyalty/program (набор уровней задаётся в
+            админке)
+        threshold:
+          type: integer
+        left:
+          type: integer
+        progress:
+          type: number
+          format: double
+          description: min(1, current / threshold)
+        achievements:
+          $ref: '#/components/schemas/AchievementCount'
+      required:
+      - achievements
+      - id
+      - left
+      - progress
+      - threshold
+    TierRetention:
+      type: object
+      properties:
+        required:
+          type: boolean
+          description: true только при reason = check
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/TierRetentionReasonEnum'
+          description: |-
+            check — в конце года проверка; floor — уровень вечный; new_this_period — получен в этом году, проверки не будет; not_required — без подтверждения
+
+            * `check` - check
+            * `floor` - floor
+            * `new_this_period` - new_this_period
+            * `not_required` - not_required
+        periodEnd:
+          type: string
+          format: date-time
+          nullable: true
+        limit:
+          type: integer
+          description: только при reason = check
+        collected:
+          type: integer
+        left:
+          type: integer
+        progress:
+          type: number
+          format: double
+        atRisk:
+          type: boolean
+          description: до конца периода меньше atRiskDays и лимит не собран
+        dropTo:
+          type: string
+          description: на какой уровень упадёт, если не подтвердить
+        achievements:
+          $ref: '#/components/schemas/AchievementCount'
+      required:
+      - periodEnd
+      - reason
+      - required
+    TierRetentionReasonEnum:
+      enum:
+      - check
+      - floor
+      - new_this_period
+      - not_required
+      type: string
+      description: |-
+        * `check` - check
+        * `floor` - floor
+        * `new_this_period` - new_this_period
+        * `not_required` - not_required
+    TierState:
+      type: object
+      properties:
+        id:
+          type: string
+          description: id уровня из GET /loyalty/program (набор уровней задаётся в
+            админке)
+        since:
+          type: string
+          format: date-time
+        floor:
+          type: string
+          nullable: true
+          description: 'вечный уровень: ниже него клиент не упадёт'
+        isFloor:
+          type: boolean
+        maxReached:
+          type: string
+        next:
+          allOf:
+          - $ref: '#/components/schemas/TierNext'
+          nullable: true
+          description: null на высшем уровне
+        retention:
+          $ref: '#/components/schemas/TierRetention'
+      required:
+      - floor
+      - id
+      - isFloor
+      - maxReached
+      - next
+      - retention
+      - since
+    TierStyle:
+      type: object
+      properties:
+        gradient:
+          type: array
+          items:
+            type: string
+          description: '3 цвета #RRGGBB (тёмный → светлый)'
+        glow:
+          type: string
+          description: 'цвет свечения #RRGGBB'
+        medalUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: null — рисовать стандартную медаль в цветах gradient
+        icon:
+          type: string
+          nullable: true
+      required:
+      - glow
+      - gradient
+      - icon
+      - medalUrl
     Tokens:
       type: object
       properties:
@@ -5729,45 +6261,60 @@ components:
       required:
       - id
       - url
+    UsageEnum:
+      enum:
+      - entry
+      - retention
+      - both
+      type: string
+      description: |-
+        * `entry` - entry
+        * `retention` - retention
+        * `both` - both
     Wallet:
       type: object
       properties:
-        balance:
-          type: integer
-        reserved:
-          type: integer
         available:
           type: integer
+          description: можно потратить сейчас (резерв уже вычтен) — крупно на карте
+            баланса
+        reserved:
+          type: integer
+        current:
+          type: integer
+          description: '«Нынешние»: решают уровень, обнуляются при повышении и 1 января'
         lifetime:
           type: integer
-        tier:
-          type: string
-          description: id уровня из GET /loyalty/program (набор уровней задаётся в
-            админке)
+          description: '«За всё время»: только в Профиль → Настройки'
         pendingCashback:
           type: integer
+        tier:
+          $ref: '#/components/schemas/TierState'
+        period:
+          $ref: '#/components/schemas/Period'
+        balance:
+          type: integer
+          description: 'устарело: available + reserved'
         nextTier:
           type: string
           nullable: true
-          description: id уровня из GET /loyalty/program (набор уровней задаётся в
-            админке)
+          description: 'устарело: = tier.next.id'
         leftToNext:
           type: integer
+          description: 'устарело: = tier.next.left'
         progress:
           type: number
           format: double
-        expiresAt:
-          type: string
-          format: date-time
-          nullable: true
+          description: 'устарело: = tier.next.progress'
       required:
       - available
       - balance
-      - expiresAt
+      - current
       - leftToNext
       - lifetime
       - nextTier
       - pendingCashback
+      - period
       - progress
       - reserved
       - tier

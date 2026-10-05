@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
-    help = 'Сверка: balance кошелька == Σ операций журнала; reserved == Σ баллов заявок в pending.'
+    help = 'Сверка: счётчики кошелька == Σ проводок журнала; reserved == Σ баллов заявок в pending.'
 
     def handle(self, *args, **opts):
         from django.db.models import Sum
@@ -16,8 +16,10 @@ class Command(BaseCommand):
                         .annotate(s=Sum('points')))
         bad_reserved = [(w.member_id, w.reserved, reserved.get(w.member_id, 0)) for w in Wallet.objects.all()
                         if w.reserved != reserved.get(w.member_id, 0)]
-        for m, bal, total in bad:
-            self.stdout.write(self.style.ERROR(f'member {m}: balance {bal} != ledger {total}'))
+        names = ('available', 'current', 'lifetime', 'reserved')
+        for m, actual, expected in bad:
+            diff = ', '.join(f'{n} {a} != {e}' for n, a, e in zip(names, actual, expected) if a != e)
+            self.stdout.write(self.style.ERROR(f'member {m}: {diff} (журнал)'))
         for m, res, total in bad_reserved:
             self.stdout.write(self.style.ERROR(f'member {m}: reserved {res} != pending {total}'))
         if not bad and not bad_reserved:

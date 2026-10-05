@@ -399,21 +399,6 @@ def liability(on_date: date) -> dict:
     }
 
 
-def expiry_forecast(days_list=(30, 90), now=None) -> dict:
-    """Прогноз сгорания: баланс кошельков, у которых срок «N мес. без активности» наступит в ближайшие дни."""
-    from apps.loyalty.services import _add_months
-    now = now or timezone.now()
-    months = ProgramSettings.get().expiry_months
-    base = Wallet.objects.filter(balance__gt=0, last_activity_at__isnull=False, member__is_test=False) \
-        .exclude(member__status__in=GONE_STATUSES)
-    out = {}
-    for d in days_list:
-        cutoff = _add_months(now + timedelta(days=d), -months)
-        agg = base.filter(last_activity_at__lte=cutoff).aggregate(p=Coalesce(Sum('balance'), 0), n=Count('pk'))
-        out[d] = {'points': agg['p'], 'members': agg['n']}
-    return out
-
-
 # ============================================================== дашборд (§7.2)
 
 DASHBOARD_KPIS = [
@@ -478,7 +463,7 @@ def _tier_distribution(p):
     counts = {r['tier_id']: r['n'] for r in qs.values('tier_id').annotate(n=Count('pk'))}
     total = sum(counts.values())
     rows = [{'tier': names.get(t.id, t.id), 'tier_id': t.id, 'members': counts.get(t.id, 0),
-             'share': _ratio(counts.get(t.id, 0), total)} for t in Tier.objects.order_by('from_points')]
+             'share': _ratio(counts.get(t.id, 0), total)} for t in Tier.objects.live().order_by('order')]
     if counts.get(None):
         rows.append({'tier': 'Без уровня', 'tier_id': None, 'members': counts[None],
                      'share': _ratio(counts[None], total)})
@@ -682,27 +667,15 @@ MEMBERS_KPIS = [
 
 
 def _tier_transitions(p):
-    """Переходы между уровнями за период: lifetime на начало и конец периода из журнала."""
-    tiers = list(Tier.objects.order_by('from_points'))
-    if not tiers:
-        return {}
-
-    def tier_of(lifetime):
-        cur = tiers[0]
-        for t in tiers:
-            if t.from_points <= (lifetime or 0):
-                cur = t
-        return cur.id
-
-    ops = _member_filter(Operation.objects.filter(affects_lifetime=True, points__gt=0), p, use_tier=False)
-    rows = ops.values('member_id').annotate(
-        before=Coalesce(Sum('points', filter=Q(at__lt=p.start)), 0),
-        during=Coalesce(Sum('points', filter=Q(at__gte=p.start, at__lt=p.end)), 0)).filter(during__gt=0)
+    """Повышения уровня за период — по истории уровней клиентов."""
+    from apps.loyalty.models import TierChange, TierChangeCause
+    qs = _member_filter(TierChange.objects.filter(cause=TierChangeCause.PROMOTION, at__gte=p.start, at__lt=p.end),
+                        p, use_tier=False)
+    if p.tier:
+        qs = qs.filter(to_tier_id=p.tier)
     moves = {}
-    for r in rows:
-        a, b = tier_of(r['before']), tier_of(r['before'] + r['during'])
-        if a != b and (not p.tier or b == p.tier):
-            moves[(a, b)] = moves.get((a, b), 0) + 1
+    for a, b in qs.values_list('from_tier_id', 'to_tier_id'):
+        moves[(a, b)] = moves.get((a, b), 0) + 1
     return moves
 
 
@@ -819,17 +792,12 @@ def points(p: ReportParams) -> dict:
     kpis = _kpis(POINTS_KPIS, cur, prev)
     liab = liability(p.date_to)
     liab_prev = liability(p.previous().date_to) if p.compare else None
-    forecast = expiry_forecast()
     pps = liab['pointsPerSom']
     kpis += [
         {'key': 'liability_points', 'label': 'Обязательство на конец периода, баллов', 'value': liab['points'],
          'prev': liab_prev['points'] if liab_prev else None, 'unit': 'points'},
         {'key': 'liability_som', 'label': 'Обязательство на конец периода, сом', 'value': liab['som'],
          'prev': liab_prev['som'] if liab_prev else None, 'unit': 'som'},
-        {'key': 'expiring_30', 'label': 'Сгорит в ближайшие 30 дней', 'value': forecast[30]['points'],
-         'prev': None, 'unit': 'points'},
-        {'key': 'expiring_90', 'label': 'Сгорит в ближайшие 90 дней', 'value': forecast[90]['points'],
-         'prev': None, 'unit': 'points'},
     ]
     ops = _operations(p).filter(**_in(p, 'at'))
     series = [
@@ -855,14 +823,9 @@ def points(p: ReportParams) -> dict:
             ('kind', 'Вид'), ('operations', 'Операций'), ('points', 'Баллов'), ('som', 'Сом')],
             [{'kind': kinds.get(r['kind'], r['kind']), 'kind_id': r['kind'], 'operations': r['n'],
               'points': r['s'], 'som': _som(r['s'], pps)} for r in by_kind]),
-        _table('expiry_forecast', 'Прогноз сгорания', [
-            ('days', 'Горизонт, дней'), ('points', 'Баллов'), ('som', 'Сом'), ('members', 'Клиентов')],
-            [{'days': d, 'points': v['points'], 'som': _som(v['points'], pps), 'members': v['members']}
-             for d, v in forecast.items()]),
     ]
     return {'period': p.period(), 'kpis': kpis, 'series': series, 'tables': tables,
-            'liability': {k: liab[k] for k in ('date', 'points', 'som', 'members', 'pointsPerSom')},
-            'forecast': {str(d): v for d, v in forecast.items()}}
+            'liability': {k: liab[k] for k in ('date', 'points', 'som', 'members', 'pointsPerSom')}}
 
 
 # ============================================================== деньги

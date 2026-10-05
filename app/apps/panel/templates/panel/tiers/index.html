@@ -1,14 +1,14 @@
 {% extends 'panel/base.html' %}{% load static panel %}
 {% block title %}Уровни{% endblock %}
 {% block content %}
-<div class="topbar"><div><h1 class="page-title">Уровни и привилегии</h1><div class="muted" style="margin-top:6px">Уровень считается по lifetime-баллам и никогда не понижается</div></div>
+<div class="topbar"><div><h1 class="page-title">Уровни и привилегии</h1><div class="muted" style="margin-top:6px">Уровень решают «Нынешние» баллы за год; порог — сколько собрать на предыдущем уровне</div></div>
   {% if can_edit %}<div class="actions"><a class="btn" href="{% url 'panel:tier-new' %}">{% icon 'plus' 18 %} Уровень</a><a class="btn btn-accent" href="{% url 'panel:privilege-new' %}">{% icon 'plus' 18 %} Привилегия</a></div>{% endif %}</div>
 
 {% if preview %}
 <div class="banner warn appear" style="margin-bottom:18px">{% icon 'users' 20 %}
-  <div style="flex:1"><b class="tabular">{{ preview.total|num }} клиентов сменят уровень</b>
+  <div style="flex:1"><b class="tabular">{{ preview.total|num }} клиентов получат новый уровень</b>
     {% if preview.changes %}<div class="small" style="font-weight:500">{% for k, v in preview.changes.items %}{{ k }}: {{ v|num }}{% if not forloop.last %} · {% endif %}{% endfor %}</div>{% endif %}
-    <div class="small" style="font-weight:500">Уровни только повышаются. Проверьте пороги и подтвердите.</div></div>
+    <div class="small" style="font-weight:500">При сохранении запустится проверка повышения; никого не понижаем.</div></div>
 </div>
 {% endif %}
 
@@ -21,20 +21,20 @@
     <div class="stack-s appear">
       <div class="tier-card tier-{{ r.tier.pk }}">
         <div class="shine"></div>
-        <div class="row-between"><div><div class="small" style="opacity:.8">от <span class="tabular">{{ r.tier.from_points|num }}</span></div><div class="h2">{{ r.tier.name|tr }}</div></div>{% medal r.tier.pk 52 %}</div>
+        <div class="row-between"><div><div class="small" style="opacity:.8">{% if r.tier.threshold %}<span class="tabular">{{ r.tier.threshold|num }}</span> за год{% else %}стартовый{% endif %}</div><div class="h2">{{ r.tier.name|tr }}</div></div>{% medal r.tier.pk 52 %}</div>
         <div class="row-between"><div class="small" style="opacity:.85">{{ r.privileges|length }} привилегий</div>
           {% if can_edit %}<a class="btn btn-s tier-edit" href="{% url 'panel:tier' r.tier.pk %}">{% icon 'edit' 14 %} Изменить</a>{% endif %}</div>
       </div>
       <div class="card stack-s">
         {% include 'panel/components/field.html' with f=r.form.name %}
-        {% include 'panel/components/field.html' with f=r.form.from_points %}
+        {% include 'panel/components/field.html' with f=r.form.threshold %}
         {% for e in r.form.non_field_errors %}<div class="err">{{ e }}</div>{% endfor %}
       </div>
     </div>
     {% endfor %}
   </div>
   <div class="card row-between wrap appear" style="margin-bottom:24px">
-    <div class="small muted">{% icon 'info' 16 %} Пороги строго возрастают, у первого уровня — 0. Цвета, медаль и удаление — кнопка «Изменить» на карточке уровня.</div>
+    <div class="small muted">{% icon 'info' 16 %} Порог базового уровня — 0, у остальных — больше 0. Цвета, медаль и удаление — кнопка «Изменить» на карточке уровня.</div>
     <div class="row">{% if preview %}<a class="btn btn-ghost" href="{% url 'panel:tiers' %}">Отмена</a><button class="btn btn-accent btn-l">Сохранить и пересчитать</button>{% else %}<button class="btn btn-accent btn-l">Сохранить</button>{% endif %}</div>
   </div>
 </form>

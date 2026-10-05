@@ -100,20 +100,20 @@ class TierTests(AdminTestCase):
     def thresholds(self, **changes):
         return {'tiers': [{'id': k, 'from': v} for k, v in changes.items()]}
 
-    def test_thresholds_must_start_at_zero_and_increase(self):
+    def test_thresholds_base_zero_others_positive(self):
         r = self.put(self.manager, '/tiers', self.thresholds(bronze=10))
         self.assertError(r, 422, 'tiers_invalid')
-        r = self.put(self.manager, '/tiers', self.thresholds(gold=1000))
+        r = self.put(self.manager, '/tiers', self.thresholds(gold=0))
         self.assertError(r, 422, 'tiers_invalid')
-        r = self.put(self.manager, '/tiers', self.thresholds(gold=900))
+        r = self.post(self.manager, '/tiers/preview', {'thresholds': {'silver': 0}})
         self.assertError(r, 422, 'tiers_invalid')
-        r = self.post(self.manager, '/tiers/preview', {'thresholds': {'silver': 20000}})
-        self.assertError(r, 422, 'tiers_invalid')
+        # порог — «Нынешних» за год на предыдущем уровне, возрастать пороги не обязаны
+        self.assertStatus(self.put(self.manager, '/tiers', {'tiers': [{'id': 'gold', 'threshold': 900}]}), 200)
         r = self.put(self.manager, '/tiers', self.thresholds(unknown=1))
         self.assertError(r, 400, 'validation_error')
 
     def test_preview_and_recalc(self):
-        Wallet.objects.filter(member=self.member).update(lifetime=800, tier_id='bronze')
+        Wallet.objects.filter(member=self.member).update(current=800, tier_id='bronze')
         r = self.post(self.manager, '/tiers/preview', {'thresholds': {'silver': 500}})
         self.assertStatus(r, 200)
         self.assertEqual(r.data['total'], 1)

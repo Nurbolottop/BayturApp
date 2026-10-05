@@ -1,22 +1,56 @@
-from apps.common.caching import cached_public
-from apps.common.i18n import iso, tr
-from apps.common.pagination import paginate
-from apps.common.views import MemberAPIView, PublicAPIView
 from rest_framework.response import Response
 
-from .models import Privilege, Tier
-from .services import get_wallet, wallet_payload
+from apps.common.caching import cached_public
+from apps.common.i18n import iso, tr
+from apps.common.media import absolute_media_url
+from apps.common.pagination import paginate
+from apps.common.views import MemberAPIView, PublicAPIView
+
+from .achievements import measure
+from .engine import wallet_period_key
+from .models import (SERVICE_KINDS, Achievement, AchievementScope, LoyaltySettings, MemberAchievement, PeriodResult,
+                     Privilege, Tier, TierChange)
+from .services import cumulative_from, get_wallet, refresh_wallet, wallet_payload
+
+
+def tier_program_payload(t, cumulative):
+    gradient = t.gradient
+    return {
+        'id': t.id,
+        'order': t.order,
+        'name': tr(t.name),
+        'threshold': t.threshold,
+        'canBeFloor': t.can_be_floor,
+        'retention': t.retention,
+        'entryRule': {'mode': t.entry_rule, 'n': t.entry_n if t.entry_rule == 'any_n' else None},
+        'style': {'gradient': gradient, 'glow': t.glow_color,
+                  'medalUrl': absolute_media_url(t.medal) if t.medal else None, 'icon': t.icon or None},
+        'achievements': [{'id': link.achievement_id, 'usage': link.usage}
+                         for link in t.tier_achievements.all()
+                         if link.achievement.deleted_at is None and link.achievement.active
+                         and link.achievement.visible],
+        # совместимость со старыми версиями: накопленная сумма порогов, плоские цвета и медаль
+        'from': cumulative[t.id],
+        'colors': gradient,
+        'medal': absolute_media_url(t.medal) if t.medal else None,
+    }
 
 
 def build_program():
+    tiers = list(Tier.objects.active().order_by('order', 'id').prefetch_related('tier_achievements__achievement'))
+    cumulative = cumulative_from(tiers)
+    ls = LoyaltySettings.get()
     return {
-        'tiers': [{'id': t.id, 'name': tr(t.name), 'from': t.from_points, 'colors': t.gradient,
-                   'medal': absolute_media_url(t.medal) if t.medal else None}
-                  for t in Tier.objects.order_by('from_points')],
+        'tiers': [tier_program_payload(t, cumulative) for t in tiers],
         'privileges': [{
             'id': p.id, 'tier': p.tier_id, 'icon': p.icon, 'title': tr(p.title), 'short': tr(p.short),
             'description': tr(p.description),
-        } for p in Privilege.objects.select_related('tier')],
+        } for p in Privilege.objects.select_related('tier').filter(tier__deleted_at__isnull=True)],
+        'achievements': [{
+            'id': a.id, 'title': tr(a.title), 'description': tr(a.description) or None, 'icon': a.icon or None,
+            'scope': a.scope,
+        } for a in Achievement.objects.active().filter(visible=True)],
+        'settings': {'periodType': ls.period_type, 'floorDepth': ls.floor_depth},
     }
 
 
@@ -40,19 +74,60 @@ def operation_payload(op):
     }
 
 
+def client_operations(member):
+    """Только движения «Доступных»: служебные проводки (резерв, сбросы «Нынешних») клиенту не показываются."""
+    return member.operations.exclude(kind__in=SERVICE_KINDS).exclude(points=0)
+
+
 class WalletView(MemberAPIView):
     def get(self, request):
-        return Response(wallet_payload(request.user))
+        return Response(wallet_payload(request.user, refresh_wallet(request.user)))
 
 
 class OperationsView(MemberAPIView):
     def get(self, request):
-        return Response(paginate(request, request.user.operations.all(),
+        return Response(paginate(request, client_operations(request.user),
                                  lambda rows: [operation_payload(o) for o in rows], time_field='at'))
 
 
 class SummaryView(MemberAPIView):
     def get(self, request):
         wallet = get_wallet(request.user)
-        return Response({'available': wallet.available, 'lifetime': wallet.lifetime,
+        return Response({'available': wallet.available, 'current': wallet.current, 'lifetime': wallet.lifetime,
                          'requestsCount': request.user.cashback_requests.count()})
+
+
+class AchievementsView(MemberAPIView):
+    """Прогресс клиента по видимым заданиям: сохранённое выполнение или текущий прогресс."""
+
+    def get(self, request):
+        wallet = get_wallet(request.user)
+        key = wallet_period_key(wallet)
+        rows = {(r.achievement_id, r.period_key): r for r in MemberAchievement.objects.filter(member=request.user)}
+        items = []
+        for ach in Achievement.objects.active().filter(visible=True):
+            row_key = '' if ach.scope == AchievementScope.LIFETIME else key
+            row = rows.get((ach.id, row_key))
+            if row is not None and row.completed_at is not None:
+                progress, target, completed = max(row.progress, row.target), row.target, row.completed_at
+            else:
+                progress, target = measure(ach, wallet) if ach.type != 'manual' else (0, 1)
+                completed = None
+            items.append({'id': ach.id, 'progress': min(progress, target), 'target': target,
+                          'completedAt': iso(completed), 'periodKey': row_key or None})
+        return Response({'items': items})
+
+
+class LoyaltyHistoryView(MemberAPIView):
+    """Экран «Баллы за всё время»: итоги по периодам и история уровней."""
+
+    def get(self, request):
+        m = request.user
+        wallet = get_wallet(m)
+        periods = [{'key': r.period_key, 'tierStart': r.tier_start_id, 'tierEnd': r.tier_end_id,
+                    'collected': r.current, 'limit': r.limit_before, 'result': r.result}
+                   for r in PeriodResult.objects.filter(member=m).order_by('-period_start')]
+        changes = [{'from': c.from_tier_id, 'to': c.to_tier_id, 'at': iso(c.at), 'cause': c.cause}
+                   for c in TierChange.objects.filter(member=m).order_by('-at', '-id')]
+        return Response({'lifetime': wallet.lifetime, 'memberSince': m.member_since.isoformat(),
+                         'periods': periods, 'tierChanges': changes})

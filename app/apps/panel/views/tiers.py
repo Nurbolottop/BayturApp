@@ -1,4 +1,4 @@
-"""Уровни и привилегии: пороги строго возрастают (первый — 0), предпросмотр «N клиентов сменят уровень»."""
+"""Уровни и привилегии: порог базового — 0, остальных > 0; предпросмотр «N клиентов получат новый уровень»."""
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -18,32 +18,32 @@ def _tier_forms(request, tiers, data=None):
     for t in tiers:
         f = TierForm(data, instance=t, prefix=t.pk)
         if not request.user.can('tiers.edit'):
-            f.lock(['from_points'])
+            f.lock(['threshold'])
         forms.append(f)
     return forms
 
 
 def validate_thresholds(values):
-    """values: [from_points по порядку уровней]. Строго возрастают, у первого — 0."""
+    """values: [threshold по порядку уровней]. У базового — 0, у остальных > 0."""
     if not values or values[0] != 0:
         return False
-    return all(b > a for a, b in zip(values, values[1:]))
+    return all(v > 0 for v in values[1:])
 
 
 @panel_view('tiers')
 def tiers(request):
-    tier_list = list(Tier.objects.order_by('from_points').prefetch_related('privileges'))
+    tier_list = list(Tier.objects.live().order_by('order').prefetch_related('privileges'))
     data = request.POST if request.method == 'POST' else None
     forms = _tier_forms(request, tier_list, data)
     preview = None
     if request.method == 'POST':
         if all(f.is_valid() for f in forms):
-            new = {f.instance.pk: f.cleaned_data['from_points'] for f in forms}
+            new = {f.instance.pk: f.cleaned_data['threshold'] for f in forms}
             ordered = [new[t.pk] for t in tier_list]
             if not validate_thresholds(ordered):
                 messages.error(request, message_for('tiers_invalid', 'ru'))
             else:
-                changed = any(new[t.pk] != Tier.objects.get(pk=t.pk).from_points for t in tier_list)
+                changed = any(new[t.pk] != Tier.objects.get(pk=t.pk).threshold for t in tier_list)
                 if changed and request.POST.get('confirm') != '1':
                     preview = preview_tier_change(new)
                 else:
@@ -54,7 +54,7 @@ def tiers(request):
                     audit(request, 'tiers.update', None, object_type='loyalty.tier', object_id='*', before=before,
                           after={t.pk: model_snapshot(Tier.objects.get(pk=t.pk)) for t in tier_list},
                           comment=f'повышено клиентов: {upgraded}' if changed else '')
-                    messages.success(request, 'Уровни сохранены' + (f'. Уровень повышен у {upgraded} клиентов'
+                    messages.success(request, 'Уровни сохранены' + (f'. Новый уровень получили {upgraded} клиентов'
                                                                     if changed else ''))
                     return redirect('panel:tiers')
     rows = [{'tier': t, 'form': f, 'privileges': list(t.privileges.all())} for t, f in zip(tier_list, forms)]
@@ -82,8 +82,8 @@ def privilege_edit(request, privilege_id=None):
         messages.success(request, 'Привилегия сохранена')
         return redirect('panel:tiers')
     return render(request, 'panel/tiers/privilege.html', {
-        'form': form, 'obj': obj, 'icons': PERK_ICONS, 'tiers': Tier.objects.order_by('from_points'),
-        'tier_names': {t.pk: t.name for t in Tier.objects.all()}})
+        'form': form, 'obj': obj, 'icons': PERK_ICONS, 'tiers': Tier.objects.live().order_by('order'),
+        'tier_names': {t.pk: t.name for t in Tier.objects.live()}})
 
 
 @require_POST
@@ -109,7 +109,7 @@ def _medal_path(value):
 @panel_view(perm='tiers.edit')
 def tier_edit(request, tier_id=None):
     """Новый уровень или оформление существующего (название, градиент, медаль) + удаление."""
-    tier = get_object_or_404(Tier, pk=tier_id) if tier_id else None
+    tier = get_object_or_404(Tier.objects.live(), pk=tier_id) if tier_id else None
     creating = tier is None
     initial = {}
     if tier:
@@ -122,10 +122,9 @@ def tier_edit(request, tier_id=None):
         d = form.cleaned_data
         try:
             if creating:
-                saved, upgraded = create_tier(d['name'], d['from_points'], form.colors, _medal_path(d['medal']))
-                audit(request, 'tier.create', saved, after=model_snapshot(saved), comment=f'повышено клиентов: {upgraded}')
-                messages.success(request, f'Уровень «{saved.name.get("ru")}» добавлен'
-                                 + (f'. Уровень повышен у {upgraded} клиентов' if upgraded else ''))
+                saved, upgraded = create_tier(d['name'], d['threshold'], form.colors, _medal_path(d['medal']))
+                audit(request, 'tier.create', saved, after=model_snapshot(saved))
+                messages.success(request, f'Уровень «{saved.name.get("ru")}» добавлен')
             else:
                 before = model_snapshot(tier)
                 tier.name, tier.colors, tier.medal = d['name'], form.colors, _medal_path(d['medal'])
@@ -136,21 +135,22 @@ def tier_edit(request, tier_id=None):
         except ApiError as e:
             messages.error(request, e.message or message_for(e.code, 'ru'))
     ctx = {'form': form, 'tier': tier, 'creating': creating,
-           'existing': list(Tier.objects.order_by('from_points'))}
+           'existing': list(Tier.objects.live().order_by('order'))}
     if tier:
         ctx['deletion'] = delete_tier_preview(tier)
+        ctx['is_base'] = not Tier.objects.live().filter(order__lt=tier.order).exists()
     return render(request, 'panel/tiers/tier.html', ctx)
 
 
 @require_POST
 @panel_view(perm='tiers.edit')
 def tier_delete(request, tier_id):
-    tier = get_object_or_404(Tier, pk=tier_id)
+    tier = get_object_or_404(Tier.objects.live(), pk=tier_id)
     target_id = request.POST.get('privileges_to') or ''
     target = Tier.objects.filter(pk=target_id).first() if target_id not in ('', 'delete') else None
     before = model_snapshot(tier)
     try:
-        result = delete_tier(tier, privileges_to=target)
+        result = delete_tier(tier, privileges_to=target, actor=request.user)
     except ApiError as e:
         messages.error(request, e.message or message_for(e.code, 'ru'))
         return redirect('panel:tier', tier_id=tier.pk)

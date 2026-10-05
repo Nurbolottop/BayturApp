@@ -27,8 +27,9 @@ class AdminTestCase(APITestCase):
         cls.item = Item.objects.create(id='massage', category=cls.category, outlet=cls.reception,
                                        title=l10n('Массаж', 'Массаж', 'Massage'), price=1000,
                                        pricing={'type': 'unit', 'unit': 'session', 'min': 1, 'max': 5})
-        for tid, threshold in TIERS:
-            Tier.objects.create(id=tid, name=l10n(tid.title(), tid.title(), tid.title()), from_points=threshold)
+        for order, (tid, threshold) in enumerate(TIERS):
+            Tier.objects.create(id=tid, order=order, name=l10n(tid.title(), tid.title(), tid.title()),
+                                threshold=threshold)
         cls.owner = cls.make_staff(Role.OWNER)
         cls.manager = cls.make_staff(Role.MANAGER)
         cls.editor = cls.make_staff(Role.EDITOR)

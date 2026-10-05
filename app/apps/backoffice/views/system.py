@@ -36,7 +36,7 @@ class SettingsView(AdminAPIView):
 
     def get_object(self):
         # мимо кеша ProgramSettings.get(): правим актуальную строку из БД
-        obj, _ = ProgramSettings.objects.get_or_create(pk=1, defaults={'expiry_warn_days': [30, 7]})
+        obj, _ = ProgramSettings.objects.get_or_create(pk=1)
         return obj
 
     def get(self, request):

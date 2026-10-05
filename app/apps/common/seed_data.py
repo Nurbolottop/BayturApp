@@ -123,12 +123,15 @@ ITEMS = [
 ]
 
 # Пороги — из ТЗ §3.2
+# id, название, порог («Нынешних» за год на предыдущем уровне), может стать вечным, подтверждение.
+# Пороги — примерные из ТЗ лояльности (§7.2): точные цифры задаёт курорт в админке.
 TIERS = [
-    ('bronze', L('Бронза', 'Коло', 'Bronze'), 0),
-    ('silver', L('Серебро', 'Күмүш', 'Silver'), 200_000),
-    ('gold', L('Золото', 'Алтын', 'Gold'), 500_000),
-    ('platinum', L('Платина', 'Платина', 'Platinum'), 960_000),
-    ('diamond', L('Бриллиант', 'Бриллиант', 'Diamond'), 2_000_000),
+    ('bronze', L('Бронза', 'Коло', 'Bronze'), 0, True, 'none'),
+    ('silver', L('Серебро', 'Күмүш', 'Silver'), 200_000, True, 'points'),
+    ('gold', L('Золото', 'Алтын', 'Gold'), 300_000, True, 'points'),
+    ('platinum', L('Платина', 'Платина', 'Platinum'), 900_000, True, 'points'),
+    ('titanium', L('Титан', 'Титан', 'Titanium'), 2_000_000, False, 'points_and_achievements'),
+    ('ambassador', L('Амбассадор', 'Амбассадор', 'Ambassador'), 3_000_000, False, 'points_and_achievements'),
 ]
 
 # id, tier, icon, title, short, description — id/уровни из ТЗ §3.2, тексты — заготовка
@@ -157,11 +160,11 @@ PRIVILEGES = [
      L('Консьерж 24/7 в WhatsApp.', '', '24/7 concierge on WhatsApp.')),
     ('chef', 'platinum', 'chef', L('Ужин от шефа', 'Шефтен кечки тамак', 'Chef’s dinner'), L('Шеф', 'Шеф', 'Chef'),
      L('Авторский ужин раз в сезон.', '', 'A signature dinner once a season.')),
-    ('villa', 'diamond', 'villa', L('Вилла по цене делюкса', 'Делюкс баасындагы вилла', 'Villa at deluxe price'), L('Вилла', 'Вилла', 'Villa'),
+    ('villa', 'titanium', 'villa', L('Вилла по цене делюкса', 'Делюкс баасындагы вилла', 'Villa at deluxe price'), L('Вилла', 'Вилла', 'Villa'),
      L('Проживание на вилле по цене делюкса.', '', 'Stay in a villa at the deluxe rate.')),
-    ('events', 'diamond', 'events', L('Закрытые события', 'Жабык иш-чаралар', 'Private events'), L('События', 'Иш-чаралар', 'Events'),
+    ('events', 'titanium', 'events', L('Закрытые события', 'Жабык иш-чаралар', 'Private events'), L('События', 'Иш-чаралар', 'Events'),
      L('Приглашения на закрытые вечера.', '', 'Invitations to private evenings.')),
-    ('spa-day', 'diamond', 'gift', L('SPA-день в подарок', 'Белекке SPA күнү', 'Complimentary SPA day'), L('SPA-день', 'SPA күнү', 'SPA day'),
+    ('spa-day', 'titanium', 'gift', L('SPA-день в подарок', 'Белекке SPA күнү', 'Complimentary SPA day'), L('SPA-день', 'SPA күнү', 'SPA day'),
      L('Один SPA-день в год бесплатно.', '', 'One free SPA day a year.')),
 ]
 

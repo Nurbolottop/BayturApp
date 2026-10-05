@@ -262,7 +262,7 @@ class ItemSerializer(ImmutableIdMixin, serializers.ModelSerializer):
 # ---------------------------------------------------------------- уровни
 
 def tier_ids():
-    return list(Tier.objects.order_by('from_points').values_list('id', flat=True))
+    return list(Tier.objects.live().order_by('order').values_list('id', flat=True))
 
 
 class TierSerializer(serializers.ModelSerializer):
@@ -272,12 +272,14 @@ class TierSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tier
-        fields = ['id', 'name', 'colors', 'medal']
-        read_only_fields = ['id']
+        fields = ['id', 'order', 'name', 'colors', 'medal']
+        read_only_fields = ['id', 'order']
 
     def get_fields(self):
         fields = super().get_fields()
-        fields['from'] = serializers.IntegerField(source='from_points', min_value=0, required=False)
+        # threshold — «Нынешних» за год на предыдущем уровне; from — прежнее имя поля (совместимость)
+        fields['threshold'] = serializers.IntegerField(min_value=0, required=False)
+        fields['from'] = serializers.IntegerField(source='threshold', min_value=0, required=False)
         fields['medal'] = MediaUrlField(required=False)
         return fields
 
@@ -506,8 +508,6 @@ class ProgramSettingsSerializer(serializers.ModelSerializer):
 
     birthday_multiplier = serializers.DecimalField(max_digits=4, decimal_places=2, min_value=Decimal('1'),
                                                    coerce_to_string=False, required=False)
-    expiry_warn_days = serializers.ListField(child=serializers.IntegerField(min_value=1, max_value=365),
-                                             required=False)
     complaint_alert_emails = serializers.ListField(child=serializers.EmailField(), required=False)
     maintenance_message = optional_l10n()
     updated_at = IsoDateTimeField(read_only=True)

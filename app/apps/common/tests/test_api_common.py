@@ -38,7 +38,9 @@ class CommonApiTests(BaseAPITestCase):
                     '/api/v1/content/articles/jazz-evening', '/api/v1/catalog/items/room-deluxe'):
             self.assertEqual(self.api.get(url).status_code, 200, url)
         program = self.api.get('/api/v1/loyalty/program').json()
-        self.assertEqual([t['from'] for t in program['tiers']], [0, 200_000, 500_000, 960_000, 2_000_000])
+        self.assertEqual([t['threshold'] for t in program['tiers']], [0, 200_000, 300_000, 900_000, 2_000_000, 3_000_000])
+        # from — для старых версий: накопленная сумма порогов
+        self.assertEqual([t['from'] for t in program['tiers']], [0, 200_000, 500_000, 1_400_000, 3_400_000, 6_400_000])
         self.assertEqual(len(program['privileges']), 15)
         self.assertEqual(len(self.api.get('/api/v1/content/promos').json()), 5)
 

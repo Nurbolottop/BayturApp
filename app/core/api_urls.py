@@ -33,6 +33,8 @@ client = [
     path('me/deletion/request', members.DeletionRequestView.as_view()),
     path('me/deletion/confirm', members.DeletionConfirmView.as_view()),
     path('me/summary', loyalty.SummaryView.as_view()),
+    path('me/achievements', loyalty.AchievementsView.as_view()),
+    path('me/loyalty/history', loyalty.LoyaltyHistoryView.as_view()),
     path('me/member-qr', members.MemberQrView.as_view()),
     path('me/notifications', members.NotificationsView.as_view()),
     path('me/notifications/read', members.NotificationsReadView.as_view()),

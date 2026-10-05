@@ -21,8 +21,8 @@ from apps.catalog.models import ONLINE_METHODS, Item, PaymentMethod
 from apps.common.errors import ApiError
 from apps.common.models import ProgramSettings
 from apps.common.realtime import publish_member, publish_outlets
-from apps.loyalty.models import OperationKind
-from apps.loyalty.services import change_reserved, lock_wallet, post_operation, publish_wallet
+from apps.loyalty.engine import evaluate
+from apps.loyalty.services import accrue, change_reserved, lock_wallet, publish_wallet, spend_reserved
 
 from .calc import Rules, compute_split, compute_total, resolve_rules
 from .models import CashbackRequest, RejectReason, RequestStatus
@@ -134,10 +134,9 @@ def create_request(member, data, idempotency_key=None):
             req.save()
 
             if split.points:
-                change_reserved(wallet, split.points)
+                change_reserved(wallet, split.points, request=req, at=now)
             wallet.last_activity_at = now  # заявка — реальное действие
-            wallet.expiry_warned = []
-            wallet.save(update_fields=['last_activity_at', 'expiry_warned', 'updated_at'])
+            wallet.save(update_fields=['last_activity_at', 'updated_at'])
 
             if payment is not None:
                 payment.request = req
@@ -170,7 +169,7 @@ def _after_change(req, staff_event='request.updated', wallet=None):
 
 def _release_and_refund(req, wallet, reason):
     if req.points:
-        change_reserved(wallet, -req.points)
+        change_reserved(wallet, -req.points, request=req)
     payment = getattr(req, 'payment', None)
     if payment is not None:
         from apps.payments.services import refund_payment
@@ -233,9 +232,7 @@ def confirm_request(req_id, staff=None, cash_received=False):
         wallet = lock_wallet(req.member)
         now = timezone.now()
         if req.points:
-            change_reserved(wallet, -req.points)
-            post_operation(wallet, OperationKind.SPEND, -req.points, request=req, item_id=req.item_id,
-                           category=req.item_snapshot.get('category'), title=req.item_snapshot.get('title'), at=now)
+            spend_reserved(wallet, req.points, req, at=now)
         req.mark(RequestStatus.CONFIRMED, now)
         req.confirmed_at = req.closed_at = now
         req.confirmed_by = staff
@@ -258,13 +255,14 @@ def credit_request(req_id):
         wallet = lock_wallet(req.member)
         now = timezone.now()
         if req.cashback:
-            post_operation(wallet, OperationKind.CASHBACK, req.cashback, request=req, item_id=req.item_id,
-                           category=req.item_snapshot.get('category'), title=req.item_snapshot.get('title'),
-                           affects_lifetime=True, at=now)
+            # +P во все три счётчика; повтор начисления той же заявки — та же проводка
+            accrue(wallet, req.cashback, at=now, request=req, idempotency_key=f'cashback:{req.pk}')
         req.mark(RequestStatus.CREDITED, now)
         req.credited_at = now
         req.credit_due_at = None
         req.save()
+        if req.cashback:
+            evaluate(wallet, now)  # задания (по начисленным заявкам) и повышение уровня
     _after_change(req, wallet=wallet)
     from apps.notifications.services import notify_request_credited
     transaction.on_commit(lambda: notify_request_credited(req.pk))
@@ -300,7 +298,7 @@ def adjust_request(req_id, new_total, staff=None, reason='', expected_outlets=No
         split = recalc_for_total(req, new_total, wallet.available + req.points)
         delta = split.points - req.points
         if delta:
-            change_reserved(wallet, delta)
+            change_reserved(wallet, delta, request=req)
         if req.original_total is None:
             req.original_total = req.total
         old_money = req.money_som

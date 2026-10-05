@@ -53,18 +53,3 @@ class NotificationTests(BaseAPITestCase):
     def test_template_rendering(self):
         title, body = services.render('request.credited', 'en', points=49000, item='Cedar barrel')
         self.assertEqual(body, '+49 000 points for “Cedar barrel”')
-
-
-class ExpiryTests(BaseAPITestCase):
-    def test_points_expire_after_12_months_tier_kept(self):
-        from apps.loyalty.models import Wallet
-        from apps.loyalty.services import expire_inactive_wallets, warn_expiring_points
-        m = self.make_member(points=300_000)
-        Wallet.objects.filter(member=m).update(last_activity_at=timezone.now() - timedelta(days=360), tier='silver')
-        self.assertEqual(warn_expiring_points(), 1)
-        self.assertEqual(warn_expiring_points(), 0)      # однократно на порог
-        Wallet.objects.filter(member=m).update(last_activity_at=timezone.now() - timedelta(days=370))
-        self.assertEqual(expire_inactive_wallets(), 1)
-        w = Wallet.objects.get(member=m)
-        self.assertEqual((w.balance, w.tier_id), (0, 'silver'))
-        self.assertTrue(m.operations.filter(kind='expire', points=-300_000).exists())

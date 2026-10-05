@@ -8,7 +8,7 @@ from drf_spectacular.utils import OpenApiParameter, inline_serializer
 from rest_framework import serializers as s
 
 from apps.catalog.models import FEATURE_ICONS, CategoryId, PaymentMethod
-from apps.loyalty.models import PERK_ICONS, OperationKind
+from apps.loyalty.models import PERK_ICONS
 
 
 class MemberBearer(OpenApiAuthenticationExtension):
@@ -112,13 +112,38 @@ class ServiceCategory(s.Serializer):
 TIER_HELP = 'id уровня из GET /loyalty/program (набор уровней задаётся в админке)'
 
 
+class TierStyle(s.Serializer):
+    gradient = s.ListField(child=s.CharField(), help_text='3 цвета #RRGGBB (тёмный → светлый)')
+    glow = s.CharField(help_text='цвет свечения #RRGGBB')
+    medalUrl = s.URLField(allow_null=True, help_text='null — рисовать стандартную медаль в цветах gradient')
+    icon = s.CharField(allow_null=True)
+
+
+class EntryRule(s.Serializer):
+    mode = s.ChoiceField(choices=['all', 'any_n'], help_text='как считаются задания «для получения»')
+    n = s.IntegerField(allow_null=True, help_text='для any_n — сколько заданий из привязанных')
+
+
+class TierAchievementLink(s.Serializer):
+    id = s.CharField(help_text='id задания из achievements[]')
+    usage = s.ChoiceField(choices=['entry', 'retention', 'both'])
+
+
 class Tier(s.Serializer):
-    id = s.CharField(help_text='slug, например bronze; новые уровни добавляются в админке')
+    id = s.CharField(help_text='slug: bronze, silver, gold, platinum, titanium, ambassador или новый из админки')
+    order = s.IntegerField(help_text='порядок снизу вверх, у базового 0')
     name = s.CharField()
-    colors = s.ListField(child=s.CharField(), help_text='градиент: 3 цвета #RRGGBB (тёмный → светлый)')
-    medal = s.URLField(allow_null=True, help_text='картинка медали; null — рисовать стандартную в цветах colors')
+    threshold = s.IntegerField(help_text='сколько «Нынешних» собрать за год на предыдущем уровне; у базового 0')
+    canBeFloor = s.BooleanField(help_text='может стать вечным уровнем')
+    retention = s.ChoiceField(choices=['none', 'points', 'points_and_achievements'],
+                              help_text='как удерживать уровень каждый год')
+    entryRule = EntryRule()
+    style = TierStyle()
+    achievements = TierAchievementLink(many=True)
+    colors = s.ListField(child=s.CharField(), help_text='устарело: = style.gradient')
+    medal = s.URLField(allow_null=True, help_text='устарело: = style.medalUrl')
     # 'from' — зарезервированное слово Python
-    vars()['from'] = s.IntegerField()
+    vars()['from'] = s.IntegerField(help_text='устарело: накопленная сумма порогов (для старых версий)')
 
 
 class Privilege(s.Serializer):
@@ -130,28 +155,89 @@ class Privilege(s.Serializer):
     description = s.CharField()
 
 
+class Achievement(s.Serializer):
+    id = s.CharField()
+    title = s.CharField()
+    description = s.CharField(allow_null=True)
+    icon = s.CharField(allow_null=True)
+    scope = s.ChoiceField(choices=['lifetime', 'period'], help_text='за всё время / за текущий период (год)')
+
+
+class ProgramSettings(s.Serializer):
+    periodType = s.ChoiceField(choices=['calendar_year', 'anniversary'])
+    floorDepth = s.IntegerField(help_text='на сколько уровней ниже наивысшего вечного лежит пол')
+
+
 class Program(s.Serializer):
     tiers = Tier(many=True)
     privileges = Privilege(many=True)
+    achievements = Achievement(many=True)
+    settings = ProgramSettings()
+
+
+class AchievementCount(s.Serializer):
+    required = s.IntegerField()
+    done = s.IntegerField()
+
+
+class TierNext(s.Serializer):
+    id = s.CharField(help_text=TIER_HELP)
+    threshold = s.IntegerField()
+    left = s.IntegerField()
+    progress = s.FloatField(help_text='min(1, current / threshold)')
+    achievements = AchievementCount()
+
+
+class TierRetention(s.Serializer):
+    required = s.BooleanField(help_text='true только при reason = check')
+    reason = s.ChoiceField(choices=['check', 'floor', 'new_this_period', 'not_required'],
+                           help_text='check — в конце года проверка; floor — уровень вечный; new_this_period — '
+                                     'получен в этом году, проверки не будет; not_required — без подтверждения')
+    periodEnd = s.DateTimeField(allow_null=True)
+    limit = s.IntegerField(required=False, help_text='только при reason = check')
+    collected = s.IntegerField(required=False)
+    left = s.IntegerField(required=False)
+    progress = s.FloatField(required=False)
+    atRisk = s.BooleanField(required=False, help_text='до конца периода меньше atRiskDays и лимит не собран')
+    dropTo = s.CharField(required=False, help_text='на какой уровень упадёт, если не подтвердить')
+    achievements = AchievementCount(required=False)
+
+
+class TierState(s.Serializer):
+    id = s.CharField(help_text=TIER_HELP)
+    since = s.DateTimeField()
+    floor = s.CharField(allow_null=True, help_text='вечный уровень: ниже него клиент не упадёт')
+    isFloor = s.BooleanField()
+    maxReached = s.CharField()
+    next = TierNext(allow_null=True, help_text='null на высшем уровне')
+    retention = TierRetention()
+
+
+class Period(s.Serializer):
+    key = s.CharField(help_text='например 2027')
+    start = s.DateTimeField()
+    end = s.DateTimeField()
 
 
 class Wallet(s.Serializer):
-    balance = s.IntegerField()
+    available = s.IntegerField(help_text='можно потратить сейчас (резерв уже вычтен) — крупно на карте баланса')
     reserved = s.IntegerField()
-    available = s.IntegerField()
-    lifetime = s.IntegerField()
-    tier = s.CharField(help_text=TIER_HELP)
+    current = s.IntegerField(help_text='«Нынешние»: решают уровень, обнуляются при повышении и 1 января')
+    lifetime = s.IntegerField(help_text='«За всё время»: только в Профиль → Настройки')
     pendingCashback = s.IntegerField()
-    nextTier = s.CharField(allow_null=True, help_text=TIER_HELP)
-    leftToNext = s.IntegerField()
-    progress = s.FloatField()
-    expiresAt = s.DateTimeField(allow_null=True)
+    tier = TierState()
+    period = Period()
+    balance = s.IntegerField(help_text='устарело: available + reserved')
+    nextTier = s.CharField(allow_null=True, help_text='устарело: = tier.next.id')
+    leftToNext = s.IntegerField(help_text='устарело: = tier.next.left')
+    progress = s.FloatField(help_text='устарело: = tier.next.progress')
 
 
 class Operation(s.Serializer):
     id = s.CharField()
-    kind = s.ChoiceField(choices=OperationKind.choices)
-    points = s.IntegerField()
+    kind = s.ChoiceField(choices=['cashback', 'spend', 'refund', 'reversal', 'adjustment', 'forfeit', 'expire'],
+                         help_text='только движения «Доступных»; expire — лишь в старых записях')
+    points = s.IntegerField(help_text='изменение «Доступных»')
     at = s.DateTimeField()
     itemId = s.CharField(allow_null=True)
     category = s.ChoiceField(choices=CategoryId.choices, allow_null=True)
@@ -163,8 +249,44 @@ class Operation(s.Serializer):
 
 class Summary(s.Serializer):
     available = s.IntegerField()
-    lifetime = s.IntegerField()
+    current = s.IntegerField()
+    lifetime = s.IntegerField(help_text='на главных экранах не показывается')
     requestsCount = s.IntegerField()
+
+
+class AchievementProgress(s.Serializer):
+    id = s.CharField()
+    progress = s.IntegerField()
+    target = s.IntegerField()
+    completedAt = s.DateTimeField(allow_null=True)
+    periodKey = s.CharField(allow_null=True, help_text='для заданий «за период»')
+
+
+class Achievements(s.Serializer):
+    items = AchievementProgress(many=True)
+
+
+class PeriodSummary(s.Serializer):
+    key = s.CharField()
+    tierStart = s.CharField()
+    tierEnd = s.CharField()
+    collected = s.IntegerField()
+    limit = s.IntegerField(allow_null=True)
+    result = s.ChoiceField(choices=['retained', 'dropped', 'promoted_in_period', 'floor', 'not_required'])
+
+
+class TierChangeItem(s.Serializer):
+    to = s.CharField()
+    at = s.DateTimeField()
+    cause = s.ChoiceField(choices=['promotion', 'period_drop', 'admin', 'migration'])
+    vars()['from'] = s.CharField(allow_null=True)
+
+
+class LoyaltyHistory(s.Serializer):
+    lifetime = s.IntegerField()
+    memberSince = s.DateField()
+    periods = PeriodSummary(many=True, help_text='новые сверху')
+    tierChanges = TierChangeItem(many=True, help_text='новые сверху')
 
 
 # ---------------------------------------------------------------- заявки

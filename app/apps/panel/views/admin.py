@@ -21,7 +21,7 @@ SETTINGS_TABS = [('program', 'Программа'), ('contacts', 'Контакт
 
 
 def _ps():
-    return ProgramSettings.objects.get_or_create(pk=1, defaults={'expiry_warn_days': [30, 7]})[0]
+    return ProgramSettings.objects.get_or_create(pk=1)[0]
 
 
 @panel_view('settings')

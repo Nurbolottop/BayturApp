@@ -3,7 +3,7 @@
 {% block content %}
 <div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:tiers' %}">{% icon 'arrow-left' 14 %} Уровни</a></div>
   <h1 class="page-title">{% if creating %}Новый уровень{% else %}{{ tier.name|tr }}{% endif %}</h1>
-  {% if not creating %}<div class="muted" style="margin-top:6px">от <span class="tabular">{{ tier.from_points|num }}</span> баллов lifetime · порог меняется на странице уровней</div>{% endif %}</div></div>
+  {% if not creating %}<div class="muted" style="margin-top:6px"><span class="tabular">{{ tier.threshold|num }}</span> «Нынешних» за год · порог меняется на странице уровней</div>{% endif %}</div></div>
 
 <div class="split">
 <div class="stack">
@@ -11,9 +11,8 @@
     {% csrf_token %}
     {% include 'panel/components/field.html' with f=form.name %}
     {% if creating %}
-      {% include 'panel/components/field.html' with f=form.from_points %}
-      <div class="small muted">Существующие пороги: {% for t in existing %}{{ t.name|tr }} — <span class="tabular">{{ t.from_points|num }}</span>{% if not forloop.last %} · {% endif %}{% endfor %}.
-        Клиенты, у которых lifetime уже не ниже порога, сразу получат новый уровень (уровень только повышается).</div>
+      {% include 'panel/components/field.html' with f=form.threshold %}
+      <div class="small muted">Новый уровень встанет на верх лестницы. Порог — сколько «Нынешних» собрать за год на уровне «{% with existing|last as top %}{{ top.name|tr }}{% endwith %}». Повышение проверяется при следующем начислении.</div>
     {% endif %}
     <div><span class="label">Градиент карточки и медали</span>
       <div class="row wrap" style="margin-top:8px;gap:14px">
@@ -35,10 +34,10 @@
         data-confirm="Удалить уровень «{{ tier.name|tr }}»? Это нельзя отменить.">
     {% csrf_token %}
     <div class="h3">Удалить уровень</div>
-    {% if tier.from_points == 0 %}
-      <div class="small muted">Нижний уровень (порог 0) удалить нельзя — у каждого клиента должен быть уровень.</div>
+    {% if is_base %}
+      <div class="small muted">Базовый уровень удалить нельзя — у каждого клиента должен быть уровень.</div>
     {% else %}
-      <div class="small">Клиентов на этом уровне: <b class="tabular">{{ deletion.members|num }}</b>{% if deletion.members %} — получат уровень по своим баллам{% if deletion.fallback %} (скорее всего «{{ deletion.fallback.name|tr }}»){% endif %}{% endif %}.</div>
+      <div class="small">Клиентов на этом уровне: <b class="tabular">{{ deletion.members|num }}</b>{% if deletion.members %} {% if deletion.fallback %} — перейдут на «{{ deletion.fallback.name|tr }}»{% endif %}{% endif %}.</div>
       {% if deletion.privileges %}
       <div class="field"><label for="priv-to">Привилегии уровня ({{ deletion.privileges }})</label>
         <select id="priv-to" name="privileges_to">
@@ -56,7 +55,7 @@
 <div class="stack">
   <div class="label">Как будет выглядеть</div>
   <div class="tier-card" id="tier-preview" style="min-height:150px"><div class="shine"></div>
-    <div class="row-between"><div><div class="small" style="opacity:.8" id="tp-from">{% if tier %}от {{ tier.from_points|num }}{% else %}от …{% endif %}</div>
+    <div class="row-between"><div><div class="small" style="opacity:.8" id="tp-from">{% if tier %}{{ tier.threshold|num }} за год{% else %}… за год{% endif %}</div>
       <div class="h2" id="tp-name">{% if tier %}{{ tier.name|tr }}{% else %}Новый уровень{% endif %}</div></div>
       <span id="tp-medal">{% if tier %}{% medal tier.pk 52 %}{% endif %}</span></div>
   </div>
@@ -72,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var c = [v('color0'), v('color1'), v('color2')];
     card.style.background = 'linear-gradient(135deg,' + c[0] + ' 0%,' + c[1] + ' 55%,' + c[2] + ' 100%)';
     var name = v('name_ru'); if (name) document.getElementById('tp-name').textContent = name;
-    var from = v('from_points'); if (from) document.getElementById('tp-from').textContent = 'от ' + Number(from).toLocaleString('ru-RU');
+    var from = v('threshold'); if (from) document.getElementById('tp-from').textContent = Number(from).toLocaleString('ru-RU') + ' за год';
     var medal = v('medal'), box = document.getElementById('tp-medal');
     if (medal) box.innerHTML = '<img src="' + (medal.indexOf('http') === 0 || medal[0] === '/' ? medal : '/media/' + medal) + '" width="52" height="52" alt="" style="object-fit:contain">';
     else if (!box.querySelector('svg')) box.innerHTML = '';

@@ -184,12 +184,14 @@ class LifecycleTests(BaseAPITestCase):
         self.assertTrue(self.member.notifications.filter(kind='request.credited').exists())
 
     def test_tier_upgrade_and_never_down(self):
-        req = self.new(item='room-deluxe', qty=3, pts=0)   # кешбек 483 000 → Серебро (lifetime ≥ 200 000)
+        req = self.new(item='room-deluxe', qty=3, pts=0)   # кешбек 483 000 → Серебро («Нынешние» ≥ 200 000)
         services.confirm_request(req.pk)
         with self.captureOnCommitCallbacks(execute=True):
             services.credit_request(req.pk)
         w = self.wallet(self.member)
         self.assertEqual(w.tier_id, 'silver')
+        # излишек сверх порога для «Нынешних» сгорает, «Доступные» и «За всё время» — полностью
+        self.assertEqual((w.current, w.lifetime), (0, 483_000))
         # траты не понижают уровень
         spend = self.new(item='spa-stone', qty=1, pts=3500)
         services.confirm_request(spend.pk)

@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 from apps.cashback.desk import scoped_requests
 from apps.common.audit import audit
 from apps.common.models import ProgramSettings
-from apps.loyalty.services import expires_at, get_wallet, pending_cashback, tier_progress, tiers_ordered
+from apps.loyalty.services import get_wallet, pending_cashback, refresh_wallet, tier_state
 from apps.members.models import Member, MemberStatus
 
 from ..access import panel_view, run_action
@@ -59,15 +59,19 @@ def members_list(request):
 def member_detail(request, pk):
     member = get_object_or_404(Member, pk=pk)
     user = request.user
-    wallet = get_wallet(member)
+    wallet = refresh_wallet(member)
     full = user.can('members.history')
     ctx = {'m': member, 'wallet': wallet, 'full': full, 'tier': wallet.tier_id,
            'can_manage': user.can('members.manage'), 'can_restore': user.can('members.restore')}
     if full:
-        current, nxt, left, progress = tier_progress(wallet.lifetime, tiers_ordered())
+        state = tier_state(wallet) or {}
+        nxt = state.get('next')
+        retention = state.get('retention') or {}
         ctx.update({
-            'next_tier': nxt, 'left': left, 'progress': int(progress * 100),
-            'pending_cashback': pending_cashback(member), 'expires': expires_at(wallet),
+            'next_tier': nxt and nxt['id'], 'left': nxt['left'] if nxt else 0,
+            'progress': int((nxt['progress'] if nxt else 1) * 100), 'tier_state': state, 'retention': retention,
+            'retention_progress': int(retention.get('progress', 0) * 100),
+            'pending_cashback': pending_cashback(member),
             'balance_som': wallet.balance // max(1, ProgramSettings.get().points_per_som),
             'requests': member.cashback_requests.select_related('outlet').order_by('-created_at')[:50],
             'operations': member.operations.select_related('author').order_by('-at')[:100],

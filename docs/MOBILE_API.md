@@ -1,5 +1,8 @@
 # BAYTUR — API для мобильного приложения
 
+> **Новая балловая система** (три счётчика, уровни по «Нынешним», закрытие года, задания) — отдельное ТЗ для
+> мобилки: [`MOBILE_LOYALTY_V2.md`](MOBILE_LOYALTY_V2.md).
+
 Документ для мобильной команды и её AI-ассистента: как подключить приложение BAYTUR к бекенду вместо
 захардкоженных данных и `FakeLoyaltyServer`. Можно целиком передать в контекст Claude/Cursor и работать по нему.
 
@@ -48,9 +51,10 @@
 4. **Неизвестные enum-значения не должны ронять парсинг:** бек может добавить новые `kind`/иконки —
    пропускай или показывай дефолт.
    **Уровни не фиксированы:** курорт может добавлять, удалять и переименовывать уровни в админке. Не храни
-   список уровней в коде (enum `TierId` на 5 значений) — бери его из `GET /loyalty/program`, а градиент и медаль
-   рисуй по полям `colors` и `medal` (см. §6.3). Медали из `assets/images/tiers/` можно оставить как
-   оформление для известных id (`bronze`…`diamond`), но для любого другого id нужен вариант из `colors`/`medal`.
+   список уровней в коде (enum `TierId`) — бери его из `GET /loyalty/program` в порядке `order`, а градиент и медаль
+   рисуй по `style` (см. §6.3). Медали из `assets/images/tiers/` можно оставить как оформление для известных id
+   (`bronze`, `silver`, `gold`, `platinum`, `titanium`, `ambassador`), но для любого другого id — стиль из `style`.
+   Уровень, прогресс и удержание **не считай** — всё готово в `GET /wallet` (§7.1).
 5. **Каждый запрос** отправляй с заголовками из §2.1; ошибки обрабатывай по `error.code` (§3), текст
    показывай из `error.message` — он уже на языке пользователя.
 6. **Токены** храни в Keychain / Keystore (flutter_secure_storage), не в SharedPreferences.
@@ -381,8 +385,11 @@ GET /legal
 ### 5.6. `GET /me/summary` — цифры в профиле
 
 ```json
-{"available": 845000, "lifetime": 845000, "requestsCount": 12}
+{"available": 845000, "current": 400000, "lifetime": 1400000, "requestsCount": 12}
 ```
+
+Три цифры профиля: «Доступно» (`available`) · «Нынешние» (`current`) · «Заявок». `lifetime` на главных экранах
+не показывается — только в листе «Баллы за всё время» (§7.4).
 
 ### 5.7. Push-токен
 
@@ -455,26 +462,40 @@ DELETE /me/devices/{token}   → 204
 ```json
 {
   "tiers": [
-    {"id": "bronze", "name": "Бронза", "from": 0, "colors": ["#4A220F", "#99562C", "#D9976A"], "medal": null},
-    {"id": "silver", "name": "Серебро", "from": 200000, "colors": ["#3F4A56", "#7D8B99", "#C3CCD6"], "medal": null},
-    {"id": "gold", "name": "Золото", "from": 500000, "colors": ["#5E4206", "#AE7E17", "#E6BF58"], "medal": null},
-    {"id": "platinum", "name": "Платина", "from": 960000, "colors": ["#232C38", "#627488", "#B4C2D3"], "medal": null},
-    {"id": "diamond", "name": "Бриллиант", "from": 2000000, "colors": ["#140F3A", "#4B3DB0", "#8FD8FF"], "medal": null}
+    {"id": "bronze", "order": 0, "name": "Бронза", "threshold": 0, "canBeFloor": true, "retention": "none",
+     "entryRule": {"mode": "all", "n": null},
+     "style": {"gradient": ["#4A220F", "#99562C", "#D9976A"], "glow": "#D9976A", "medalUrl": null, "icon": null},
+     "achievements": [],
+     "from": 0, "colors": ["#4A220F", "#99562C", "#D9976A"], "medal": null},
+    {"id": "gold", "order": 2, "name": "Золото", "threshold": 300000, "canBeFloor": true, "retention": "points", "...": "..."},
+    {"id": "titanium", "order": 4, "name": "Титан", "threshold": 2000000, "canBeFloor": false,
+     "retention": "points_and_achievements", "entryRule": {"mode": "all", "n": null},
+     "achievements": [{"id": "five-years", "usage": "entry"}, {"id": "annual-evening", "usage": "retention"}],
+     "...": "..."}
   ],
   "privileges": [
     {"id": "cashback", "tier": "bronze", "icon": "cashback", "title": "Кешбек баллами", "short": "Кешбек",
      "description": "Баллы за каждую оплату деньгами: 100 баллов = 1 сом."}
-  ]
+  ],
+  "achievements": [
+    {"id": "five-years", "title": "Быть клиентом 5 лет подряд", "description": "…", "icon": "calendar",
+     "scope": "lifetime"}
+  ],
+  "settings": {"periodType": "calendar_year", "floorDepth": 1}
 }
 ```
 
-- Уровни уже отсортированы по порогу `from`. **Их количество и id не фиксированы** — курорт добавляет и удаляет
-  уровни в админке; новый уровень появится в этом ответе.
-- `colors` — градиент карточки и медали уровня: 3 цвета `#RRGGBB` от тёмного к светлому
-  (как `tier_style.dart`: `LinearGradient` 135°, остановки 0 / 0.55 / 1).
-- `medal` — URL картинки медали (PNG с прозрачностью) или `null` — тогда рисуйте стандартную медаль в цветах `colors`.
-- Если уровень удалили, клиенты автоматически получают уровень по своим баллам — придёт `wallet.updated`.
-- Прогресс не считайте — он в `GET /wallet` (`tier`, `nextTier`, `leftToNext`, `progress`).
+- Уровни отсортированы снизу вверх по `order`. **Их количество и id не фиксированы** — курорт создаёт, переименовывает,
+  переставляет и удаляет уровни в админке; ETag меняется при любой правке.
+- `threshold` — сколько **«Нынешних»** баллов нужно собрать **за один год на предыдущем уровне** (не нарастающий итог).
+  В UI: «Соберите N за год».
+- `canBeFloor` — может стать вечным; `retention` — как удерживать: `none` · `points` · `points_and_achievements`.
+- `achievements[].usage`: `entry` — для получения, `retention` — для подтверждения, `both`. Тексты заданий — в
+  `achievements` верхнего уровня (только видимые клиенту).
+- `style.gradient` — 3 цвета `#RRGGBB` от тёмного к светлому (`LinearGradient` 135°, остановки 0 / 0.55 / 1),
+  `style.glow` — свечение, `style.medalUrl` — PNG/WebP медали или `null` (рисуйте стандартную в цветах градиента).
+- `from`, `colors`, `medal` — **устарели**, остаются для старых версий (`from` = накопленная сумма порогов).
+- Прогресс и удержание не считайте — они в `GET /wallet` (`tier.next`, `tier.retention`).
 
 ### 6.4. Контент
 
@@ -512,49 +533,118 @@ GET /content/articles/{id}       → Article        (диплинк / push)
 
 ## 7. Кошелёк и история
 
-### 7.1. `GET /wallet`
+### 7.1. `GET /wallet` — единственный источник цифр для главной и уровней
+
+У клиента три счётчика:
+
+| Счётчик | Поле | Что это | Где показывать |
+|---|---|---|---|
+| Доступные | `available` | можно потратить прямо сейчас (резерв уже вычтен); не сгорают | крупно на карте баланса, оплата баллами |
+| Нынешние | `current` | заработанные с последнего сброса; решают уровень; обнуляются при повышении и 1 января; траты их не уменьшают | карточки уровней, подпись к прогрессу |
+| За всё время | `lifetime` | всё заработанное; на уровень не влияет | только Профиль → Настройки → «Баллы за всё время» |
 
 ```json
 {
-  "balance": 845000,          // баланс включая резерв
-  "reserved": 150000,         // заморожено под заявки в pending
-  "available": 695000,        // balance − reserved — именно это показывать как «доступно»
-  "lifetime": 845000,         // всего начислено кешбека; траты не уменьшают; определяет уровень
-  "tier": "gold",
-  "pendingCashback": 49000,   // ожидаемый кешбек по активным заявкам (pending + confirmed)
-  "nextTier": "platinum",     // null на «Бриллианте»
-  "leftToNext": 115000,       // баллов до следующего уровня
-  "progress": 0.7604,         // 0…1 — полоса прогресса
-  "expiresAt": "2027-09-28T18:24:00+06:00"   // когда сгорят баллы без активности (null — нечему сгорать)
+  "available": 1300000,
+  "reserved": 0,
+  "current": 400000,
+  "lifetime": 1400000,
+  "pendingCashback": 0,
+  "tier": {
+    "id": "gold",
+    "since": "2026-08-12T16:00:00+06:00",
+    "floor": "silver",                // вечный уровень: ниже него клиент не упадёт
+    "isFloor": false,                 // true — показать замок «Навсегда ваш»
+    "maxReached": "gold",
+    "next": {                         // null на высшем уровне
+      "id": "platinum", "threshold": 900000, "left": 500000, "progress": 0.4444,
+      "achievements": {"required": 0, "done": 0}
+    },
+    "retention": {
+      "required": true,
+      "reason": "check",              // check | floor | new_this_period | not_required
+      "periodEnd": "2027-12-31T23:59:59+06:00",
+      "limit": 510000, "collected": 400000, "left": 110000, "progress": 0.7843,
+      "atRisk": true,                 // показать плашку «Подтвердите Золото: ещё 110 000 до 31 декабря»
+      "dropTo": "silver",             // «иначе — Серебро»
+      "achievements": {"required": 0, "done": 0}
+    }
+  },
+  "period": {"key": "2027", "start": "2027-01-01T00:00:00+06:00", "end": "2027-12-31T23:59:59+06:00"},
+
+  "balance": 1300000, "nextTier": "platinum", "leftToNext": 500000, "progress": 0.4444
 }
 ```
 
-Карта баланса на главной и экран «Уровни» рисуются только из этого ответа. Обновления приходят событием
-`wallet.updated` (§10) — тот же объект.
+- `tier.retention.reason`: `check` — в конце года проверка (второй тонкий бар «Подтверждение: collected из limit до …»);
+  `floor` — уровень вечный («Навсегда ваш»); `new_this_period` — получен в этом году, подтверждать не нужно;
+  `not_required` — уровень без подтверждения (Бронза). Поля `limit…achievements` есть только при `check`.
+- `balance`, `nextTier`, `leftToNext`, `progress` — **устарели** (для старых версий: `balance = available + reserved`,
+  остальное дублирует `tier.next`). Новая версия их не читает. Поле `expiresAt` удалено — **баллы больше не сгорают**.
+- Обновления приходят событием `wallet.updated` (§10) — тот же объект.
 
-**Сгорание:** если 12 месяцев не было реальных действий (заявка, начисление, списание), весь баланс сгорает
-операцией `expire`. Заход в приложение действием не считается. За 30 и 7 дней приходит push. Уровень не понижается никогда.
+**Как работает уровень** (считает сервер, приложению — для текстов):
+- кешбек добавляется во все три счётчика; траты уменьшают только «Доступные»;
+- когда «Нынешние» ≥ `threshold` следующего уровня (и выполнены его задания «для получения») — повышение,
+  «Нынешние» обнуляются, приходит `tier.upgraded`;
+- 1 января — закрытие года: если уровень получен до этого года и не вечный, нужно было собрать ≥ `limit`
+  (и выполнить задания «для подтверждения»), иначе понижение на один уровень (не ниже пола) — `tier.downgraded`;
+- лимит на следующий год = собранное за год + надбавка (10 000), только растёт и хранится по каждому уровню.
 
 ### 7.2. `GET /wallet/operations?cursor=&limit=20` — история (ledger)
 
 ```json
 {"items": [{
   "id": "op_pyd9rxkf31twn6",
-  "kind": "cashback",                     // cashback | spend | refund | adjustment | expire | forfeit
-  "points": 8000,                         // со знаком: +начисление, −списание
+  "kind": "cashback",                     // cashback | spend | refund | reversal | adjustment | forfeit (| expire — старые)
+  "points": 8000,                         // изменение «Доступных», со знаком
   "at": "2026-09-29T22:40:34+06:00",
   "itemId": "sport-gym",                  // название подставляйте сами на текущем языке (из каталога)
   "category": "sport",                    // для иконки; может быть null
   "requestId": "req_m468s46nqn09b8",      // заявка, породившая операцию; может быть null
   "title": "Тренажёрный зал",             // fallback, если услугу удалили из каталога
-  "reason": null,                         // причина корректировки/возврата/сгорания — показывать клиенту
-  "relatedId": null                       // исходная операция для refund/adjustment
+  "reason": null,                         // причина корректировки/возврата — показывать клиенту
+  "relatedId": null                       // исходная операция для refund/reversal/adjustment
 }], "nextCursor": "WyIy..."}
 ```
 
-⚠️ `kind` расширен по сравнению с мобилкой (там было 3 значения): добавлены `adjustment` (ручная корректировка
-курорта, со знаком ±), `expire` (сгорание), `forfeit` (списание при окончательном удалении аккаунта).
-Для них `itemId` = null — показывайте `reason`.
+Только движения «Доступных». Служебные проводки (резерв, сброс «Нынешних») не отдаются.
+`reversal` — «Отмена начисления · {услуга}» (заявку отменили после начисления). `adjustment` — ручная корректировка
+курорта (±). `forfeit` — списание при окончательном удалении аккаунта. `expire` больше не создаётся — встречается
+только в старых записях. Для операций без услуги `itemId` = null — показывайте `reason`.
+
+### 7.3. `GET /me/achievements` — прогресс по заданиям
+
+```json
+{"items": [
+  {"id": "five-years", "progress": 3, "target": 5, "completedAt": null, "periodKey": null},
+  {"id": "annual-evening", "progress": 1, "target": 1, "completedAt": "2027-06-10T19:00:00+06:00", "periodKey": "2027"}
+]}
+```
+
+Только видимые клиенту задания; тексты и иконки — из `GET /loyalty/program` → `achievements`. Чек-лист на карте
+уровня: «Задания {done} из {total}», «3 из 5 лет», галочка при `completedAt`. Задания «за период» (`periodKey`)
+обнуляются 1 января.
+
+### 7.4. `GET /me/loyalty/history` — лист «Баллы за всё время»
+
+```json
+{
+  "lifetime": 2500000,
+  "memberSince": "2026-03-01",
+  "periods": [                                   // новые сверху
+    {"key": "2028", "tierStart": "silver", "tierEnd": "gold", "collected": 800000, "limit": 510000,
+     "result": "promoted_in_period"},
+    {"key": "2027", "tierStart": "gold", "tierEnd": "silver", "collected": 400000, "limit": 510000, "result": "dropped"}
+  ],
+  "tierChanges": [                               // новые сверху
+    {"from": "silver", "to": "gold", "at": "2028-05-01T12:00:00+06:00", "cause": "promotion"}
+  ]
+}
+```
+
+`result`: `retained` — «Подтверждён», `promoted_in_period` — «Новый», `dropped` — «Понижен», `floor` — «Навсегда»,
+`not_required` — без плашки. `cause`: `promotion`, `period_drop`, `admin`, `migration`.
 
 ---
 
@@ -570,7 +660,7 @@ pending ──(сотрудник подтвердил)──▶ confirmed ─�
 
 - Отмена и отказ — **только из `pending`**. После `confirmed` заявка идёт только в `credited`.
 - `pending` держит баллы в резерве (`wallet.reserved`); `confirmed` списывает их (операция `spend`);
-  `credited` начисляет кешбек (операция `cashback`, растит `lifetime`).
+  `credited` начисляет кешбек (операция `cashback`: растит `available`, `current` и `lifetime`, может поднять уровень).
 - Пока заявка `pending`, сотрудник может **изменить сумму** (не совпала с чеком) — придёт `request.updated`
   с новым `split` и `originalTotal` («Администратор изменил сумму — было …») и `adjustReason`.
 
@@ -733,7 +823,11 @@ wss://app.baytur.kg/api/v1/events?token=<accessToken>
 | type | data | Что делает мобилка |
 |---|---|---|
 | `request.updated` | `CashbackRequest` | обновить карточку и шкалу этапов; если `status = credited` — праздничный баннер «+N баллов» (N = `split.cashback`), звук, вибрация; `rejected` — тост «Заявка отклонена» |
-| `wallet.updated` | `Wallet` | обновить карту баланса и уровень |
+| `wallet.updated` | `Wallet` | обновить карту баланса и уровень (любое изменение счётчиков или уровня) |
+| `tier.upgraded` | `{type, tierId, fromTierId?}` | праздничный экран нового уровня (один раз на `tier.since`) |
+| `tier.downgraded` | `{type, tierId, fromTierId}` | спокойный лист понижения при следующем открытии |
+| `tier.retained` | `{type, tierId}` | тост с медалью «Уровень подтверждён» |
+| `achievement.completed` | `{type, achievementId, tierId?}` | тост с иконкой задания, галочка в чек-листе |
 | `notification.created` | `Notification` (§11) | счётчик на колокольчике |
 | `payment.updated` | `Payment` | шаг онлайн-оплаты |
 | `complaint.updated` | `Complaint` (§13) | обновить переписку |
@@ -753,9 +847,11 @@ Firebase-проект — **`baytur-2add6`**: конфиги `google-services.js
 | `request.credited` | `requestId`, `points` | карточка заявки |
 | `request.rejected` | `requestId` | карточка заявки |
 | `request.paid` | `requestId`, `points` (отрицательное) | карточка заявки — «Оплачено баллами» (§14.2) |
-| `tier.upgraded` | `tier` | экран «Уровни» |
-| `points.expiring` | `days` | главная / кошелёк |
-| `points.expired` | — | история |
+| `tier.upgraded` | `tierId`, `fromTierId` (и устаревшее `tier`) | вкладка «Уровни» → уровень `tierId` |
+| `tier.downgraded` | `tierId`, `fromTierId` | вкладка «Уровни» → уровень `tierId` |
+| `tier.retained` | `tierId` | вкладка «Уровни» → уровень `tierId` |
+| `tier.at_risk` | `tierId`, `dropTo` | вкладка «Уровни» (за 60, 30 и 7 дней до конца года; по `notifyPromos`) |
+| `achievement.completed` | `achievementId`, `tierId?` | вкладка «Уровни» → уровень с этим заданием |
 | `points.adjusted` | — | история |
 | `complaint.reply` | `complaintId` | обращение |
 | `campaign` | `campaignId`, `articleId` и/или `itemId` | статья (`GET /content/articles/{articleId}`) или услуга |
@@ -930,12 +1026,12 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 |---|---|
 | Сплэш | `GET /app/config`; при наличии токена — `GET /me` (`pendingConsents`) |
 | Главная: приветствие, аватар | `GET /me` (гость — без имени) |
-| Главная: карта баланса | `GET /wallet` + `wallet.updated`; гость — карточка «Войдите — начислим баллы» |
+| Главная: карта баланса | `GET /wallet` + `wallet.updated`: крупно `available`, подпись и бар — по `tier.next`, плашка риска при `tier.retention.atRisk`; гость — карточка «Войдите — начислим баллы» |
 | Главная: быстрые разделы | `GET /catalog` |
 | Главная: «В обработке» | `GET /cashback-requests?status=active` + `request.updated` |
 | Главная: акции, события | `GET /content/promos`, `GET /content/events` |
 | Главная: колокольчик | `GET /me/notifications` (`unread`) + `notification.created` |
-| Уровни | `GET /loyalty/program` + `GET /wallet` (гость — без прогресса, кнопка «Войти и начать копить») |
+| Уровни | `GET /loyalty/program` + `GET /wallet` + `GET /me/achievements` (гость — пороги «Соберите N за год», кнопка «Войти и начать копить») |
 | Каталог, сторис | `GET /catalog`, `GET /content/stories` |
 | Страница услуги | данные из `/catalog` или `GET /catalog/items/{id}`; `cashbackPreview` |
 | Статья / диплинк | `GET /content/articles/{id}` |
@@ -944,7 +1040,8 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 | Кешбек: «Заявка отправлена» | `POST /cashback-requests` (Idempotency-Key), затем realtime |
 | Карточка заявки | `GET /cashback-requests/{id}`, `POST …/cancel`, `rejectReason`, `originalTotal` |
 | История | `GET /cashback-requests?status=all`, `GET /wallet/operations` |
-| Профиль: карточка участника | `GET /me`, `GET /me/summary`, `GET /me/member-qr` |
+| Профиль: карточка участника | `GET /me`, `GET /me/summary` (Доступно · Нынешние · Заявок), `GET /me/member-qr` |
+| Профиль → Настройки → «Баллы за всё время» | `GET /me/loyalty/history` |
 | Профиль: редактирование | `PATCH /me` (без телефона; ДР — один раз), `POST/DELETE /me/avatar` |
 | Профиль: уведомления, язык | `PATCH /me/settings` |
 | Профиль: курорт, документы | `GET /resort/contacts` |
@@ -968,9 +1065,11 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 |---|---|
 | `CategoryId` | `rooms`, `spa`, `food`, `pools`, `sport` |
 | `PaymentMethod` | `cash`, `finik`, `freedomPay`, `elqr` |
-| Уровень (`tier`) | **не enum** — строка-id из `GET /loyalty/program`; по умолчанию `bronze`, `silver`, `gold`, `platinum`, `diamond`, но курорт может добавлять и удалять уровни |
+| Уровень (`tier.id`) | **не enum** — строка-id из `GET /loyalty/program`; по умолчанию `bronze`, `silver`, `gold`, `platinum`, `titanium`, `ambassador`, но курорт может добавлять и удалять уровни (`diamond` больше не приходит — это `titanium`) |
+| `retention.reason` | `check`, `floor`, `new_this_period`, `not_required` |
+| `PeriodResult` | `retained`, `dropped`, `promoted_in_period`, `floor`, `not_required` |
 | `RequestStatus` | `pending`, `confirmed`, `credited`, `rejected`, `cancelled` |
-| `OperationKind` | `cashback`, `spend`, `refund`, `adjustment`, `expire`, `forfeit` |
+| `OperationKind` | `cashback`, `spend`, `refund`, `reversal`, `adjustment`, `forfeit` (`expire` — только старые записи) |
 | `PaymentStatus` | `created`, `pending`, `paid`, `failed`, `expired`, `refunded` |
 | `PricingType` / `PricingUnit` | `unit`, `check` / `night`, `session`, `guest`, `hour`, `visit` |
 | `BonusKind` | `promo`, `birthday` |
@@ -981,7 +1080,7 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 | `ComplaintStatus` | `new`, `in_progress`, `answered`, `closed` |
 | `ComplaintSubtype` | `not_credited`, `credited_less`, `overcharged`, `other` |
 | `ConsentKind` | `terms`, `privacy` |
-| Push / realtime `type` | `request.updated`, `wallet.updated`, `notification.created`, `payment.updated`, `complaint.updated`, `request.credited`, `request.rejected`, `request.paid`, `tier.upgraded`, `points.expiring`, `points.expired`, `points.adjusted`, `complaint.reply`, `campaign` |
+| Push / realtime `type` | `request.updated`, `wallet.updated`, `notification.created`, `payment.updated`, `complaint.updated`, `request.credited`, `request.rejected`, `request.paid`, `tier.upgraded`, `tier.downgraded`, `tier.retained`, `tier.at_risk`, `achievement.completed`, `points.adjusted`, `complaint.reply`, `campaign` (`points.expiring` / `points.expired` удалены) |
 
 Новые значения `FeatureIcon` / `PerkIcon` / способов оплаты появляются только вместе с релизом мобилки;
 остальные enum могут расширяться — неизвестное значение не должно ломать парсинг.
