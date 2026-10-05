@@ -1,5 +1,5 @@
 """Маршруты /api/v1 — клиентский API (§4.1), рабочее место сотрудника (§8.5), вход в админку (§7.3)."""
-from django.urls import include, path
+from django.urls import include, path, re_path
 
 from apps.analytics import api as analytics
 from apps.cashback import api as cashback
@@ -19,6 +19,8 @@ client = [
     # вход и профиль (§2)
     path('auth/otp/request', members.OtpRequestView.as_view()),
     path('auth/otp/verify', members.OtpVerifyView.as_view()),
+    path('auth/google', members.GoogleLoginView.as_view()),
+    path('auth/apple', members.AppleLoginView.as_view()),
     path('auth/register', members.RegisterView.as_view()),
     path('auth/refresh', members.RefreshView.as_view()),
     path('auth/logout', members.LogoutView.as_view()),
@@ -27,6 +29,7 @@ client = [
     path('me', members.MeView.as_view()),
     path('me/settings', members.MeSettingsView.as_view()),
     path('me/avatar', members.MeAvatarView.as_view()),
+    re_path(r'^me/social/(?P<provider>google|apple)$', members.MeSocialView.as_view()),
     path('me/consents', members.ConsentsView.as_view()),
     path('me/devices', members.DevicesView.as_view()),
     path('me/devices/<path:token>', members.DeviceDeleteView.as_view()),

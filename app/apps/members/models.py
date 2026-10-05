@@ -125,6 +125,31 @@ class MemberRefreshToken(models.Model):
     revoked_at = models.DateTimeField(null=True, blank=True)
 
 
+class SocialProvider(models.TextChoices):
+    GOOGLE = 'google', 'Google'
+    APPLE = 'apple', 'Apple ID'
+
+
+class SocialAccount(models.Model):
+    """Вход через Google / Apple ID. Один аккаунт провайдера на участника; привязка — после подтверждения номера."""
+
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='social_accounts')
+    provider = models.CharField(max_length=10, choices=SocialProvider.choices)
+    subject = models.CharField('sub провайдера', max_length=255)
+    email = models.EmailField(blank=True)
+    # Apple: refresh-токен из обмена authorizationCode — нужен только чтобы отозвать доступ при удалении аккаунта
+    client_id = models.CharField(max_length=255, blank=True)
+    refresh_token = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_login_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['provider', 'subject'], name='social_provider_subject_unique'),
+            models.UniqueConstraint(fields=['member', 'provider'], name='social_member_provider_unique'),
+        ]
+
+
 class Platform(models.TextChoices):
     IOS = 'ios'
     ANDROID = 'android'

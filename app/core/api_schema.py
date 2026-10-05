@@ -39,6 +39,10 @@ def apply():
         errors=(400, 429))
     doc(members.OtpVerifyView, 'post', AUTH, 'Проверить код: токены | регистрация | восстановление',
         o.OtpVerify, o.OtpVerified, auth=False, errors=(400, 403))
+    doc(members.GoogleLoginView, 'post', AUTH, 'Вход через Google', o.GoogleLogin, o.SocialLoginResult,
+        auth=False, errors=(400, 401, 403, 503))
+    doc(members.AppleLoginView, 'post', AUTH, 'Вход через Apple ID', o.AppleLogin, o.SocialLoginResult,
+        auth=False, errors=(400, 401, 403, 503))
     doc(members.RegisterView, 'post', AUTH, 'Регистрация нового участника', o.Register, o.TokensWithProfile,
         status=201, auth=False, errors=(400, 422))
     doc(members.RefreshView, 'post', AUTH, 'Обновить пару токенов (ротация)',
@@ -61,6 +65,14 @@ def apply():
     doc(members.MeAvatarView, 'post', ME, 'Загрузить аватар (необязательно; JPEG/PNG/WebP/HEIC до 10 МБ)', avatar_in,
         o.Profile, errors=(401, 422))
     doc(members.MeAvatarView, 'delete', ME, 'Убрать аватар', response=o.Profile)
+    provider = OpenApiParameter('provider', str, OpenApiParameter.PATH, enum=['google', 'apple'])
+    doc(members.MeSocialView, 'post', ME, 'Привязать Google / Apple ID',
+        inline_serializer('SocialLinkInput', {'idToken': s.CharField(required=False, help_text='google'),
+                                              'identityToken': s.CharField(required=False, help_text='apple'),
+                                              'authorizationCode': s.CharField(required=False, help_text='apple'),
+                                              'nonce': s.CharField(required=False)}),
+        o.Profile, params=[provider], errors=(400, 401, 409, 503))
+    doc(members.MeSocialView, 'delete', ME, 'Отвязать Google / Apple ID', response=o.Profile, params=[provider])
     doc(members.MeSettingsView, 'patch', ME, 'Настройки: язык и уведомления', o.SettingsPatch, o.Settings)
     doc(members.ConsentsView, 'post', ME, 'Принять новую версию документа',
         inline_serializer('ConsentInput', {'kind': s.ChoiceField(choices=['terms', 'privacy']),

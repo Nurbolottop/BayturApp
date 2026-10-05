@@ -326,6 +326,135 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/auth/apple:
+    post:
+      operationId: auth_apple_create
+      description: '{identityToken, authorizationCode?, nonce?, firstName?, lastName?}
+        из Sign in with Apple.'
+      summary: Вход через Apple ID
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Вход
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppleLoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AppleLoginRequest'
+        required: true
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialLoginResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/auth/google:
+    post:
+      operationId: auth_google_create
+      description: '{idToken} из Google Sign-In.'
+      summary: Вход через Google
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Вход
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+        required: true
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialLoginResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/auth/logout:
     post:
       operationId: auth_logout_create
@@ -2430,6 +2559,129 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/me/social/{provider}:
+    post:
+      operationId: me_social_create
+      description: 'Привязать Google / Apple ID из профиля: POST {idToken | identityToken,
+        authorizationCode?, nonce?}. DELETE — отвязать.'
+      summary: Привязать Google / Apple ID
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: provider
+        schema:
+          type: string
+          enum:
+          - apple
+          - google
+        required: true
+      tags:
+      - Профиль
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialLinkInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SocialLinkInputRequest'
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+    delete:
+      operationId: me_social_destroy
+      description: 'Привязать Google / Apple ID из профиля: POST {idToken | identityToken,
+        authorizationCode?, nonce?}. DELETE — отвязать.'
+      summary: Отвязать Google / Apple ID
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: provider
+        schema:
+          type: string
+          enum:
+          - apple
+          - google
+        required: true
+      tags:
+      - Профиль
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/me/summary:
     get:
       operationId: me_summary_retrieve
@@ -3711,6 +3963,30 @@ components:
       required:
       - at
       - name
+    AppleLoginRequest:
+      type: object
+      properties:
+        identityToken:
+          type: string
+          minLength: 1
+          description: identityToken из Sign in with Apple
+        authorizationCode:
+          type: string
+          minLength: 1
+          description: Нужен, чтобы отозвать доступ при удалении аккаунта
+        nonce:
+          type: string
+          minLength: 1
+          description: Исходный nonce, если передавался в запрос к Apple
+        firstName:
+          type: string
+          minLength: 1
+          description: Apple отдаёт имя только при первом входе
+        lastName:
+          type: string
+          minLength: 1
+      required:
+      - identityToken
     Article:
       type: object
       properties:
@@ -4334,6 +4610,15 @@ components:
         * `warm` - warm
         * `tv` - tv
         * `flower` - flower
+    GoogleLoginRequest:
+      type: object
+      properties:
+        idToken:
+          type: string
+          minLength: 1
+          description: id_token из Google Sign-In
+      required:
+      - idToken
     ItemSnapshot:
       type: object
       properties:
@@ -4667,6 +4952,10 @@ components:
         code:
           type: string
           minLength: 1
+        socialToken:
+          type: string
+          minLength: 1
+          description: Из /auth/google | /auth/apple — привязать аккаунт к номеру
       required:
       - code
       - phone
@@ -5111,6 +5400,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PendingConsent'
+        socialAccounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/SocialAccountsEnum'
+          description: Привязанные способы входа
       required:
       - avatar
       - birthday
@@ -5123,6 +5417,7 @@ components:
       - pendingConsents
       - phone
       - settings
+      - socialAccounts
     Program:
       type: object
       properties:
@@ -5653,6 +5948,78 @@ components:
       - confirmed
       - date
       - rejected
+    SocialAccountsEnum:
+      enum:
+      - google
+      - apple
+      type: string
+      description: |-
+        * `google` - google
+        * `apple` - apple
+    SocialLinkInputRequest:
+      type: object
+      properties:
+        idToken:
+          type: string
+          minLength: 1
+          description: google
+        identityToken:
+          type: string
+          minLength: 1
+          description: apple
+        authorizationCode:
+          type: string
+          minLength: 1
+          description: apple
+        nonce:
+          type: string
+          minLength: 1
+    SocialLoginResult:
+      type: object
+      description: Аккаунт привязан → как /auth/otp/verify (токены | восстановление).
+        Нет → {needPhone, socialToken, prefill}.
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+        deactivated:
+          type: boolean
+        restoreToken:
+          type: string
+        purgeAt:
+          type: string
+          format: date-time
+        balance:
+          type: integer
+        needPhone:
+          type: boolean
+        socialToken:
+          type: string
+          description: 15 мин; передать в /auth/otp/verify
+        prefill:
+          allOf:
+          - $ref: '#/components/schemas/SocialPrefill'
+          description: Подставить в форму регистрации
+    SocialPrefill:
+      type: object
+      properties:
+        firstName:
+          type: string
+          nullable: true
+        lastName:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+      required:
+      - email
+      - firstName
+      - lastName
     StaffLoginRequest:
       type: object
       properties:

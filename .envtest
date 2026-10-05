@@ -90,6 +90,14 @@ APP_ENV=dev
 
 # [МЕНЯТЬ] Провайдеры. console / fake — заглушки, пока реальные не выбраны.
 SMS_BACKEND=console
+# [МЕНЯТЬ] Вход через Google / Apple ID (через запятую). Пусто — провайдер выключен (503 social_unavailable).
+# Google: client ID iOS, Android и Web из Google Cloud Console; Apple: bundle ID приложения (kg.baytur.resort)
+GOOGLE_CLIENT_IDS=
+APPLE_CLIENT_IDS=
+# [МЕНЯТЬ] Ключ Sign in with Apple (.p8) — отзыв доступа при удалении аккаунта. Файл — вне git (secrets/)
+APPLE_TEAM_ID=
+APPLE_KEY_ID=
+APPLE_PRIVATE_KEY_FILE=
 PUSH_BACKEND=console
 PAYMENT_BACKEND=fake
 # FCM (при PUSH_BACKEND=fcm): путь к JSON сервисного аккаунта Firebase

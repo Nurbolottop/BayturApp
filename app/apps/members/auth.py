@@ -29,6 +29,7 @@ E164 = re.compile(r'^\+[1-9]\d{7,14}$')
 REGISTRATION_SALT = 'baytur.registration'
 RESTORE_SALT = 'baytur.restore'
 MEMBER_QR_SALT = 'baytur.member-qr'
+SOCIAL_SALT = 'baytur.social'
 REGISTRATION_TTL = 15 * 60
 
 
@@ -183,13 +184,28 @@ def ensure_can_login(member):
 
 # ---------------------------------------------------------------- подписанные токены
 
-def make_registration_token(phone, device_id=None):
-    return signing.dumps({'phone': phone, 'device': device_id or ''}, salt=REGISTRATION_SALT)
+def make_registration_token(phone, device_id=None, social=None):
+    data = {'phone': phone, 'device': device_id or ''}
+    if social:
+        data['social'] = social
+    return signing.dumps(data, salt=REGISTRATION_SALT)
 
 
 def read_registration_token(token):
     try:
         return signing.loads(token or '', salt=REGISTRATION_SALT, max_age=REGISTRATION_TTL)
+    except signing.BadSignature:
+        raise ApiError('registration_expired', 400)
+
+
+def make_social_token(social):
+    """Вход через Google/Apple без привязанного номера: держит провайдера и sub до подтверждения номера."""
+    return signing.dumps(social, salt=SOCIAL_SALT)
+
+
+def read_social_token(token):
+    try:
+        return signing.loads(token or '', salt=SOCIAL_SALT, max_age=REGISTRATION_TTL)
     except signing.BadSignature:
         raise ApiError('registration_expired', 400)
 

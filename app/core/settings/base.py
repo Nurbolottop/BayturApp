@@ -306,6 +306,15 @@ JWT_ALGORITHM = 'HS256'
 SMS_BACKEND = os.getenv('SMS_BACKEND', 'console')
 # Временный единый OTP-код для всех номеров (dev/staging, пока нет SMS-провайдера). В production игнорируется.
 OTP_FIXED_CODE = os.getenv('OTP_FIXED_CODE', '').strip()      # console | (реальный — после выбора провайдера)
+# Вход через Google / Apple ID: допустимые aud токена (через запятую). Пусто — провайдер выключен.
+# Google: client ID приложений iOS/Android/Web; Apple: bundle ID приложения (и Services ID для веба).
+GOOGLE_CLIENT_IDS = [x.strip() for x in os.getenv('GOOGLE_CLIENT_IDS', '').split(',') if x.strip()]
+APPLE_CLIENT_IDS = [x.strip() for x in os.getenv('APPLE_CLIENT_IDS', '').split(',') if x.strip()]
+# Ключ Sign in with Apple (.p8) — для отзыва токенов при удалении аккаунта (App Store 5.1.1(v)).
+# Без него вход работает, отзыв пропускается.
+APPLE_TEAM_ID = os.getenv('APPLE_TEAM_ID', '')
+APPLE_KEY_ID = os.getenv('APPLE_KEY_ID', '')
+APPLE_PRIVATE_KEY_FILE = os.getenv('APPLE_PRIVATE_KEY_FILE', '')
 PUSH_BACKEND = os.getenv('PUSH_BACKEND', 'console')    # console | fcm
 FCM_CREDENTIALS_FILE = os.getenv('FCM_CREDENTIALS_FILE', '')
 PAYMENT_BACKEND = os.getenv('PAYMENT_BACKEND', 'fake')  # fake | (реальные — после выбора провайдеров)

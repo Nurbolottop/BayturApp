@@ -225,6 +225,7 @@ GET /wallet/operations?limit=20&cursor=WyIy...  → следующая стра�
 ## 4. Вход, регистрация, токены
 
 Способ входа — **номер телефона + SMS-код**, один сценарий для входа и регистрации. Паролей нет.
+Дополнительно — **Google** и **Apple ID** (§4.7): номер всё равно привязывается один раз, дальше вход в одно нажатие.
 
 ### 4.1. Сценарий
 
@@ -307,6 +308,48 @@ POST /auth/refresh  → {"refreshToken": "Zk9..."}
 (Войти / Позже). После входа вернуть пользователя туда же (состояние хранит мобилка).
 `POST /cashback-requests/quote` тоже требует входа. `X-Device-Id` шлите и гостем — при регистрации бек
 свяжет устройство с участником (воронка аналитики).
+
+### 4.7. Вход через Google и Apple ID
+
+Номер телефона остаётся обязательным: по нему клиента находят на точках и подтверждают удаление аккаунта.
+Поэтому при первом входе через Google/Apple номер подтверждается SMS-кодом один раз, после чего аккаунт
+провайдера привязан и следующие входы идут без SMS.
+
+```
+1. Нативный Google Sign-In / Sign in with Apple → id_token / identityToken
+2. POST /auth/google {idToken}
+   POST /auth/apple  {identityToken, authorizationCode, nonce?, firstName?, lastName?}
+   → a) / c) как у /auth/otp/verify            — аккаунт уже привязан → на главную / восстановление
+   → {needPhone: true, socialToken, prefill}   — не привязан → экран ввода номера
+3. POST /auth/otp/request {phone}
+4. POST /auth/otp/verify  {phone, code, socialToken}
+   → номер зарегистрирован: токены, аккаунт привязывается к нему
+   → новый номер: {isNew, registrationToken} → POST /auth/register (форму заполнить из prefill),
+     привязка — при регистрации
+```
+
+```json
+POST /auth/google → {"idToken": "eyJhbGciOiJSUzI1NiIs..."}
+← 200 {"needPhone": true, "socialToken": "eyJwcm92...",
+       "prefill": {"firstName": null, "lastName": null, "email": "urmat@gmail.com"}}
+← 401 social_invalid — токен не прошёл проверку;  503 social_unavailable — вход не настроен на сервере;
+  403 account_blocked
+```
+
+- **Google:** `idToken` должен быть выпущен для одного из наших client ID (iOS / Android / Web) — на Android
+  в `requestIdToken()` передаётся **Web client ID**.
+- **Apple:** имя Apple отдаёт приложению только при **первой** авторизации — передайте `firstName`/`lastName`
+  сразу, иначе они потеряются. Если в запрос к Apple передавался `nonce` (SHA-256 от исходной строки), отправьте
+  сюда **исходную** строку — сервер её сверит. Email может быть скрытым (`@privaterelay.appleid.com`).
+- **Apple:** всегда передавайте `authorizationCode` (из `credential.authorizationCode`). Сервер обменяет его
+  на токен Apple и при удалении аккаунта отзовёт доступ — этого требует App Store (5.1.1(v)). Код одноразовый
+  и живёт 5 минут — отправляйте сразу после авторизации.
+- `socialToken` живёт 15 минут.
+
+**Из профиля:** `POST /me/social/google {idToken}` / `POST /me/social/apple {identityToken, authorizationCode, nonce?}` — привязать
+(другой аккаунт того же провайдера заменяет прежний; `409 social_taken` — аккаунт уже у другого участника),
+`DELETE /me/social/{provider}` — отвязать. Оба возвращают профиль; в `GET /me` поле
+`socialAccounts: ["google", "apple"]` — что привязано.
 
 ---
 
@@ -1048,6 +1091,8 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 | Профиль: выход | `POST /auth/logout` |
 | **Новые экраны** | |
 | Ввод номера и кода | `POST /auth/otp/request`, `POST /auth/otp/verify` |
+| Вход через Google / Apple | `POST /auth/google`, `POST /auth/apple` → номер + код с `socialToken` |
+| Профиль: привязка Google / Apple | `POST`/`DELETE /me/social/{google\|apple}` |
 | Регистрация с согласиями и фото (необязательно) | `POST /auth/register` (JSON или multipart с `avatar`), `GET /legal` |
 | Принятие новой версии условий | `GET /me` → `pendingConsents`, `POST /me/consents` |
 | Удаление аккаунта | `GET/POST /me/deletion/request`, `POST /me/deletion/confirm` |

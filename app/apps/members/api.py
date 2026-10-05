@@ -12,7 +12,7 @@ from apps.common.views import MemberAPIView, PublicAPIView
 from apps.common.versions import is_below
 
 from . import auth, services
-from .models import Device, Platform
+from .models import Device, Platform, SocialProvider
 
 
 class OtpIpThrottle(SimpleRateThrottle):
@@ -43,7 +43,27 @@ class OtpRequestView(PublicAPIView):
 class OtpVerifyView(PublicAPIView):
     def post(self, request):
         data = _body(request, 'phone', 'code')
-        return Response(services.verify(data['phone'], data['code'], request._request.device_id))
+        return Response(services.verify(data['phone'], data['code'], request._request.device_id,
+                                        social_token=data.get('socialToken')))
+
+
+class GoogleLoginView(PublicAPIView):
+    """{idToken} из Google Sign-In."""
+
+    def post(self, request):
+        data = _body(request, 'idToken')
+        return Response(services.social_login(SocialProvider.GOOGLE, data['idToken'], request._request.device_id))
+
+
+class AppleLoginView(PublicAPIView):
+    """{identityToken, authorizationCode?, nonce?, firstName?, lastName?} из Sign in with Apple."""
+
+    def post(self, request):
+        data = _body(request, 'identityToken')
+        return Response(services.social_login(
+            SocialProvider.APPLE, data['identityToken'], request._request.device_id, nonce=data.get('nonce'),
+            first_name=data.get('firstName') or '', last_name=data.get('lastName') or '',
+            authorization_code=data.get('authorizationCode')))
 
 
 class RegisterView(PublicAPIView):
@@ -104,6 +124,21 @@ class MeAvatarView(MemberAPIView):
 
     def delete(self, request):
         services.remove_avatar(request.user)
+        return Response(services.profile_payload(request.user))
+
+
+class MeSocialView(MemberAPIView):
+    """Привязать Google / Apple ID из профиля: POST {idToken | identityToken, authorizationCode?, nonce?}. DELETE — отвязать."""
+
+    def post(self, request, provider):
+        data = request.data if isinstance(request.data, dict) else {}
+        field = 'identityToken' if provider == SocialProvider.APPLE else 'idToken'
+        _body(request, field)
+        return Response(services.social_link(request.user, provider, data[field], data.get('nonce'),
+                                             authorization_code=data.get('authorizationCode')))
+
+    def delete(self, request, provider):
+        services.social_unlink(request.user, provider)
         return Response(services.profile_payload(request.user))
 
 

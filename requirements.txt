@@ -2,6 +2,7 @@ Django==5.2.6
 djangorestframework==3.16.1
 drf-spectacular==0.28.0
 PyJWT==2.10.1
+cryptography==45.0.7
 pyotp==2.9.0
 qrcode==8.2
 channels==4.3.1

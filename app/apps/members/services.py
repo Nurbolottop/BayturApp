@@ -12,7 +12,7 @@ from apps.common.models import ProgramSettings
 
 from . import auth
 from .models import (Consent, ConsentKind, Device, LegalDocument, LegalKind, Member, MemberRefreshToken, MemberStatus,
-                     OtpPurpose)
+                     OtpPurpose, SocialAccount, SocialProvider)
 
 log = logging.getLogger(__name__)
 
@@ -46,6 +46,7 @@ def profile_payload(member):
         },
         'marketingConsent': member.marketing_consent,
         'pendingConsents': pending_consents(member),
+        'socialAccounts': sorted(member.social_accounts.values_list('provider', flat=True)),
     }
 
 
@@ -202,11 +203,8 @@ def link_device(member, device_id):
         Member.objects.filter(pk=member.pk).update(first_device_id=device_id)
 
 
-def verify(phone, code, device_id=None):
-    phone = auth.check_otp(phone, code)
-    member = Member.objects.filter(phone=phone).exclude(status=MemberStatus.PURGED).first()
-    if member is None:
-        return {'isNew': True, 'registrationToken': auth.make_registration_token(phone, device_id)}
+def login_result(member, device_id=None):
+    """Ответ входа для существующего участника: токены, блок или предложение восстановить."""
     if member.status == MemberStatus.BLOCKED:
         raise ApiError('account_blocked', 403)
     if member.status == MemberStatus.DEACTIVATED:
@@ -219,6 +217,120 @@ def verify(phone, code, device_id=None):
         }
     link_device(member, device_id)
     return auth.issue_tokens(member, device_id)
+
+
+def verify(phone, code, device_id=None, social_token=None):
+    social = auth.read_social_token(social_token) if social_token else None
+    phone = auth.check_otp(phone, code)
+    member = Member.objects.filter(phone=phone).exclude(status=MemberStatus.PURGED).first()
+    if member is None:
+        return {'isNew': True, 'registrationToken': auth.make_registration_token(phone, device_id, social)}
+    if social and member.status != MemberStatus.BLOCKED:
+        link_social(member, social)
+    return login_result(member, device_id)
+
+
+# ---------------------------------------------------------------- Google / Apple ID
+
+APPLE_PENDING_TTL = 3600  # refresh-токен Apple ждёт подтверждения номера и регистрации
+
+
+def _apple_pending_key(subject):
+    return f'social:apple-rt:{subject}'
+
+
+def _store_apple_token(provider, identity, authorization_code):
+    """Обмен authorizationCode → refresh-токен Apple: у привязанного аккаунта — сразу, иначе — до привязки."""
+    from django.core.cache import cache
+    from . import social
+    if provider != SocialProvider.APPLE or not authorization_code:
+        return
+    refresh = social.apple_exchange_code(authorization_code, identity['audience'])
+    if not refresh:
+        return
+    updated = SocialAccount.objects.filter(provider=provider, subject=identity['subject']).exclude(
+        member__status=MemberStatus.PURGED)
+    old = list(updated.exclude(refresh_token='').exclude(refresh_token=refresh)
+               .values_list('client_id', 'refresh_token'))
+    if updated.update(client_id=identity['audience'], refresh_token=refresh):
+        _enqueue_revoke(old)
+    else:
+        cache.set(_apple_pending_key(identity['subject']), [identity['audience'], refresh], APPLE_PENDING_TTL)
+
+
+def _enqueue_revoke(tokens):
+    from .tasks import revoke_apple_token
+    for client_id, refresh in tokens:
+        transaction.on_commit(lambda c=client_id, r=refresh: revoke_apple_token.delay(c, r))
+
+
+def revoke_social(accounts):
+    """Отозвать доступ у Apple (App Store 5.1.1(v)) и забыть токены. Привязка остаётся — её удаляет вызывающий."""
+    accounts = accounts.filter(provider=SocialProvider.APPLE).exclude(refresh_token='')
+    _enqueue_revoke(list(accounts.values_list('client_id', 'refresh_token')))
+    accounts.update(refresh_token='')
+
+
+def link_social(member, social):
+    """Привязка (или перепривязка) аккаунта провайдера. Номер уже подтверждён — владелец доказан."""
+    from django.core.cache import cache
+    defaults = {'member': member, 'email': social.get('email') or ''}
+    if social['provider'] == SocialProvider.APPLE:
+        pending = cache.get(_apple_pending_key(social['subject']))
+        if pending:
+            defaults.update(client_id=pending[0], refresh_token=pending[1])
+    with transaction.atomic():
+        replaced = SocialAccount.objects.filter(member=member, provider=social['provider']).exclude(
+            subject=social['subject'])
+        revoke_social(replaced)
+        replaced.delete()
+        SocialAccount.objects.update_or_create(provider=social['provider'], subject=social['subject'],
+                                               defaults=defaults)
+    if social['provider'] == SocialProvider.APPLE:
+        cache.delete(_apple_pending_key(social['subject']))
+
+
+def social_login(provider, token, device_id=None, nonce=None, first_name='', last_name='',
+                 authorization_code=None):
+    """
+    Аккаунт провайдера привязан → обычный ответ входа. Иначе номер всё равно нужен (по нему находят
+    участника на точках и подтверждают удаление): needPhone + socialToken для /auth/otp/verify.
+    """
+    from . import social
+    identity = social.verify_token(provider, token, nonce)
+    _store_apple_token(provider, identity, authorization_code)
+    account = SocialAccount.objects.select_related('member').filter(
+        provider=provider, subject=identity['subject']).first()
+    if account is not None and account.member.status != MemberStatus.PURGED:
+        SocialAccount.objects.filter(pk=account.pk).update(last_login_at=timezone.now())
+        return login_result(account.member, device_id)
+    payload = {'provider': provider, 'subject': identity['subject'], 'email': identity['email']}
+    return {
+        'needPhone': True,
+        'socialToken': auth.make_social_token(payload),
+        # Apple отдаёт имя только приложению и только при первом входе — приложение передаёт его сюда
+        'prefill': {'firstName': (first_name or '').strip()[:50] or None,
+                    'lastName': (last_name or '').strip()[:50] or None,
+                    'email': identity['email'] or None},
+    }
+
+
+def social_link(member, provider, token, nonce=None, authorization_code=None):
+    from . import social
+    identity = social.verify_token(provider, token, nonce)
+    other = SocialAccount.objects.filter(provider=provider, subject=identity['subject']).exclude(member=member)
+    if other.exclude(member__status=MemberStatus.PURGED).exists():
+        raise ApiError('social_taken', 409)
+    _store_apple_token(provider, identity, authorization_code)
+    link_social(member, {'provider': provider, 'subject': identity['subject'], 'email': identity['email']})
+    return profile_payload(member)
+
+
+def social_unlink(member, provider):
+    with transaction.atomic():
+        accounts = SocialAccount.objects.filter(member=member, provider=provider)
+        revoke_social(accounts)
+        accounts.delete()
 
 
 def register(data, device_id=None, ip=None, avatar_file=None):
@@ -256,6 +368,8 @@ def register(data, device_id=None, ip=None, avatar_file=None):
                 doc = LegalDocument.current(kind)
                 Consent.objects.create(member=member, kind=kind, version=doc.version if doc else '', ip=ip)
             Consent.objects.create(member=member, kind=ConsentKind.MARKETING, granted=marketing, ip=ip)
+    if token.get('social') and member.status != MemberStatus.BLOCKED:
+        link_social(member, token['social'])
     if avatar_file is not None and member.avatar_id is None:
         set_avatar(member, avatar_file)
     link_device(member, device_id or token.get('device'))
@@ -315,6 +429,9 @@ def deactivate(member, actor=None, immediately=False):
 def deletion_confirm(member, code):
     auth.check_otp(member.phone, code, OtpPurpose.DELETION)
     deactivate(member)
+    # Apple требует отзыва при удалении; привязка остаётся до стирания — при восстановлении вход через Apple
+    # снова запросит согласие, sub не меняется
+    revoke_social(member.social_accounts.all())
     return {'deleted': True}
 
 
@@ -378,6 +495,8 @@ def purge(member):
         member.avatar = None
         member.save()
         member.devices.all().delete()
+        revoke_social(member.social_accounts.all())
+        member.social_accounts.all().delete()
         MemberRefreshToken.objects.filter(member=member).delete()
         member.notifications.all().delete()
         Consent.objects.filter(member=member).update(ip=None)

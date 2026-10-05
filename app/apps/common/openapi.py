@@ -436,6 +436,8 @@ class Profile(s.Serializer):
     settings = Settings()
     marketingConsent = s.BooleanField()
     pendingConsents = PendingConsent(many=True)
+    socialAccounts = s.ListField(child=s.ChoiceField(choices=['google', 'apple']),
+                                 help_text='Привязанные способы входа')
 
 
 class TokensWithProfile(Tokens):
@@ -454,6 +456,7 @@ class OtpRequested(s.Serializer):
 class OtpVerify(s.Serializer):
     phone = s.CharField()
     code = s.CharField()
+    socialToken = s.CharField(required=False, help_text='Из /auth/google | /auth/apple — привязать аккаунт к номеру')
 
 
 class OtpVerified(s.Serializer):
@@ -467,6 +470,33 @@ class OtpVerified(s.Serializer):
     restoreToken = s.CharField(required=False)
     purgeAt = s.DateTimeField(required=False)
     balance = s.IntegerField(required=False)
+
+
+class SocialPrefill(s.Serializer):
+    firstName = s.CharField(allow_null=True)
+    lastName = s.CharField(allow_null=True)
+    email = s.EmailField(allow_null=True)
+
+
+class SocialLoginResult(OtpVerified):
+    """Аккаунт привязан → как /auth/otp/verify (токены | восстановление). Нет → {needPhone, socialToken, prefill}."""
+    isNew = None
+    registrationToken = None
+    needPhone = s.BooleanField(required=False)
+    socialToken = s.CharField(required=False, help_text='15 мин; передать в /auth/otp/verify')
+    prefill = SocialPrefill(required=False, help_text='Подставить в форму регистрации')
+
+
+class GoogleLogin(s.Serializer):
+    idToken = s.CharField(help_text='id_token из Google Sign-In')
+
+
+class AppleLogin(s.Serializer):
+    identityToken = s.CharField(help_text='identityToken из Sign in with Apple')
+    authorizationCode = s.CharField(required=False, help_text='Нужен, чтобы отозвать доступ при удалении аккаунта')
+    nonce = s.CharField(required=False, help_text='Исходный nonce, если передавался в запрос к Apple')
+    firstName = s.CharField(required=False, help_text='Apple отдаёт имя только при первом входе')
+    lastName = s.CharField(required=False)
 
 
 class Register(s.Serializer):
