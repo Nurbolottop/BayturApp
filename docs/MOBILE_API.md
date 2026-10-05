@@ -839,6 +839,9 @@ POST /cashback-requests/{id}/cancel             → CashbackRequest (status: can
 
 Денежная часть оплачивается **до** отправки заявки (шаги мобилки: redirecting → awaitingScan → processing → paid | failed).
 
+> **Freedom Pay — подробная инструкция для приложения:** [`MOBILE_PAYMENTS.md`](MOBILE_PAYMENTS.md)
+> (открытие страницы оплаты, диплинк `baytur://payment/{id}`, ожидание статуса, ошибки, тестирование).
+
 ```
 1. quote → moneySom
 2. POST /payments {method, amountSom: moneySom, itemId, quantity, checkAmount, pointsSom}
