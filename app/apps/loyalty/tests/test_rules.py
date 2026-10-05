@@ -247,6 +247,33 @@ class PeriodCloseTests(LoyaltyCase):
         self.close(m, dt(2030, 1, 1, 0, 1))
         self.assertEqual(self.w(m).tier_id, 'titanium')
 
+    def test_floor_rule_by_max_reached(self):
+        """Пол — ступенью ниже наивысшего достигнутого, пропуская уровни без canBeFloor."""
+        ladder, ls = engine.Ladder(), LoyaltySettings.get()
+        expected = {'bronze': 'bronze', 'silver': 'bronze', 'gold': 'silver', 'platinum': 'gold',
+                    'titanium': 'platinum', 'ambassador': 'platinum'}
+        for reached, floor in expected.items():
+            self.assertEqual(ladder.floor(ladder.get(reached), ls.floor_depth).pk, floor, reached)
+        ls.floor_depth = 0
+        self.assertEqual(ladder.floor(ladder.get('titanium'), 0).pk, 'platinum')  # сам Титан вечным не бывает
+        self.assertEqual(ladder.floor(ladder.get('gold'), 0).pk, 'gold')
+
+    def test_ambassador_drops_to_titanium_then_platinum_forever(self):
+        m = self.titanium_since_2028()
+        self.earn(m, 3_000_000, dt(2029, 7, 1))                   # → Амбассадор (без заданий на вход)
+        self.assertEqual(self.w(m).tier_id, 'ambassador')
+        self.assertEqual(tier_state(self.w(m))['floor'], 'platinum')
+        self.close(m, dt(2030, 1, 1, 0, 1))                       # получен в 2029 — без проверки
+        self.close(m, dt(2031, 1, 1, 0, 1))                       # не подтвердил → Титан
+        self.assertEqual(self.w(m).tier_id, 'titanium')
+        self.close(m, dt(2032, 1, 1, 0, 1))                       # Титан получен понижением в 2031 — без проверки
+        self.close(m, dt(2033, 1, 1, 0, 1))                       # не подтвердил → Платина
+        self.assertEqual(self.w(m).tier_id, 'platinum')
+        self.close(m, dt(2034, 1, 1, 0, 1))
+        self.close(m, dt(2035, 1, 1, 0, 1))
+        self.assertEqual(self.w(m).tier_id, 'platinum')           # Платина навсегда
+        self.assertTrue(tier_state(self.w(m))['isFloor'])
+
     def test_17_titanium_can_be_floor(self):
         Tier.objects.filter(pk='titanium').update(can_be_floor=True)
         m = self.titanium_since_2028()

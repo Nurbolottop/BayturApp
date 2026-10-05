@@ -112,16 +112,18 @@ class Ladder:
 
     def floor(self, max_reached, depth):
         """
-        Пол (§2.5): maxEternal — высший из достигнутых уровней с canBeFloor; пол — на depth ступеней ниже,
-        но не ниже базового.
+        Пол (вечный уровень): на depth ступеней ниже наивысшего достигнутого; если там уровень без canBeFloor —
+        спускаемся ниже до первого с canBeFloor, но не ниже базового.
+        Золото → Серебро, Платина → Золото, Титан → Платина, Амбассадор → (Титан нельзя) → Платина.
         """
         if not self.tiers:
             return None
         ref = max_reached.order if max_reached is not None else self.tiers[0].order
-        eternal = [i for i, t in enumerate(self.tiers) if t.order <= ref and t.can_be_floor]
-        if not eternal:
-            return self.tiers[0]
-        return self.tiers[max(0, eternal[-1] - depth)]
+        reached = [i for i, t in enumerate(self.tiers) if t.order <= ref]
+        i = max(0, (reached[-1] if reached else 0) - depth)
+        while i > 0 and not self.tiers[i].can_be_floor:
+            i -= 1
+        return self.tiers[i]
 
     def drop_target(self, tier, floor):
         """Куда падает уровень: dropTo (только нижестоящий) или на один ниже, но не ниже пола."""
