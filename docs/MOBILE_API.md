@@ -215,6 +215,7 @@ GET /wallet/operations?limit=20&cursor=WyIy...  → следующая стра�
 | 426 | `update_required` | версия приложения ниже минимальной | `minVersion` |
 | 429 | `otp_too_often` | повторный запрос кода раньше `retryIn` | `retryIn` |
 | 429 | `otp_limit` | лимит SMS | `retryIn` |
+| 503 | `sms_unavailable` | SMS-шлюз не принял сообщение — код не отправлен; повтор можно сразу, без ожидания `retryIn` | |
 | 429 | `complaints_limit` | больше 5 обращений в сутки | |
 | 429 | `rate_limited` | общий лимит запросов | `retryIn` |
 | 503 | `maintenance` | техработы | `details` |

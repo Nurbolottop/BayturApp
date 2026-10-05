@@ -90,6 +90,12 @@ APP_ENV=dev
 
 # [МЕНЯТЬ] Провайдеры. console / fake — заглушки, пока реальные не выбраны.
 SMS_BACKEND=console
+# [МЕНЯТЬ] SMS через smspro.nikita.kg (SMS_BACKEND=nikita): логин, пароль, подтверждённое имя отправителя.
+# NIKITA_TEST=1 — проверка без реальной отправки. Проверить доступ и баланс: manage.py sms_check
+NIKITA_LOGIN=
+NIKITA_PASSWORD=
+NIKITA_SENDER=
+NIKITA_TEST=
 # [МЕНЯТЬ] Вход через Google / Apple ID (через запятую). Пусто — провайдер выключен (503 social_unavailable).
 # Google: client ID iOS, Android и Web из Google Cloud Console; Apple: bundle ID приложения (kg.baytur.resort)
 GOOGLE_CLIENT_IDS=
@@ -115,5 +121,5 @@ FREEDOMPAY_TESTING_MODE=0
 # [НЕ ТРОГАТЬ без нужды] S3-совместимое хранилище. Пусто — локальный media/
 S3_BUCKET=
 
-# [dev/staging] Единый OTP-код для всех номеров, пока нет SMS-провайдера. В production не задавать.
+# [dev/staging] Единый OTP-код для всех номеров. Работает только при SMS_BACKEND=console, в production — никогда.
 OTP_FIXED_CODE=

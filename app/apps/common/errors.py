@@ -32,6 +32,7 @@ MESSAGES = {
     'age_restricted': {'ru': 'Программа доступна с 16 лет', 'ky': 'Программа 16 жаштан баштап жеткиликтүү', 'en': 'The program is available from age 16'},
     'account_blocked': {'ru': 'Аккаунт заблокирован. Свяжитесь с курортом', 'ky': 'Аккаунт бөгөттөлгөн. Курорт менен байланышыңыз', 'en': 'Account is blocked. Please contact the resort'},
     'account_deactivated': {'ru': 'Аккаунт удалён', 'ky': 'Аккаунт өчүрүлгөн', 'en': 'Account has been deleted'},
+    'sms_unavailable': {'ru': 'Не удалось отправить SMS, попробуйте ещё раз через минуту', 'ky': 'SMS жөнөтүлгөн жок, бир мүнөттөн кийин кайра аракет кылыңыз', 'en': 'Could not send the SMS, please try again in a minute'},
     'pin_invalid': {'ru': 'Неверный номер или PIN-код', 'ky': 'Номер же PIN-код туура эмес', 'en': 'Wrong phone number or PIN'},
     'pin_not_set': {'ru': 'PIN-код не задан — войдите по SMS-коду', 'ky': 'PIN-код коюлган эмес — SMS-код менен кириңиз', 'en': 'PIN is not set — sign in with an SMS code'},
     'pin_format': {'ru': 'PIN-код — 6 цифр', 'ky': 'PIN-код — 6 сан', 'en': 'PIN must be 6 digits'},

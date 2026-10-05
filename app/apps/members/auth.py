@@ -22,7 +22,7 @@ from apps.common.models import ProgramSettings
 from apps.common.tokens import bearer_token, decode_access, hash_token, issue_access, new_refresh_value
 
 from .models import Member, MemberRefreshToken, MemberStatus, OtpChallenge, OtpPurpose
-from .sms import send_sms
+from .sms import SmsError, send_sms
 
 E164 = re.compile(r'^\+[1-9]\d{7,14}$')
 
@@ -68,8 +68,10 @@ def _count_limit(key, limit, ttl):
 
 
 def fixed_otp_code():
-    """OTP_FIXED_CODE: один код для всех номеров на dev/staging, пока SMS-провайдер не подключён."""
-    return settings.OTP_FIXED_CODE if settings.APP_ENV != 'production' else ''
+    """OTP_FIXED_CODE: один код для всех номеров на dev/staging без реальных SMS (SMS_BACKEND=console)."""
+    if settings.APP_ENV == 'production' or settings.SMS_BACKEND != 'console':
+        return ''
+    return settings.OTP_FIXED_CODE
 
 
 def request_otp(phone, purpose=OtpPurpose.LOGIN, ip=None, device_id=None):
@@ -96,13 +98,17 @@ def request_otp(phone, purpose=OtpPurpose.LOGIN, ip=None, device_id=None):
         code = fixed  # временно, пока не подключён SMS-провайдер (только не production)
     else:
         code = ''.join(secrets.choice('0123456789') for _ in range(ps.otp_length))
+    if not test:
+        # сначала отправка: если провайдер не принял SMS, прежний код остаётся в силе и повтор доступен сразу
+        text = {'login': f'BAYTUR: код входа {code}', 'deletion': f'BAYTUR: код для удаления аккаунта {code}'}
+        try:
+            send_sms(phone, text.get(purpose, code))
+        except SmsError:
+            raise ApiError('sms_unavailable', 503)
     OtpChallenge.objects.filter(phone=phone, purpose=purpose, used_at__isnull=True).update(burned=True)
     OtpChallenge.objects.create(phone=phone, purpose=purpose, code_hash=_code_hash(phone, code),
                                 expires_at=now + timedelta(seconds=ps.otp_ttl_seconds), ip=ip,
                                 device_id=device_id or '')
-    if not test:
-        text = {'login': f'BAYTUR: код входа {code}', 'deletion': f'BAYTUR: код для удаления аккаунта {code}'}
-        send_sms(phone, text.get(purpose, code))
     return {'expiresIn': ps.otp_ttl_seconds, 'retryIn': ps.otp_retry_seconds}
 
 
