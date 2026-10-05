@@ -226,6 +226,7 @@ GET /wallet/operations?limit=20&cursor=WyIy...  → следующая стра�
 
 Способ входа — **номер телефона + SMS-код**, один сценарий для входа и регистрации. Паролей нет.
 Дополнительно — **Google** и **Apple ID** (§4.7): номер всё равно привязывается один раз, дальше вход в одно нажатие.
+И **номер + PIN-код** из 6 цифр (§4.8) — вход без SMS; SMS нужен только при регистрации и если PIN забыт.
 
 ### 4.1. Сценарий
 
@@ -269,7 +270,8 @@ GET /wallet/operations?limit=20&cursor=WyIy...  → следующая стра�
   "email": "urmat@example.com",    // необязательно
   "acceptTerms": true,             // обязательно true (условия + политика)
   "marketingConsent": false,       // «Хочу получать акции» — включает notifyPromos
-  "language": "ru"                 // необязательно, по умолчанию ru
+  "language": "ru",                // необязательно, по умолчанию ru
+  "pin": "482915"                  // PIN для входа без SMS (§4.8); необязательно — можно задать позже
 }
 ← 201 {"accessToken": "...", "refreshToken": "...", "expiresIn": 900, "profile": { ...как GET /me... }}
 ```
@@ -350,6 +352,32 @@ POST /auth/google → {"idToken": "eyJhbGciOiJSUzI1NiIs..."}
 (другой аккаунт того же провайдера заменяет прежний; `409 social_taken` — аккаунт уже у другого участника),
 `DELETE /me/social/{provider}` — отвязать. Оба возвращают профиль; в `GET /me` поле
 `socialAccounts: ["google", "apple"]` — что привязано.
+
+### 4.8. Вход по номеру и PIN-коду
+
+PIN — 6 цифр, задаётся при регистрации (поле `pin` в `/auth/register`) или позже в профиле. Простые PIN
+(`000000`, `111111`, `123456`, `654321`…) не принимаются — `422 pin_weak`. Числа попыток сервер не ограничивает,
+есть только общий лимит запросов с одного IP (`429`).
+
+```
+Экран входа: номер → [PIN] (основной путь)  или  [Войти по SMS] / [Забыли PIN?] / Google / Apple
+```
+
+```json
+POST /auth/pin → {"phone": "+996555123456", "pin": "482915"}
+← 200 как /auth/otp/verify: токены | {deactivated, restoreToken, ...}
+← 400 pin_invalid — неверный номер или PIN (не раскрываем, есть ли номер)
+← 400 pin_not_set — у аккаунта нет PIN → войти по SMS (§4.1), затем предложить задать PIN
+← 403 account_blocked
+```
+
+**Забыли PIN:** `POST /auth/otp/request {phone}` → `POST /auth/pin/reset {phone, code, pin}` → токены.
+Все остальные сессии клиента завершаются (на других устройствах — повторный вход).
+Если номер не зарегистрирован — ответ `{isNew, registrationToken}`, как у `/auth/otp/verify`.
+
+**В профиле:** `GET /me` → `hasPin`. `false` → после входа предложить задать PIN.
+`POST /me/pin {pin}` — задать; `POST /me/pin {pin, currentPin}` — сменить (неверный `currentPin` →
+`400 pin_invalid`). Ответ — профиль.
 
 ---
 
@@ -1091,6 +1119,8 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 | Профиль: выход | `POST /auth/logout` |
 | **Новые экраны** | |
 | Ввод номера и кода | `POST /auth/otp/request`, `POST /auth/otp/verify` |
+| Вход по номеру и PIN, «Забыли PIN?» | `POST /auth/pin`, `POST /auth/pin/reset` |
+| Профиль: задать / сменить PIN | `POST /me/pin` |
 | Вход через Google / Apple | `POST /auth/google`, `POST /auth/apple` → номер + код с `socialToken` |
 | Профиль: привязка Google / Apple | `POST`/`DELETE /me/social/{google\|apple}` |
 | Регистрация с согласиями и фото (необязательно) | `POST /auth/register` (JSON или multipart с `avatar`), `GET /legal` |

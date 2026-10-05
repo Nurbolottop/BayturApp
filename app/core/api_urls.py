@@ -19,6 +19,8 @@ client = [
     # вход и профиль (§2)
     path('auth/otp/request', members.OtpRequestView.as_view()),
     path('auth/otp/verify', members.OtpVerifyView.as_view()),
+    path('auth/pin', members.PinLoginView.as_view()),
+    path('auth/pin/reset', members.PinResetView.as_view()),
     path('auth/google', members.GoogleLoginView.as_view()),
     path('auth/apple', members.AppleLoginView.as_view()),
     path('auth/register', members.RegisterView.as_view()),
@@ -29,6 +31,7 @@ client = [
     path('me', members.MeView.as_view()),
     path('me/settings', members.MeSettingsView.as_view()),
     path('me/avatar', members.MeAvatarView.as_view()),
+    path('me/pin', members.MePinView.as_view()),
     re_path(r'^me/social/(?P<provider>google|apple)$', members.MeSocialView.as_view()),
     path('me/consents', members.ConsentsView.as_view()),
     path('me/devices', members.DevicesView.as_view()),

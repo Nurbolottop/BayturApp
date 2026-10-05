@@ -39,6 +39,13 @@ def apply():
         errors=(400, 429))
     doc(members.OtpVerifyView, 'post', AUTH, 'Проверить код: токены | регистрация | восстановление',
         o.OtpVerify, o.OtpVerified, auth=False, errors=(400, 403))
+    pin_field = s.RegexField(r'^\d{6}$', help_text='6 цифр')
+    doc(members.PinLoginView, 'post', AUTH, 'Вход по номеру и PIN (без SMS)',
+        inline_serializer('PinLoginInput', {'phone': s.CharField(), 'pin': pin_field}),
+        o.OtpVerified, auth=False, errors=(400, 403, 429))
+    doc(members.PinResetView, 'post', AUTH, '«Забыл PIN»: SMS-код + новый PIN; другие сессии завершаются',
+        inline_serializer('PinResetInput', {'phone': s.CharField(), 'code': s.CharField(), 'pin': pin_field}),
+        o.OtpVerified, auth=False, errors=(400, 403, 422, 429))
     doc(members.GoogleLoginView, 'post', AUTH, 'Вход через Google', o.GoogleLogin, o.SocialLoginResult,
         auth=False, errors=(400, 401, 403, 503))
     doc(members.AppleLoginView, 'post', AUTH, 'Вход через Apple ID', o.AppleLogin, o.SocialLoginResult,
@@ -65,6 +72,9 @@ def apply():
     doc(members.MeAvatarView, 'post', ME, 'Загрузить аватар (необязательно; JPEG/PNG/WebP/HEIC до 10 МБ)', avatar_in,
         o.Profile, errors=(401, 422))
     doc(members.MeAvatarView, 'delete', ME, 'Убрать аватар', response=o.Profile)
+    doc(members.MePinView, 'post', ME, 'Задать или сменить PIN (currentPin — если PIN уже задан)',
+        inline_serializer('PinChangeInput', {'pin': pin_field, 'currentPin': s.CharField(required=False)}),
+        o.Profile, errors=(400, 401, 422))
     provider = OpenApiParameter('provider', str, OpenApiParameter.PATH, enum=['google', 'apple'])
     doc(members.MeSocialView, 'post', ME, 'Привязать Google / Apple ID',
         inline_serializer('SocialLinkInput', {'idToken': s.CharField(required=False, help_text='google'),

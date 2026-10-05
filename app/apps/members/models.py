@@ -56,6 +56,10 @@ class Member(models.Model):
     restored_at = models.DateTimeField(null=True, blank=True)
     purge_immediately = models.BooleanField(default=False)
 
+    # PIN для входа по номеру без SMS (6 цифр, хеш Django). Пусто — PIN не задан, вход только по SMS
+    pin_hash = models.CharField(max_length=128, blank=True)
+    pin_set_at = models.DateTimeField(null=True, blank=True)
+
     is_test = models.BooleanField('Тестовый аккаунт для сторов', default=False)
     first_device_id = models.CharField(max_length=36, blank=True)
     created_at = models.DateTimeField(default=timezone.now)

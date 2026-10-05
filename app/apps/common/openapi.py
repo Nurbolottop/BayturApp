@@ -438,6 +438,7 @@ class Profile(s.Serializer):
     pendingConsents = PendingConsent(many=True)
     socialAccounts = s.ListField(child=s.ChoiceField(choices=['google', 'apple']),
                                  help_text='Привязанные способы входа')
+    hasPin = s.BooleanField(help_text='false — предложить задать PIN (POST /me/pin)')
 
 
 class TokensWithProfile(Tokens):
@@ -509,6 +510,7 @@ class Register(s.Serializer):
     marketingConsent = s.BooleanField(required=False)
     language = s.ChoiceField(choices=['ru', 'ky', 'en'], required=False)
     avatar = s.ImageField(required=False, help_text='Необязательно; только multipart/form-data')
+    pin = s.RegexField(r'^\d{6}$', required=False, help_text='6 цифр для входа без SMS; можно задать позже')
 
 
 class ProfilePatch(s.Serializer):

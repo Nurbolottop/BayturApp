@@ -1,6 +1,8 @@
 import logging
+import re
 from datetime import date, timedelta
 
+from django.contrib.auth.hashers import check_password, make_password
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
@@ -47,6 +49,7 @@ def profile_payload(member):
         'marketingConsent': member.marketing_consent,
         'pendingConsents': pending_consents(member),
         'socialAccounts': sorted(member.social_accounts.values_list('provider', flat=True)),
+        'hasPin': bool(member.pin_hash),
     }
 
 
@@ -230,6 +233,67 @@ def verify(phone, code, device_id=None, social_token=None):
     return login_result(member, device_id)
 
 
+# ---------------------------------------------------------------- PIN: вход по номеру без SMS
+
+PIN_RE = re.compile(r'^\d{6}$')
+_DUMMY_PIN_HASH = None
+
+
+def validate_pin(pin):
+    """6 цифр; отклоняются 000000/111111 и подряд идущие 123456/654321."""
+    pin = str(pin or '').strip()
+    if not PIN_RE.match(pin):
+        raise ApiError('pin_format', 400)
+    if len(set(pin)) == 1 or pin in '0123456789' or pin in '9876543210':
+        raise ApiError('pin_weak', 422)
+    return pin
+
+
+def set_pin(member, pin):
+    member.pin_hash = make_password(validate_pin(pin))
+    member.pin_set_at = timezone.now()
+    member.save(update_fields=['pin_hash', 'pin_set_at', 'updated_at'])
+
+
+def pin_login(phone, pin, device_id=None):
+    """Номер + PIN. Ограничения на число ошибок нет (решение заказчика) — только rate limit по IP."""
+    global _DUMMY_PIN_HASH
+    phone = auth.normalize_phone(phone)
+    member = Member.objects.filter(phone=phone).exclude(status=MemberStatus.PURGED).first()
+    if member is not None and not member.pin_hash:
+        raise ApiError('pin_not_set', 400)
+    if member is None:
+        # то же время ответа, что и при неверном PIN: по скорости не узнать, зарегистрирован ли номер
+        _DUMMY_PIN_HASH = _DUMMY_PIN_HASH or make_password('000000')
+        check_password(str(pin or ''), _DUMMY_PIN_HASH)
+        raise ApiError('pin_invalid', 400)
+    if not check_password(str(pin or ''), member.pin_hash):
+        raise ApiError('pin_invalid', 400)
+    return login_result(member, device_id)
+
+
+def pin_reset(phone, code, pin, device_id=None):
+    """«Забыл PIN»: SMS-код (из /auth/otp/request) + новый PIN. Остальные сессии завершаются."""
+    pin = validate_pin(pin)  # до проверки кода — чтобы не сжечь код из-за слабого PIN
+    phone = auth.check_otp(phone, code)
+    member = Member.objects.filter(phone=phone).exclude(status=MemberStatus.PURGED).first()
+    if member is None:
+        return {'isNew': True, 'registrationToken': auth.make_registration_token(phone, device_id)}
+    if member.status == MemberStatus.BLOCKED:
+        raise ApiError('account_blocked', 403)
+    set_pin(member, pin)
+    auth.revoke_all(member)
+    return login_result(member, device_id)
+
+
+def change_pin(member, pin, current_pin=None):
+    """Задать PIN (если не задан) или сменить — со старым PIN. Забыл старый → /auth/pin/reset."""
+    if member.pin_hash and not check_password(str(current_pin or ''), member.pin_hash):
+        raise ApiError('pin_invalid', 400)
+    set_pin(member, pin)
+    return profile_payload(member)
+
+
 # ---------------------------------------------------------------- Google / Apple ID
 
 APPLE_PENDING_TTL = 3600  # refresh-токен Apple ждёт подтверждения номера и регистрации
@@ -343,6 +407,7 @@ def register(data, device_id=None, ip=None, avatar_file=None):
     email = _validate_email(data.get('email'))
     birthday = _parse_birthday(data.get('birthday'), required=True)
     marketing = _flag(data.get('marketingConsent'))
+    pin = validate_pin(data.get('pin')) if data.get('pin') not in (None, '') else None
     ps = ProgramSettings.get()
     if avatar_file is not None and avatar_file.size > AVATAR_MAX_SIZE:
         raise ApiError('file_invalid', 422)
@@ -370,6 +435,8 @@ def register(data, device_id=None, ip=None, avatar_file=None):
             Consent.objects.create(member=member, kind=ConsentKind.MARKETING, granted=marketing, ip=ip)
     if token.get('social') and member.status != MemberStatus.BLOCKED:
         link_social(member, token['social'])
+    if pin and not member.pin_hash:
+        set_pin(member, pin)
     if avatar_file is not None and member.avatar_id is None:
         set_avatar(member, avatar_file)
     link_device(member, device_id or token.get('device'))
@@ -492,6 +559,8 @@ def purge(member):
         member.marketing_consent = False
         member.notify_promos = False
         member.first_device_id = ''
+        member.pin_hash = ''
+        member.pin_set_at = None
         member.avatar = None
         member.save()
         member.devices.all().delete()

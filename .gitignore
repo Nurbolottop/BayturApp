@@ -184,3 +184,4 @@ app/apps/base/
 app/apps/cms/
 app/apps/contacts/
 secrets/
+*.p8

@@ -14,6 +14,7 @@ CELERY_TASK_ALWAYS_EAGER = False
 PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 REST_FRAMEWORK = {**REST_FRAMEWORK, 'DEFAULT_THROTTLE_RATES': {
     'public_ip': '10000/min', 'public_device': '10000/min', 'otp_ip': '10000/hour', 'events': '10000/min',
+    'pin_ip': '10000/min',
 }}
 SMS_BACKEND = 'console'
 PUSH_BACKEND = 'console'

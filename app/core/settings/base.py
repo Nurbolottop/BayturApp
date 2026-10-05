@@ -258,6 +258,7 @@ REST_FRAMEWORK = {
         'public_ip': '600/min',
         'public_device': '300/min',
         'otp_ip': '30/hour',
+        'pin_ip': '30/min',
         'events': '120/min',
     },
 }

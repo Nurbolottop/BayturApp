@@ -608,6 +608,129 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/auth/pin:
+    post:
+      operationId: auth_pin_create
+      description: '{phone, pin} — вход без SMS.'
+      summary: Вход по номеру и PIN (без SMS)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Вход
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinLoginInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PinLoginInputRequest'
+        required: true
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpVerified'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/auth/pin/reset:
+    post:
+      operationId: auth_pin_reset_create
+      description: '{phone, code, pin} — «Забыл PIN»: код из /auth/otp/request и новый
+        PIN.'
+      summary: '«Забыл PIN»: SMS-код + новый PIN; другие сессии завершаются'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Вход
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinResetInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PinResetInputRequest'
+        required: true
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpVerified'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/auth/refresh:
     post:
       operationId: auth_refresh_create
@@ -2503,6 +2626,65 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: ''
         '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me/pin:
+    post:
+      operationId: me_pin_create
+      description: POST {pin, currentPin?} — задать PIN или сменить (currentPin обязателен,
+        если PIN уже есть).
+      summary: Задать или сменить PIN (currentPin — если PIN уже задан)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Профиль
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinChangeInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PinChangeInputRequest'
+        required: true
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
           content:
             application/json:
               schema:
@@ -5296,6 +5478,51 @@ components:
           format: binary
       required:
       - file
+    PinChangeInputRequest:
+      type: object
+      properties:
+        pin:
+          type: string
+          minLength: 1
+          description: 6 цифр
+          pattern: ^\d{6}$
+        currentPin:
+          type: string
+          minLength: 1
+      required:
+      - pin
+    PinLoginInputRequest:
+      type: object
+      properties:
+        pin:
+          type: string
+          minLength: 1
+          description: 6 цифр
+          pattern: ^\d{6}$
+        phone:
+          type: string
+          minLength: 1
+      required:
+      - phone
+      - pin
+    PinResetInputRequest:
+      type: object
+      properties:
+        pin:
+          type: string
+          minLength: 1
+          description: 6 цифр
+          pattern: ^\d{6}$
+        phone:
+          type: string
+          minLength: 1
+        code:
+          type: string
+          minLength: 1
+      required:
+      - code
+      - phone
+      - pin
     Platform:
       enum:
       - ios
@@ -5405,11 +5632,15 @@ components:
           items:
             $ref: '#/components/schemas/SocialAccountsEnum'
           description: Привязанные способы входа
+        hasPin:
+          type: boolean
+          description: false — предложить задать PIN (POST /me/pin)
       required:
       - avatar
       - birthday
       - email
       - firstName
+      - hasPin
       - lastName
       - marketingConsent
       - memberId
@@ -5593,6 +5824,11 @@ components:
           type: string
           format: binary
           description: Необязательно; только multipart/form-data
+        pin:
+          type: string
+          minLength: 1
+          description: 6 цифр для входа без SMS; можно задать позже
+          pattern: ^\d{6}$
       required:
       - acceptTerms
       - birthday

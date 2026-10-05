@@ -47,6 +47,32 @@ class OtpVerifyView(PublicAPIView):
                                         social_token=data.get('socialToken')))
 
 
+class PinThrottle(SimpleRateThrottle):
+    """Только защита сервера от перебора/нагрузки (хеш PIN считается дорого); блокировки аккаунта нет."""
+    scope = 'pin_ip'
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {'scope': self.scope, 'ident': self.get_ident(request)}
+
+
+class PinLoginView(PublicAPIView):
+    """{phone, pin} — вход без SMS."""
+    throttle_classes = PublicAPIView.throttle_classes + [PinThrottle]
+
+    def post(self, request):
+        data = _body(request, 'phone', 'pin')
+        return Response(services.pin_login(data['phone'], data['pin'], request._request.device_id))
+
+
+class PinResetView(PublicAPIView):
+    """{phone, code, pin} — «Забыл PIN»: код из /auth/otp/request и новый PIN."""
+    throttle_classes = PublicAPIView.throttle_classes + [PinThrottle]
+
+    def post(self, request):
+        data = _body(request, 'phone', 'code', 'pin')
+        return Response(services.pin_reset(data['phone'], data['code'], data['pin'], request._request.device_id))
+
+
 class GoogleLoginView(PublicAPIView):
     """{idToken} из Google Sign-In."""
 
@@ -125,6 +151,14 @@ class MeAvatarView(MemberAPIView):
     def delete(self, request):
         services.remove_avatar(request.user)
         return Response(services.profile_payload(request.user))
+
+
+class MePinView(MemberAPIView):
+    """POST {pin, currentPin?} — задать PIN или сменить (currentPin обязателен, если PIN уже есть)."""
+
+    def post(self, request):
+        data = _body(request, 'pin')
+        return Response(services.change_pin(request.user, data['pin'], data.get('currentPin')))
 
 
 class MeSocialView(MemberAPIView):

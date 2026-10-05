@@ -151,7 +151,7 @@ class ProfileTests(BaseAPITestCase):
     def test_me_shape(self):
         d = self.api.get('/api/v1/me').json()
         self.assertEqual(set(d), {'avatar', 'firstName', 'lastName', 'phone', 'email', 'birthday', 'memberId', 'memberSince',
-                                  'settings', 'marketingConsent', 'pendingConsents', 'socialAccounts'})
+                                  'settings', 'marketingConsent', 'pendingConsents', 'socialAccounts', 'hasPin'})
 
     def test_avatar_upload_replace_delete(self):
         import io
