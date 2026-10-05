@@ -100,3 +100,29 @@ class NikitaSmsTests(BaseAPITestCase):
         self.assertEqual(post.call_args[0][0], 'https://smspro.nikita.kg/api/info')
         self.assertIn('баланс 1500.00', out.getvalue())
         self.assertIn('активен', out.getvalue())
+
+
+@override_settings(SMS_BACKEND='nikita', NIKITA_LOGIN='baytur', NIKITA_PASSWORD='x', NIKITA_SENDER='SMSPRO.KG',
+                   NIKITA_TEST=False, OTP_FIXED_CODE='1234', SMS_ONLY_PHONES=['+996558000350'])
+class SmsOnlyPhonesTests(BaseAPITestCase):
+    """Тестовый режим провайдера: настоящая SMS — только номерам из списка, остальным — фиксированный код."""
+
+    def test_listed_phone_gets_real_sms_with_random_code(self):
+        with mock.patch('apps.members.sms.requests.post', return_value=nikita_response(0)) as post:
+            r = self.api.post(f'{A}/otp/request', {'phone': '+996558000350'}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        post.assert_called_once()
+        code = ElementTree.fromstring(post.call_args[1]['data']).findtext('text').rsplit(' ', 1)[-1]
+        self.assertNotEqual(code, '1234')
+        r = self.api.post(f'{A}/otp/verify', {'phone': '+996558000350', 'code': '1234'}, format='json')
+        self.assertEqual(r.json()['error']['code'], 'otp_invalid')
+        r = self.api.post(f'{A}/otp/verify', {'phone': '+996558000350', 'code': code}, format='json')
+        self.assertTrue(r.json()['isNew'])
+
+    def test_other_phones_keep_fixed_code_without_sms(self):
+        with mock.patch('apps.members.sms.requests.post') as post:
+            r = self.api.post(f'{A}/otp/request', {'phone': '+996555000777'}, format='json')
+        self.assertEqual(r.status_code, 200)
+        post.assert_not_called()
+        r = self.api.post(f'{A}/otp/verify', {'phone': '+996555000777', 'code': '1234'}, format='json')
+        self.assertTrue(r.json()['isNew'])

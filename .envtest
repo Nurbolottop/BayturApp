@@ -96,6 +96,8 @@ NIKITA_LOGIN=
 NIKITA_PASSWORD=
 NIKITA_SENDER=
 NIKITA_TEST=
+# Настоящие SMS только на эти номера (через запятую), остальным — OTP_FIXED_CODE. Пусто — всем.
+SMS_ONLY_PHONES=
 # [МЕНЯТЬ] Вход через Google / Apple ID (через запятую). Пусто — провайдер выключен (503 social_unavailable).
 # Google: client ID iOS, Android и Web из Google Cloud Console; Apple: bundle ID приложения (kg.baytur.resort)
 GOOGLE_CLIENT_IDS=
@@ -121,5 +123,5 @@ FREEDOMPAY_TESTING_MODE=0
 # [НЕ ТРОГАТЬ без нужды] S3-совместимое хранилище. Пусто — локальный media/
 S3_BUCKET=
 
-# [dev/staging] Единый OTP-код для всех номеров. Работает только при SMS_BACKEND=console, в production — никогда.
+# [dev/staging] Единый OTP-код для номеров без настоящей SMS (SMS_BACKEND=console или не в SMS_ONLY_PHONES). В production — никогда.
 OTP_FIXED_CODE=

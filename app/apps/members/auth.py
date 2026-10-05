@@ -22,7 +22,7 @@ from apps.common.models import ProgramSettings
 from apps.common.tokens import bearer_token, decode_access, hash_token, issue_access, new_refresh_value
 
 from .models import Member, MemberRefreshToken, MemberStatus, OtpChallenge, OtpPurpose
-from .sms import SmsError, send_sms
+from .sms import SmsError, real_sms_for, send_sms
 
 E164 = re.compile(r'^\+[1-9]\d{7,14}$')
 
@@ -67,9 +67,9 @@ def _count_limit(key, limit, ttl):
     return value > limit
 
 
-def fixed_otp_code():
-    """OTP_FIXED_CODE: один код для всех номеров на dev/staging без реальных SMS (SMS_BACKEND=console)."""
-    if settings.APP_ENV == 'production' or settings.SMS_BACKEND != 'console':
+def fixed_otp_code(phone):
+    """OTP_FIXED_CODE: один код на dev/staging для номеров, на которые настоящая SMS не уходит."""
+    if settings.APP_ENV == 'production' or real_sms_for(phone):
         return ''
     return settings.OTP_FIXED_CODE
 
@@ -91,7 +91,7 @@ def request_otp(phone, purpose=OtpPurpose.LOGIN, ip=None, device_id=None):
         if ip and _count_limit(f'otp:ip:{ip}:{now:%Y%m%d%H}', ps.otp_per_ip_hour, 3600):
             raise ApiError('otp_limit', 429, extra={'retryIn': 3600})
 
-    fixed = fixed_otp_code()
+    fixed = fixed_otp_code(phone)
     if test:
         code = ps.test_code
     elif fixed:

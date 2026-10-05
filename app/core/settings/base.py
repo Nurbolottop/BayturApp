@@ -311,8 +311,11 @@ NIKITA_LOGIN = os.getenv('NIKITA_LOGIN', '')
 NIKITA_PASSWORD = os.getenv('NIKITA_PASSWORD', '')
 NIKITA_SENDER = os.getenv('NIKITA_SENDER', '')
 NIKITA_TEST = os.getenv('NIKITA_TEST', '') in ('1', 'true', 'True')
+# Настоящие SMS только на эти номера (E.164, через запятую), остальным — OTP_FIXED_CODE без SMS.
+# Для тестового режима провайдера (шлёт только на номер из профиля). Пусто — SMS на все номера.
+SMS_ONLY_PHONES = [x.strip() for x in os.getenv('SMS_ONLY_PHONES', '').split(',') if x.strip()]
 # Временный единый OTP-код для всех номеров (dev/staging, пока нет SMS-провайдера). В production игнорируется.
-OTP_FIXED_CODE = os.getenv('OTP_FIXED_CODE', '').strip()  # действует только при SMS_BACKEND=console
+OTP_FIXED_CODE = os.getenv('OTP_FIXED_CODE', '').strip()  # только для номеров без настоящей SMS
 # Вход через Google / Apple ID: допустимые aud токена (через запятую). Пусто — провайдер выключен.
 # Google: client ID приложений iOS/Android/Web; Apple: bundle ID приложения (и Services ID для веба).
 GOOGLE_CLIENT_IDS = [x.strip() for x in os.getenv('GOOGLE_CLIENT_IDS', '').split(',') if x.strip()]

@@ -89,6 +89,17 @@ def backend():
     return BACKENDS[settings.SMS_BACKEND]()
 
 
+def real_sms_for(phone):
+    """
+    Уйдёт ли на номер настоящая SMS. SMS_ONLY_PHONES — список номеров для реальной отправки (пока аккаунт
+    провайдера в тестовом режиме и шлёт только на номер из профиля); пусто — реальная отправка на все номера.
+    """
+    if settings.SMS_BACKEND == 'console':
+        return False
+    return not settings.SMS_ONLY_PHONES or phone in settings.SMS_ONLY_PHONES
+
+
 def send_sms(phone, text):
     """SmsError, если провайдер не принял сообщение."""
-    return backend().send(phone, text)
+    sms = backend() if real_sms_for(phone) else ConsoleSms()
+    return sms.send(phone, text)
