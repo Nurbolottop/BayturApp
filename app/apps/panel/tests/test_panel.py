@@ -159,8 +159,7 @@ class DeskTests(PanelBase):
 
     def test_confirm_creates_ledger_operations(self):
         member = self.make_member(points=300_000)
-        req = self.make_request(member, 'spa-bochka', pointsSom=500)
-        self.assertGreater(req.points, 0)
+        req = self.make_request(member, 'spa-bochka')
         staff = self.make_staff('staff', outlets=['spa'])
         c = self.login(staff)
         # наличные без отметки «деньги приняты» — отказ
@@ -173,14 +172,18 @@ class DeskTests(PanelBase):
         req.refresh_from_db()
         self.assertEqual(req.status, RequestStatus.CONFIRMED)
         self.assertEqual(req.confirmed_by, staff)
-        spend = Operation.objects.get(request=req, kind=OperationKind.SPEND)
-        self.assertEqual(spend.points, -req.points)
         cs.credit_request(req.pk)
         self.assertEqual(Operation.objects.get(request=req, kind=OperationKind.CASHBACK).points, req.cashback)
         self.assertTrue(AuditLog.objects.filter(action='request.confirm', object_id=req.pk, actor=staff).exists())
         # повторная обработка → «уже обработана»
         r = c.post(f'/panel/r/{req.pk}/confirm/', {'cash_received': '1'}, follow=True)
         self.assertContains(r, 'уже обработана')
+        # оплата баллами целиком: денег нет — отметка не нужна, баллы списываются
+        paid = self.make_request(member, 'spa-bochka', pointsSom=2500)
+        c.post(f'/panel/r/{paid.pk}/confirm/')
+        paid.refresh_from_db()
+        self.assertEqual(paid.status, RequestStatus.CONFIRMED)
+        self.assertEqual(Operation.objects.get(request=paid, kind=OperationKind.SPEND).points, -250_000)
 
     def test_adjust_preview_and_escalation(self):
         member = self.make_member()

@@ -9,7 +9,7 @@
     <div class="card appear">
       <div class="h3" style="margin-bottom:12px">Детали</div>
       <dl class="kv">
-        <dt>Правила</dt><dd class="tabular">ставка {{ req.rules.rate|pct }} · баллами до {{ req.rules.maxPointsShare|pct }}</dd>
+        <dt>Правила</dt><dd class="tabular">ставка {{ req.rules.rate|pct }}</dd>
         <dt>Курс</dt><dd class="tabular">{{ req.rules.pointsPerSom|default:100 }} баллов = 1 сом</dd>
         <dt>Подтвердил</dt><dd>{{ req.confirmed_by.full_name|default:"—" }}</dd>
         <dt>Отклонил</dt><dd>{{ req.rejected_by.full_name|default:"—" }}</dd>

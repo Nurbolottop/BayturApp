@@ -94,9 +94,15 @@ PIN задаёт директор; администратор может сме�
 | GET | `/staff/queue?outlet=` | — | `{items: [StaffRequest], count}` — pending своих точек, старые сверху |
 | GET | `/staff/requests/{id}` | — | `StaffRequest` |
 | POST | `/staff/requests/{id}/confirm` | `{cashReceived: true}` (для наличных обязательно) | `200 StaffRequest`; **`202`** — ушло на подтверждение директору (кешбек выше лимита) |
-| POST | `/staff/requests/{id}/adjust/preview` | `{total}` | новый расчёт без сохранения + `needsManager` |
-| POST | `/staff/requests/{id}/adjust` | `{total, reason}` | `200` / **`202`** — правка больше порога ушла директору |
+| POST | `/staff/requests/{id}/adjust/preview` | `{total}` | новый расчёт без сохранения + `needsManager`; `422 insufficient_points` (`shortSom`) — заявке баллами не хватит баллов на новую сумму |
+| POST | `/staff/requests/{id}/adjust` | `{total, reason}` | `200` / **`202`** — правка больше порога ушла директору; `422 insufficient_points` — см. ниже |
 | POST | `/staff/requests/{id}/reject` | `{reasonCode, comment?}` | `StaffRequest` |
+
+**Оплата «всё или ничего».** Заявка оплачена либо целиком деньгами, либо целиком баллами — смешанной нет.
+Правка суммы это сохраняет: денежная заявка остаётся денежной (при уменьшении онлайн-оплаты разница
+возвращается клиенту), заявка баллами списывает баллами всю новую сумму (при уменьшении лишние баллы
+возвращаются в доступные). Если баллов на новую сумму не хватает — `422 insufficient_points` с `shortSom`,
+заявка не меняется: отклоните её (`wrong_amount`), клиент создаст новую на верную сумму.
 
 `reasonCode`: `not_provided` (услуга не оказана), `wrong_amount` (неверная сумма), `duplicate` (дубль), `other`
 (комментарий обязателен).
@@ -108,8 +114,8 @@ PIN задаёт директор; администратор может сме�
   "outlet": "reception",
   "item": {"id": "room-deluxe", "category": "rooms", "title": "Делюкс", "image": "https://..."},
   "quantity": 2, "checkAmount": null,
-  "split": {"total": 12000, "pointsSom": 2000, "points": 200000, "moneySom": 10000, "rate": 0.07, "cashback": 70000},
-  "method": "cash", "paidOnline": false, "cashToCollect": 10000, "cashReceived": false,
+  "split": {"total": 12000, "pointsSom": 0, "points": 0, "moneySom": 12000, "rate": 0.07, "cashback": 84000},
+  "method": "cash", "paidOnline": false, "cashToCollect": 12000, "cashReceived": false,
   "escalated": false, "escalationReason": null, "proposedTotal": null, "originalTotal": null,
   "member": {"id": 6, "memberId": "BT-957857", "name": "Тест Клиент касс", "phone": "+996•••••010",
              "tier": "bronze", "status": "active"},
@@ -151,10 +157,11 @@ WebSocket `wss://app.baytur.kg/api/v1/staff/events?token=<accessToken>` — со
 1. `POST /staff/scan` → `payToken`.
 2. `GET /staff/points/items` → услуги своих точек: `{items: [{id, category, title, price, pricing, outlet}]}`.
 3. `POST /staff/points/quote` `{payToken, itemId, quantity? | checkAmount?}` →
-   `{itemId, total, quantity, points, enough, shortSom, reason: "limit"|"balance"|null, limitPercent}`.
+   `{itemId, total, quantity, points, enough, shortSom, reason: "balance"|null}`. Лимита доли по разделам нет —
+   баллами можно оплатить любую услугу целиком (`limitPercent` устарел, всегда 100).
    Сам баланс не раскрывается — только «хватает / не хватает N сом».
 4. `POST /staff/points/charge` (те же поля) → `201 StaffRequest` (заявка «оплачено баллами», уже подтверждена).
-   Ошибки: `insufficient_points` / `points_limit_exceeded` 422 (`shortSom`), `qr_invalid` (payToken истёк).
+   Ошибки: `insufficient_points` 422 (`shortSom`), `qr_invalid` (payToken истёк).
 
 Клиент получает push «Оплачено баллами: −N баллов».
 

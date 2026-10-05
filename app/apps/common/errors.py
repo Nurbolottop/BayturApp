@@ -46,6 +46,7 @@ MESSAGES = {
     'consent_unknown': {'ru': 'Документ не найден', 'ky': 'Документ табылган жок', 'en': 'Document not found'},
     # кешбек
     'insufficient_points': {'ru': 'Недостаточно баллов', 'ky': 'Упай жетишсиз', 'en': 'Not enough points'},
+    'points_partial': {'ru': 'Оплатить можно либо целиком баллами, либо целиком деньгами', 'ky': 'Толугу менен упай же толугу менен акча менен гана төлөөгө болот', 'en': 'Pay either entirely with points or entirely with money'},
     'points_limit_exceeded': {'ru': 'Превышен лимит оплаты баллами', 'ky': 'Упай менен төлөө лимити ашып кетти', 'en': 'Points payment limit exceeded'},
     'method_not_allowed': {'ru': 'Способ оплаты недоступен для услуги', 'ky': 'Бул кызмат үчүн төлөм ыкмасы жеткиликсиз', 'en': 'Payment method is not available for this service'},
     'amount_out_of_range': {'ru': 'Сумма / количество вне диапазона', 'ky': 'Сумма / саны чектен тышкары', 'en': 'Amount / quantity out of range'},

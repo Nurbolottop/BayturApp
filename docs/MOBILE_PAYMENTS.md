@@ -39,7 +39,8 @@ MegaPay, O!Деньги — что включено для магазина). Р
 
 ### Шаг 1. Посчитать сумму
 
-`POST /cashback-requests/quote` (MOBILE_API §8.2) → `moneySom` — сколько платить деньгами. Способ `freedomPay`
+`POST /cashback-requests/quote` (MOBILE_API §8.2) с `pointsSom: 0` → `moneySom` = вся сумма (оплата — «всё или
+ничего»: онлайн платится только целиком деньгами). Способ `freedomPay`
 показывайте, только если он есть в `methods` ответа quote (или категории в каталоге). Если `moneySom = 0`
 (всё баллами), оплата не нужна — сразу `POST /cashback-requests`.
 
@@ -50,7 +51,7 @@ POST /payments
 Authorization: Bearer <accessToken>
 
 {"method": "freedomPay", "amountSom": 3500, "itemId": "spa-stone",
- "quantity": 1, "checkAmount": null, "pointsSom": 0}
+ "quantity": 1, "checkAmount": null, "pointsSom": 0}   // pointsSom всегда 0: частичная оплата баллами → 422 points_partial
 ```
 
 `amountSom` = `moneySom` из quote; `itemId`, `quantity`, `checkAmount`, `pointsSom` — те же, что в quote.

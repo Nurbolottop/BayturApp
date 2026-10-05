@@ -71,8 +71,9 @@
 ```
 total        = price × quantity            (pricing.type = unit)
              = checkAmount                  (pricing.type = check)
-maxPointsSom = min(floor(total × maxPointsShare), floor(available / 100))
-pointsSom    = запрошенное, ограниченное 0…maxPointsSom   (сервер обрезает в quote)
+Оплата — «всё или ничего»: клиент платит либо целиком баллами, либо целиком деньгами
+maxPointsSom = total, если floor(available / 100) ≥ total, иначе 0
+pointsSom    = 0 (деньгами) или total (баллами)
 moneySom     = total − pointsSom
 points       = pointsSom × 100              (100 баллов = 1 сом)
 cashback     = round(moneySom × rate × 100) (только с денежной части)
@@ -117,7 +118,7 @@ cashback     = round(moneySom × rate × 100) (только с денежной 
 ### 2.2. Форматы
 
 - **JSON, camelCase.** Деньги — целые сомы (KGS), баллы — целые числа. Дробных сумм нет.
-  Дробные только `rate`, `maxPointsShare`, `progress` (0…1).
+  Дробные только `rate`, `progress` (0…1). `maxPointsShare` устарел — всегда `1.0`.
 - **Дата-время** — ISO 8601 с таймзоной курорта: `2026-09-28T18:24:00+06:00`. **Дата** — `YYYY-MM-DD`.
 - **Картинки** — абсолютные URL. Уменьшенные варианты: замените `/media/` на `/img/` и добавьте `?w=`:
   `https://app.baytur.kg/media/x.jpg` → `https://app.baytur.kg/img/x.jpg?w=400` (WebP; ширины 200/400/800/1200/1600).
@@ -205,8 +206,8 @@ GET /wallet/operations?limit=20&cursor=WyIy...  → следующая стра�
 | 409 | `complaint_closed` | ответ в закрытое обращение | |
 | 422 | `terms_required` | регистрация без `acceptTerms: true` | |
 | 422 | `age_restricted` | младше 16 лет | |
-| 422 | `insufficient_points` | баллов не хватает | `maxPointsSom` |
-| 422 | `points_limit_exceeded` | превышен лимит оплаты баллами | `maxPointsSom` |
+| 422 | `insufficient_points` | баллов не хватает на всю сумму | `maxPointsSom`, `shortSom` |
+| 422 | `points_partial` | `pointsSom` не 0 и не вся сумма — частичная оплата баллами запрещена | `total` |
 | 422 | `method_not_allowed` | способ оплаты недоступен для услуги | |
 | 422 | `amount_out_of_range` | количество/сумма чека вне `pricing.min…max` | `min`, `max` |
 | 422 | `payment_invalid` | платёж не найден / не оплачен / сумма не совпадает / уже привязан | `moneySom` (на `/payments`) |
@@ -735,23 +736,28 @@ pending ──(сотрудник подтвердил)──▶ confirmed ─�
   `credited` начисляет кешбек (операция `cashback`: растит `available`, `current` и `lifetime`, может поднять уровень).
 - Пока заявка `pending`, сотрудник может **изменить сумму** (не совпала с чеком) — придёт `request.updated`
   с новым `split` и `originalTotal` («Администратор изменил сумму — было …») и `adjustReason`.
+  Заявка, оплаченная баллами, остаётся оплаченной баллами целиком (лишние баллы возвращаются в доступные);
+  если баллов на новую сумму не хватает, сотрудник не сможет её поменять и отклонит заявку.
 
 ### 8.2. Экран оплаты: `POST /cashback-requests/quote` (нужен вход)
 
-Вызывайте **на каждое изменение ввода** (количество, сумма чека, ползунок баллов) с задержкой ~300 мс
-(debounce) и рисуйте всё из ответа: сводку «итого → баллами → деньгами → кешбек», предел ползунка,
-список способов оплаты.
+Вызывайте **на каждое изменение ввода** (количество, сумма чека, переключатель «баллами / деньгами») с задержкой
+~300 мс (debounce) и рисуйте всё из ответа: сводку «итого → баллами → деньгами → кешбек», доступность оплаты
+баллами, список способов оплаты.
+
+**Оплата — «всё или ничего»:** `pointsSom = 0` — деньгами, любое `pointsSom > 0` — «баллами целиком».
+Частичной оплаты и лимита доли по категориям нет.
 
 ```json
-→ {"itemId": "spa-bochka", "quantity": 2, "checkAmount": null, "pointsSom": 1500}
+→ {"itemId": "spa-bochka", "quantity": 2, "checkAmount": null, "pointsSom": 0}
 ← 200 {
   "total": 5000,
-  "pointsSom": 1500,          // уже обрезано до допустимого
-  "points": 150000,
-  "moneySom": 3500,
+  "pointsSom": 0,             // 0 или total
+  "points": 0,
+  "moneySom": 5000,
   "rate": 0.14,               // не показывать
-  "cashback": 49000,
-  "maxPointsSom": 5000,       // предел ползунка «оплатить баллами», сом
+  "cashback": 70000,
+  "maxPointsSom": 5000,       // = total — баллов хватает на всю сумму; 0 — оплата баллами недоступна
   "availablePoints": 845000,
   "methods": ["cash", "finik", "freedomPay", "elqr"],   // пусто, если moneySom = 0
   "bonuses": [{"kind": "promo", "title": "×2 баллы"}]   // или [{"kind": "birthday", "multiplier": 2.0}]
@@ -759,7 +765,8 @@ pending ──(сотрудник подтвердил)──▶ confirmed ─�
 ```
 
 - Для `pricing.type = unit` передавайте `quantity` (в `pricing.min…max`), для `check` — `checkAmount`.
-- Ползунок баллов — шаг 1 сом (100 баллов).
+- Переключатель «Баллами» активен, только если `maxPointsSom = total`. Если клиент выбрал баллы, а их не хватает,
+  quote вернёт `pointsSom = 0` (только деньгами).
 - `bonuses` — подпись «что повлияло на кешбек» (акция / день рождения).
 - Ошибки: `404 item_not_found`, `422 amount_out_of_range {min, max}`.
 
@@ -770,11 +777,12 @@ POST /api/v1/cashback-requests
 Idempotency-Key: 7f3c1b2e-...           ← новый UUID на каждую попытку «Отправить»; повтор при плохой сети — с тем же ключом
 Content-Type: application/json
 
-{"itemId": "spa-bochka", "quantity": 2, "checkAmount": null, "pointsSom": 1500,
+{"itemId": "spa-bochka", "quantity": 2, "checkAmount": null, "pointsSom": 0,
  "method": "finik", "paymentId": "pay_123"}
 ```
 
 - **Отправляется только ввод.** Сервер пересчитывает всё заново и не доверяет прошлому quote.
+- `pointsSom`: `0` — деньгами, или **вся сумма** — баллами (тогда `method: null`). Другое значение → `422 points_partial`.
 - `method`: `cash` | `finik` | `freedomPay` | `elqr`, или `null`, если всё оплачено баллами (`moneySom = 0`).
 - `paymentId` — **обязателен** для онлайн-методов (сначала оплата, §9). Для `cash` не передаётся:
   клиент платит на ресепшене, сотрудник подтверждает после приёма денег.
@@ -792,9 +800,9 @@ Content-Type: application/json
   "quantity": 2,
   "checkAmount": null,
   "rules": {"rate": 0.14, "maxPointsShare": 1.0, "methods": ["cash", "finik", "freedomPay", "elqr"]},
-  "split": {"total": 5000, "pointsSom": 1500, "points": 150000, "moneySom": 3500, "rate": 0.14, "cashback": 49000},
+  "split": {"total": 5000, "pointsSom": 0, "points": 0, "moneySom": 5000, "rate": 0.14, "cashback": 70000},
   "method": "finik",
-  "receipt": {"id": "pay_123", "method": "finik", "amount": 3500, "at": "2026-09-29T22:40:10+06:00"},
+  "receipt": {"id": "pay_123", "method": "finik", "amount": 5000, "at": "2026-09-29T22:40:10+06:00"},
   "originalTotal": null,
   "rejectReason": null,
   "adjustReason": null,
@@ -812,8 +820,8 @@ Content-Type: application/json
 
 | HTTP | code | message |
 |---|---|---|
-| 422 | `insufficient_points` | Недостаточно баллов |
-| 422 | `points_limit_exceeded` | Превышен лимит оплаты баллами |
+| 422 | `insufficient_points` | Недостаточно баллов (на всю сумму) |
+| 422 | `points_partial` | Оплатить можно либо целиком баллами, либо целиком деньгами |
 | 422 | `method_not_allowed` | Способ оплаты недоступен для услуги (или `method` не указан при `moneySom > 0`) |
 | 422 | `amount_out_of_range` | Сумма / количество вне диапазона |
 | 422 | `payment_invalid` | Оплата не найдена или сумма не совпадает |

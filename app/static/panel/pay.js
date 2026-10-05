@@ -34,9 +34,7 @@
           show(sum + '<div class="pay-status ok">Баллов хватает</div>', 'ok');
           btn.disabled = false; btn.textContent = 'Списать ' + fmt(d.points) + ' баллов';
         } else {
-          var why = d.reason === 'limit'
-            ? 'По правилам раздела баллами можно оплатить только ' + d.limitPercent + '% суммы.'
-            : 'Не хватает ' + fmt(d.shortSom) + ' сом.';
+          var why = 'Не хватает ' + fmt(d.shortSom) + ' сом.';
           show(sum + '<div class="pay-status bad">Не хватает баллов — оплатите деньгами</div><div class="small">' + why + '</div>', 'bad');
           btn.textContent = 'Баллов недостаточно';
         }

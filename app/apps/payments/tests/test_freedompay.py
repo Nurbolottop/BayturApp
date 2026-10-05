@@ -28,10 +28,10 @@ class FreedomPayTests(BaseAPITestCase):
         self.post.return_value = xml(pg_status='ok', pg_payment_id='777', pg_redirect_url='https://pay.fp/777')
 
     def pay(self, method='freedomPay'):
-        data = {'method': method, 'amountSom': 5500, 'itemId': 'spa-stone', 'quantity': 2, 'pointsSom': 1500}
+        data = {'method': method, 'amountSom': 7000, 'itemId': 'spa-stone', 'quantity': 2}
         return self.api.post('/api/v1/payments', data, format='json')
 
-    def callback(self, payment, result='1', amount='5500.00', can_reject='1', secret=SECRET):
+    def callback(self, payment, result='1', amount='7000.00', can_reject='1', secret=SECRET):
         params = {'pg_order_id': payment['id'], 'pg_payment_id': '777', 'pg_amount': amount, 'pg_currency': 'KGS',
                   'pg_result': result, 'pg_can_reject': can_reject, 'pg_salt': 'abc'}
         params['pg_sig'] = freedompay_sig('freedompay', params, secret)
@@ -45,7 +45,7 @@ class FreedomPayTests(BaseAPITestCase):
         sent = self.post.call_args.kwargs['data']
         self.assertEqual(url, 'https://api.freedompay.kg/init_payment.php')
         self.assertEqual(sent['pg_sig'], freedompay_sig('init_payment.php', sent, SECRET))
-        self.assertEqual((sent['pg_amount'], sent['pg_currency'], sent['pg_order_id']), (5500, 'KGS', r.json()['id']))
+        self.assertEqual((sent['pg_amount'], sent['pg_currency'], sent['pg_order_id']), (7000, 'KGS', r.json()['id']))
         self.assertEqual(sent['pg_result_url'], 'https://api.test/api/v1/payments/webhooks/freedompay')
         p = Payment.objects.get(pk=r.json()['id'])
         self.assertEqual((p.provider, p.provider_ref), ('freedompay', '777'))
@@ -82,10 +82,10 @@ class FreedomPayTests(BaseAPITestCase):
 
     def test_check_and_refund(self):
         p = self.pay().json()
-        self.post.return_value = xml(pg_status='ok', pg_payment_status='success', pg_amount='5500')
+        self.post.return_value = xml(pg_status='ok', pg_payment_status='success', pg_amount='7000')
         self.assertEqual(self.api.post(f'/api/v1/payments/{p["id"]}/check').json()['status'], 'paid')
         self.assertTrue(self.post.call_args.args[0].endswith('/get_status3.php'))
-        req, _ = cs.create_request(self.member, {'itemId': 'spa-stone', 'quantity': 2, 'pointsSom': 1500,
+        req, _ = cs.create_request(self.member, {'itemId': 'spa-stone', 'quantity': 2, 
                                                  'method': 'freedomPay', 'paymentId': p['id']})
         self.post.return_value = xml(pg_status='ok')
         with self.captureOnCommitCallbacks(execute=True):

@@ -2,8 +2,9 @@
 Расчёт оплаты и кешбека (ТЗ §5.2) — эталон, перенесённый из PaymentCalculator мобилки.
 
   total        = price × quantity (unit) | checkAmount (check)
-  maxPointsSom = max(0, min(floor(total × maxPointsShare), floor(available / pointsPerSom)))
-  pointsSom    = запрошенное, ограниченное 0…maxPointsSom
+  Оплата — «всё или ничего»: клиент платит либо целиком баллами, либо целиком деньгами.
+  maxPointsSom = total, если баллов хватает на всю сумму (floor(available / pointsPerSom) ≥ total), иначе 0
+  pointsSom    = 0 или total
   moneySom     = total − pointsSom;  points = pointsSom × pointsPerSom
   cashback     = round(moneySom × rate × pointsPerSom) — только с денежной части
 """
@@ -101,7 +102,8 @@ def resolve_rules(item, member, settings, at):
             rate = bday_rate
             bonuses = [{'kind': 'birthday', 'multiplier': float(settings.birthday_multiplier)}]
     rate = min(rate, Decimal('1'))
-    return Rules(rate=rate, base_rate=base, max_points_share=Decimal(category.max_points_share),
+    # Лимита доли по категориям больше нет: баллами можно оплатить любую услугу целиком
+    return Rules(rate=rate, base_rate=base, max_points_share=Decimal('1'),
                  methods=list(category.methods), points_per_som=settings.points_per_som, bonuses=bonuses)
 
 
@@ -117,25 +119,31 @@ def compute_total(item, quantity, check_amount):
     return item.price * quantity, quantity
 
 
+def balance_som(available, rules):
+    return max(0, available) // rules.points_per_som
+
+
 def max_points_som(total, rules, available):
-    by_share = floor_int(Decimal(total) * rules.max_points_share)
-    by_balance = max(0, available) // rules.points_per_som
-    return max(0, min(by_share, by_balance))
+    """Сколько можно оплатить баллами: вся сумма, если баланса хватает, иначе 0 (частичной оплаты нет)."""
+    return total if balance_som(available, rules) >= total else 0
 
 
 def compute_split(total, rules, available, requested_points_som, strict=False):
     """
-    strict=False — quote: pointsSom тихо ограничивается 0…maxPointsSom.
-    strict=True  — создание заявки: превышение → ошибка.
+    pointsSom > 0 означает «оплатить баллами целиком».
+    strict=False — quote: pointsSom = total, если баллов хватает, иначе 0.
+    strict=True  — создание заявки / правка суммы: частичная оплата → points_partial,
+                   баллов не хватает на всю сумму → insufficient_points.
     """
     requested = max(0, int(requested_points_som or 0))
     limit = max_points_som(total, rules, available)
-    if strict and requested > limit:
-        by_share = floor_int(Decimal(total) * rules.max_points_share)
-        if requested > by_share:
-            raise ApiError('points_limit_exceeded', 422, extra={'maxPointsSom': limit})
-        raise ApiError('insufficient_points', 422, extra={'maxPointsSom': limit})
-    points_som = min(requested, limit)
+    if strict and requested:
+        if requested != total:
+            raise ApiError('points_partial', 422, extra={'total': total})
+        if not limit:
+            raise ApiError('insufficient_points', 422,
+                           extra={'maxPointsSom': 0, 'shortSom': total - balance_som(available, rules)})
+    points_som = total if requested and limit else 0
     money_som = total - points_som
     cashback = round_half_up(Decimal(money_som) * rules.rate * rules.points_per_som)
     return Split(total=total, max_points_som=limit, points_som=points_som,

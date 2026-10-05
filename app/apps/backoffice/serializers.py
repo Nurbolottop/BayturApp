@@ -93,20 +93,20 @@ class OutletSerializer(ImmutableIdMixin, serializers.ModelSerializer):
 
 
 class RulesField(serializers.Field):
-    """CashbackRules категории: {rate, maxPointsShare, methods} ↔ поля модели."""
+    """CashbackRules категории: {rate, methods} ↔ поля модели. maxPointsShare устарел: всегда 1.0, на запись игнорируется."""
 
     def __init__(self, **kwargs):
         kwargs['source'] = '*'
         super().__init__(**kwargs)
 
     def to_representation(self, obj):
-        return {'rate': float(obj.rate), 'maxPointsShare': float(obj.max_points_share), 'methods': list(obj.methods)}
+        return {'rate': float(obj.rate), 'maxPointsShare': 1.0, 'methods': list(obj.methods)}
 
     def to_internal_value(self, data):
         if not isinstance(data, dict):
-            raise serializers.ValidationError('Ожидается объект {rate, maxPointsShare, methods}')
+            raise serializers.ValidationError('Ожидается объект {rate, methods}')
         out, errors = {}, {}
-        for key, attr in (('rate', 'rate'), ('maxPointsShare', 'max_points_share')):
+        for key, attr in (('rate', 'rate'),):
             if key in data:
                 try:
                     out[attr] = RateField().to_internal_value(data[key])
@@ -144,9 +144,8 @@ class CategorySerializer(ImmutableIdMixin, serializers.ModelSerializer):
 
     def validate(self, attrs):
         if self.instance is None:
-            missing = [k for k in ('rate', 'max_points_share') if k not in attrs]
-            if missing:
-                raise serializers.ValidationError({'rules': ['нужны rate и maxPointsShare']})
+            if 'rate' not in attrs:
+                raise serializers.ValidationError({'rules': ['нужен rate']})
         return attrs
 
 

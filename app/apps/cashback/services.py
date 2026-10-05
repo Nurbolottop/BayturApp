@@ -12,6 +12,7 @@ credit начисляет кешбек (cashback, растит lifetime).
 """
 import logging
 from datetime import timedelta
+from decimal import Decimal
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
@@ -270,8 +271,11 @@ def credit_request(req_id):
 
 
 def recalc_for_total(req, new_total, available_with_reserve):
+    """Заявка, оплаченная баллами, остаётся оплаченной баллами целиком — или правка отклоняется."""
     rules = Rules.from_snapshot(req.rules)
-    return compute_split(new_total, rules, available_with_reserve, req.requested_points_som)
+    rules.max_points_share = Decimal('1')  # снимок старых заявок мог хранить лимит категории
+    requested = new_total if req.points_som > 0 else 0
+    return compute_split(new_total, rules, available_with_reserve, requested, strict=True)
 
 
 def adjust_preview(req, new_total):
@@ -282,8 +286,9 @@ def adjust_preview(req, new_total):
 
 def adjust_request(req_id, new_total, staff=None, reason='', expected_outlets=None):
     """
-    Правка суммы — только в pending. Запрошенные pointsSom урезаются до лимита от новой суммы
-    и до баланса (available + текущий резерв заявки); originalTotal запоминается один раз.
+    Правка суммы — только в pending. Оплата «всё или ничего»: заявка баллами списывает баллами всю новую
+    сумму (баланс = available + текущий резерв заявки; не хватает → insufficient_points), денежная остаётся
+    денежной. originalTotal запоминается один раз.
     """
     new_total = int(new_total)
     if new_total <= 0:
@@ -304,6 +309,7 @@ def adjust_request(req_id, new_total, staff=None, reason='', expected_outlets=No
         old_money = req.money_som
         req.total, req.points_som, req.points = split.total, split.points_som, split.points
         req.money_som, req.cashback = split.money_som, split.cashback
+        req.requested_points_som = split.points_som
         if req.check_amount is not None:
             req.check_amount = split.total
         if req.money_som > 0 and req.method is None:

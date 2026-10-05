@@ -42,7 +42,7 @@ class PointsPaymentTests(BaseAPITestCase):
         self.assertFalse(CashbackRequest.objects.exists())       # ничего не создано и не зарезервировано
         self.assertEqual(self.wallet(self.member).reserved, 0)
 
-    def test_category_limit_reason(self):
+    def test_no_category_limit(self):
         reception = self.staff_client(self.make_staff('staff', outlets=['reception']))
         self.auth(self.member)
         qr = self.api.get('/api/v1/me/member-qr').json()['token']
@@ -56,7 +56,7 @@ class PointsPaymentTests(BaseAPITestCase):
         token = reception.post(f'{S}/scan', {'token': qr}, format='json').json()['payToken']
         q = reception.post(f'{S}/points/quote', {'payToken': token, 'itemId': 'room-deluxe', 'quantity': 1},
                            format='json').json()
-        self.assertEqual((q['enough'], q['reason'], q['limitPercent']), (False, 'limit', 30))
+        self.assertEqual((q['enough'], q['reason'], q['shortSom']), (True, None, 0))  # номер — целиком баллами
 
     def test_token_bound_to_staff_and_own_account(self):
         other = self.staff_client(self.make_staff('staff', outlets=['spa']))

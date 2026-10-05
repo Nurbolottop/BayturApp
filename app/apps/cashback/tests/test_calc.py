@@ -13,35 +13,32 @@ def rules(rate='0.07', share='1.00', methods=('cash',), pps=100):
 
 
 class SplitTests(SimpleTestCase):
-    def test_spec_example_cedar_barrel(self):
-        """ТЗ §5.2: бочка × 2 = 5 000 сом, promoRate 0.14, баллами 1 500 → 150 000 / 3 500 / 49 000."""
-        s = compute_split(5000, rules('0.14'), available=845_000, requested_points_som=1500)
-        self.assertEqual((s.total, s.points_som, s.points, s.money_som, s.cashback), (5000, 1500, 150_000, 3500, 49_000))
+    def test_money_payment_cashback(self):
+        """Бочка × 2 = 5 000 сом деньгами, promoRate 0.14 → кешбек 70 000."""
+        s = compute_split(5000, rules('0.14'), available=845_000, requested_points_som=0)
+        self.assertEqual((s.total, s.points_som, s.points, s.money_som, s.cashback), (5000, 0, 0, 5000, 70_000))
+        self.assertEqual(s.max_points_som, 5000)
 
-    def test_max_points_by_share_and_balance(self):
-        # rooms: maxPointsShare 0.30 → 69 000 × 0.3 = 20 700; баланс 1 000 000 баллов = 10 000 сом
-        s = compute_split(69_000, rules('0.07', '0.30'), available=1_000_000, requested_points_som=50_000)
-        self.assertEqual(s.max_points_som, 10_000)
-        self.assertEqual(s.points_som, 10_000)
-        s = compute_split(69_000, rules('0.07', '0.30'), available=10_000_000, requested_points_som=50_000)
-        self.assertEqual(s.max_points_som, 20_700)
+    def test_all_or_nothing(self):
+        # хватает баллов на всю сумму → баллами целиком, любая категория (лимита доли нет)
+        s = compute_split(69_000, rules('0.07', '0.30'), available=6_900_000, requested_points_som=1)
+        self.assertEqual((s.points_som, s.money_som, s.cashback), (69_000, 0, 0))
+        # не хватает → quote отдаёт «только деньгами»
+        s = compute_split(69_000, rules('0.07'), available=6_899_999, requested_points_som=69_000)
+        self.assertEqual((s.max_points_som, s.points_som, s.money_som), (0, 0, 69_000))
 
     def test_available_not_multiple_of_100_is_floored(self):
-        s = compute_split(1000, rules(), available=12_345, requested_points_som=999)
-        self.assertEqual(s.max_points_som, 123)
-        self.assertEqual(s.points, 12_300)
-
-    def test_full_points_payment_gives_zero_cashback(self):
-        s = compute_split(2500, rules('0.14'), available=10_000_000, requested_points_som=2500)
-        self.assertEqual((s.money_som, s.cashback), (0, 0))
+        self.assertEqual(compute_split(123, rules(), available=12_345, requested_points_som=123).points, 12_300)
+        self.assertEqual(compute_split(124, rules(), available=12_345, requested_points_som=124).points_som, 0)
 
     def test_strict_errors(self):
+        for requested in (500, 20_000):
+            with self.assertRaises(ApiError) as e:
+                compute_split(10_000, rules(), available=10_000_000, requested_points_som=requested, strict=True)
+            self.assertEqual(e.exception.code, 'points_partial')
         with self.assertRaises(ApiError) as e:
-            compute_split(10_000, rules('0.07', '0.30'), available=10_000_000, requested_points_som=5000, strict=True)
-        self.assertEqual(e.exception.code, 'points_limit_exceeded')
-        with self.assertRaises(ApiError) as e:
-            compute_split(10_000, rules(), available=100_000, requested_points_som=5000, strict=True)
-        self.assertEqual(e.exception.code, 'insufficient_points')
+            compute_split(10_000, rules(), available=100_000, requested_points_som=10_000, strict=True)
+        self.assertEqual((e.exception.code, e.exception.extra['shortSom']), ('insufficient_points', 9000))
 
     def test_negative_request_is_zero(self):
         self.assertEqual(compute_split(1000, rules(), 100_000, -50).points_som, 0)

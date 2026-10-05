@@ -184,16 +184,14 @@ class CategoryForm(PanelForm, forms.ModelForm):
                                         widget=forms.CheckboxSelectMultiple, required=False)
     rate = forms.DecimalField(label='Кешбек, доля (0.07 = 7 %)', min_value=Decimal('0'), max_value=Decimal('1'),
                               decimal_places=4)
-    max_points_share = forms.DecimalField(label='Оплата баллами, доля', min_value=Decimal('0'),
-                                          max_value=Decimal('1'), decimal_places=4)
 
     class Meta:
         model = Category
-        fields = ['title', 'cover', 'sort_order', 'is_active', 'rate', 'max_points_share', 'methods']
+        fields = ['title', 'cover', 'sort_order', 'is_active', 'rate', 'methods']
         widgets = {'cover': forms.HiddenInput}
         labels = {'sort_order': 'Порядок', 'is_active': 'Показывать в приложении'}
 
-    RULE_FIELDS = ['sort_order', 'is_active', 'rate', 'max_points_share', 'methods']
+    RULE_FIELDS = ['sort_order', 'is_active', 'rate', 'methods']
 
 
 class ItemForm(PanelForm, forms.ModelForm):

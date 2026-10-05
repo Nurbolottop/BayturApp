@@ -52,7 +52,7 @@ def item_payload(item, now=None, ps=None):
 def rules_payload(category):
     return {
         'rate': float(category.rate),
-        'maxPointsShare': float(category.max_points_share),
+        'maxPointsShare': 1.0,  # устарело: лимита доли нет, баллами — только вся сумма
         'methods': list(category.methods),
     }
 

@@ -86,7 +86,7 @@ class Command(BaseCommand):
         pending = make('spa-stone')                              # pending — оставляем без автоподтверждения
         type(pending).objects.filter(pk=pending.pk).update(auto_confirm_at=None)
         cs.confirm_request(make('sport-gym').pk)                 # confirmed
-        r = cs.confirm_request(make('spa-bochka', 2, 1000).pk)   # credited
+        r = cs.confirm_request(make('spa-bochka', 2).pk)         # credited
         cs.credit_request(r.pk)
         cs.reject_request(make('pools-thermal').pk, code=RejectReason.NOT_PROVIDED)  # rejected
         cs.cancel_request(member, make('sport-tennis').pk)      # cancelled

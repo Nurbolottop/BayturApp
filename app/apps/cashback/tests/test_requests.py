@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from apps.cashback import services
 from apps.cashback.models import CashbackRequest, RequestStatus
+from apps.common.errors import ApiError
 from apps.common.testing import BaseAPITestCase
 from apps.loyalty.models import Operation
 from apps.loyalty.services import ledger_mismatches
@@ -25,21 +26,25 @@ class QuoteTests(BaseAPITestCase):
         self.assertEqual(r.json()['error']['code'], 'auth_required')
 
     def test_quote_spec_example(self):
-        r = self.api.post(f'{URL}/quote', {'itemId': 'spa-bochka', 'quantity': 2, 'pointsSom': 1500, 'method': 'finik'},
-                          format='json')
+        r = self.api.post(f'{URL}/quote', {'itemId': 'spa-bochka', 'quantity': 2, 'method': 'finik'}, format='json')
         self.assertEqual(r.status_code, 200, r.content)
         d = r.json()
         self.assertEqual((d['total'], d['pointsSom'], d['points'], d['moneySom'], d['cashback']),
-                         (5000, 1500, 150_000, 3500, 49_000))
-        self.assertEqual(d['maxPointsSom'], 5000)
+                         (5000, 0, 0, 5000, 70_000))
+        self.assertEqual(d['maxPointsSom'], 5000)        # баллов хватает на всю сумму
         self.assertEqual(d['availablePoints'], 845_000)
         self.assertEqual(d['bonuses'][0]['kind'], 'promo')
 
-    def test_quote_clamps_slider(self):
-        r = self.api.post(f'{URL}/quote', {'itemId': 'room-deluxe', 'quantity': 3, 'pointsSom': 999_999}, format='json')
-        d = r.json()
-        self.assertEqual(d['maxPointsSom'], 8450)       # min(69 000 × 0.3 = 20 700, 845 000 / 100)
-        self.assertEqual(d['pointsSom'], 8450)
+    def test_quote_all_or_nothing(self):
+        # номер целиком баллами — лимита доли категории больше нет
+        from apps.catalog.models import Item
+        Item.objects.filter(pk='room-standard').update(price=8000)   # 845 000 баллов = 8 450 сом
+        d = self.api.post(f'{URL}/quote', {'itemId': 'room-standard', 'quantity': 1, 'pointsSom': 1}, format='json').json()
+        self.assertEqual((d['pointsSom'], d['moneySom'], d['maxPointsSom'], d['cashback']), (8000, 0, 8000, 0))
+        # баллов не хватает на всю сумму → только деньгами
+        d = self.api.post(f'{URL}/quote', {'itemId': 'room-deluxe', 'quantity': 3, 'pointsSom': 999_999},
+                          format='json').json()
+        self.assertEqual((d['maxPointsSom'], d['pointsSom'], d['moneySom']), (0, 0, 69_000))
 
     def test_quote_check_amount_range(self):
         r = self.api.post(f'{URL}/quote', {'itemId': 'food-davinci', 'checkAmount': 100}, format='json')
@@ -74,19 +79,26 @@ class CreateRequestTests(BaseAPITestCase):
         headers = {'HTTP_IDEMPOTENCY_KEY': key} if key else {}
         return self.api.post(URL, data, format='json', **headers)
 
-    def test_create_cash_request_reserves_points(self):
-        r = self.create(itemId='spa-stone', quantity=2, pointsSom=1000, method='cash')
+    def test_create_cash_request(self):
+        r = self.create(itemId='spa-stone', quantity=2, method='cash')
         self.assertEqual(r.status_code, 201, r.content)
         d = r.json()
         self.assertEqual(d['status'], 'pending')
-        self.assertEqual(d['split'], {'total': 7000, 'pointsSom': 1000, 'points': 100_000, 'moneySom': 6000,
-                                      'rate': 0.07, 'cashback': 42_000})
+        self.assertEqual(d['split'], {'total': 7000, 'pointsSom': 0, 'points': 0, 'moneySom': 7000,
+                                      'rate': 0.07, 'cashback': 49_000})
         self.assertIn('pending', d['timeline'])
         self.assertTrue(d['createdAt'].endswith('+06:00'))
         w = self.wallet(self.member)
-        self.assertEqual((w.balance, w.reserved, w.available), (845_000, 100_000, 745_000))
+        self.assertEqual((w.balance, w.reserved, w.available), (845_000, 0, 845_000))
         wallet = self.api.get('/api/v1/wallet').json()
-        self.assertEqual(wallet['pendingCashback'], 42_000)
+        self.assertEqual(wallet['pendingCashback'], 49_000)
+
+    def test_points_request_reserves_points(self):
+        r = self.create(itemId='spa-stone', quantity=2, pointsSom=7000)
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(r.json()['split']['points'], 700_000)
+        w = self.wallet(self.member)
+        self.assertEqual((w.reserved, w.available), (700_000, 145_000))
 
     def test_client_cannot_inject_split(self):
         r = self.create(itemId='spa-stone', quantity=1, pointsSom=0, method='cash',
@@ -94,18 +106,18 @@ class CreateRequestTests(BaseAPITestCase):
         self.assertEqual(r.json()['split']['cashback'], 24_500)
 
     def test_idempotency_key(self):
-        r1 = self.create('key-1', itemId='spa-stone', quantity=1, pointsSom=500, method='cash')
-        r2 = self.create('key-1', itemId='spa-stone', quantity=1, pointsSom=500, method='cash')
+        r1 = self.create('key-1', itemId='spa-stone', quantity=1, pointsSom=3500)
+        r2 = self.create('key-1', itemId='spa-stone', quantity=1, pointsSom=3500)
         self.assertEqual(r1.status_code, 201)
         self.assertEqual(r2.status_code, 200)
         self.assertEqual(r1.json()['id'], r2.json()['id'])
         self.assertEqual(CashbackRequest.objects.count(), 1)
-        self.assertEqual(self.wallet(self.member).reserved, 50_000)
+        self.assertEqual(self.wallet(self.member).reserved, 350_000)
 
     def test_errors(self):
         cases = [
-            (dict(itemId='spa-stone', quantity=1, pointsSom=9000, method='cash'), 422, 'points_limit_exceeded'),
-            (dict(itemId='room-deluxe', quantity=1, pointsSom=7000, method='cash'), 422, 'points_limit_exceeded'),
+            (dict(itemId='spa-stone', quantity=1, pointsSom=500, method='cash'), 422, 'points_partial'),
+            (dict(itemId='spa-stone', quantity=1, pointsSom=9000, method='cash'), 422, 'points_partial'),
             (dict(itemId='pools-thermal', quantity=1, method='freedomPay'), 422, 'method_not_allowed'),
             (dict(itemId='spa-stone', quantity=11, method='cash'), 422, 'amount_out_of_range'),
             (dict(itemId='nope', quantity=1, method='cash'), 404, 'item_not_found'),
@@ -119,8 +131,9 @@ class CreateRequestTests(BaseAPITestCase):
     def test_insufficient_points(self):
         poor = self.make_member(phone='+996555000002', points=10_000)
         self.auth(poor)
-        r = self.create(itemId='spa-stone', quantity=1, pointsSom=500, method='cash')
+        r = self.create(itemId='spa-stone', quantity=1, pointsSom=3500)
         self.assertEqual(r.json()['error']['code'], 'insufficient_points')
+        self.assertEqual(r.json()['error']['shortSom'], 3400)
 
     def test_all_points_payment_has_no_method(self):
         r = self.create(itemId='spa-stone', quantity=1, pointsSom=3500, method='cash')
@@ -160,23 +173,30 @@ class LifecycleTests(BaseAPITestCase):
         self.member = self.make_member(points=190_000)
         self.auth(self.member)
 
-    def new(self, item='spa-stone', qty=2, pts=1000, method='cash'):
+    def new(self, item='spa-stone', qty=2, pts=0, method='cash'):
         req, _ = services.create_request(self.member, {'itemId': item, 'quantity': qty, 'pointsSom': pts,
                                                        'method': method})
         return req
 
+    def _price(self, item_id):
+        from apps.catalog.models import Item
+        return Item.objects.get(pk=item_id).price
+
     def test_confirm_then_credit(self):
-        req = self.new()
+        req = self.new()                                  # 7 000 деньгами → кешбек 49 000
+        paid = self.new(item='pools-thermal', qty=1, pts=self._price('pools-thermal'))
         services.confirm_request(req.pk)
+        services.confirm_request(paid.pk)
+        spent = paid.points
         w = self.wallet(self.member)
-        self.assertEqual((w.balance, w.reserved), (90_000, 0))
-        spend = Operation.objects.get(request=req, kind='spend')
-        self.assertEqual(spend.points, -100_000)
+        self.assertEqual((w.balance, w.reserved), (190_000 - spent, 0))
+        spend = Operation.objects.get(request=paid, kind='spend')
+        self.assertEqual(spend.points, -spent)
         with self.captureOnCommitCallbacks(execute=True):
             services.credit_request(req.pk)
         w = self.wallet(self.member)
-        self.assertEqual(w.balance, 90_000 + 42_000)
-        self.assertEqual(w.lifetime, 42_000)             # lifetime растёт только на кешбек
+        self.assertEqual(w.balance, 190_000 - spent + 49_000)
+        self.assertEqual(w.lifetime, 49_000)             # lifetime растёт только на кешбек
         req.refresh_from_db()
         self.assertEqual(req.status, RequestStatus.CREDITED)
         self.assertEqual(set(req.timeline), {'pending', 'confirmed', 'credited'})
@@ -224,17 +244,27 @@ class LifecycleTests(BaseAPITestCase):
         self.assertEqual(d['status'], 'rejected')
         self.assertIn('чек на 5 000', d['rejectReason'])
 
-    def test_adjust_clamps_points_and_keeps_original_total(self):
-        req = self.new(qty=2, pts=1000)                   # 7 000, баллами 1 000
-        services.adjust_request(req.pk, 500)              # новая сумма меньше баллов
-        req.refresh_from_db()
-        self.assertEqual((req.total, req.points_som, req.money_som, req.original_total), (500, 500, 0, 7000))
-        self.assertEqual(self.wallet(self.member).reserved, 50_000)
+    def test_adjust_money_request_and_keep_original_total(self):
+        req = self.new(qty=2)                             # 7 000 деньгами
+        services.adjust_request(req.pk, 500)
         services.adjust_request(req.pk, 9000)
         req.refresh_from_db()
+        self.assertEqual((req.total, req.points_som, req.money_som), (9000, 0, 9000))
         self.assertEqual(req.original_total, 7000)        # запоминается один раз
-        self.assertEqual(req.points_som, 1000)            # запрошенное клиентом восстанавливается
-        self.assertEqual(req.cashback, 8000 * 7)
+        self.assertEqual(req.cashback, 9000 * 7)
+
+    def test_adjust_points_request_stays_all_points(self):
+        price = self._price('pools-thermal')
+        req = self.new(item='pools-thermal', qty=1, pts=price)
+        services.adjust_request(req.pk, price - 100)      # меньше — лишние баллы возвращаются в доступные
+        req.refresh_from_db()
+        self.assertEqual((req.points_som, req.money_som, req.cashback), (price - 100, 0, 0))
+        self.assertEqual(self.wallet(self.member).reserved, (price - 100) * 100)
+        with self.assertRaises(ApiError) as e:            # больше баланса — правка отклоняется, заявка не меняется
+            services.adjust_request(req.pk, 5000)
+        self.assertEqual(e.exception.code, 'insufficient_points')
+        req.refresh_from_db()
+        self.assertEqual((req.total, req.points_som, req.money_som), (price - 100, price - 100, 0))
 
     def test_active_filter_and_pagination(self):
         for _ in range(3):

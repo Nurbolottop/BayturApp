@@ -17,8 +17,8 @@ class PaymentFlowTests(BaseAPITestCase):
         self.member = self.make_member(points=500_000)
         self.auth(self.member)
 
-    def pay(self, amount=5500, method='finik', **extra):
-        data = {'method': method, 'amountSom': amount, 'itemId': 'spa-stone', 'quantity': 2, 'pointsSom': 1500, **extra}
+    def pay(self, amount=7000, method='finik', **extra):
+        data = {'method': method, 'amountSom': amount, 'itemId': 'spa-stone', 'quantity': 2, **extra}
         return self.api.post('/api/v1/payments', data, format='json')
 
     def webhook(self, payment, status='paid', amount=None, secret='test-secret', event='e1'):
@@ -30,7 +30,11 @@ class PaymentFlowTests(BaseAPITestCase):
     def test_amount_must_equal_money_part(self):
         r = self.pay(amount=5000)
         self.assertEqual(r.json()['error']['code'], 'payment_invalid')
-        self.assertEqual(r.json()['error']['moneySom'], 5500)
+        self.assertEqual(r.json()['error']['moneySom'], 7000)
+
+    def test_partial_points_rejected(self):
+        r = self.pay(amount=5500, pointsSom=1500)
+        self.assertEqual((r.status_code, r.json()['error']['code']), (422, 'points_partial'))
 
     def test_redirect_and_qr(self):
         self.assertTrue(self.pay().json()['redirectUrl'].endswith('/checkout'))
@@ -45,19 +49,19 @@ class PaymentFlowTests(BaseAPITestCase):
         self.assertEqual(self.webhook(p).status_code, 200)       # повтор — идемпотентно
         self.assertEqual(WebhookEvent.objects.count(), 1)
         self.assertEqual(self.api.get(f'/api/v1/payments/{p["id"]}').json()['status'], 'paid')
-        r = self.api.post('/api/v1/cashback-requests', {'itemId': 'spa-stone', 'quantity': 2, 'pointsSom': 1500,
+        r = self.api.post('/api/v1/cashback-requests', {'itemId': 'spa-stone', 'quantity': 2, 
                                                        'method': 'finik', 'paymentId': p['id']}, format='json')
         self.assertEqual(r.status_code, 201, r.content)
         req = r.json()
-        self.assertEqual(req['receipt']['amount'], 5500)
+        self.assertEqual(req['receipt']['amount'], 7000)
         # платёж нельзя привязать ко второй заявке
-        r2 = self.api.post('/api/v1/cashback-requests', {'itemId': 'spa-stone', 'quantity': 2, 'pointsSom': 1500,
+        r2 = self.api.post('/api/v1/cashback-requests', {'itemId': 'spa-stone', 'quantity': 2, 
                                                         'method': 'finik', 'paymentId': p['id']}, format='json')
         self.assertEqual(r2.json()['error']['code'], 'payment_invalid')
         with self.captureOnCommitCallbacks(execute=True):
             cs.reject_request(req['id'], code='not_provided')
         payment = Payment.objects.get(pk=p['id'])
-        self.assertEqual((payment.status, payment.refunded_amount), ('refunded', 5500))
+        self.assertEqual((payment.status, payment.refunded_amount), ('refunded', 7000))
 
     def test_amount_mismatch_in_webhook_fails_payment(self):
         p = self.pay().json()
@@ -67,10 +71,10 @@ class PaymentFlowTests(BaseAPITestCase):
     def test_partial_refund_on_adjust_down(self):
         p = self.pay().json()
         self.webhook(p)
-        req, _ = cs.create_request(self.member, {'itemId': 'spa-stone', 'quantity': 2, 'pointsSom': 1500,
+        req, _ = cs.create_request(self.member, {'itemId': 'spa-stone', 'quantity': 2, 
                                                  'method': 'finik', 'paymentId': p['id']})
         with self.captureOnCommitCallbacks(execute=True):
-            cs.adjust_request(req.pk, 6000)          # деньгами 4 500 вместо 5 500
+            cs.adjust_request(req.pk, 6000)          # деньгами 6 000 вместо 7 000
         self.assertEqual(Payment.objects.get(pk=p['id']).refunded_amount, 1000)
 
     def test_orphan_paid_payment_gets_request(self):
@@ -80,7 +84,7 @@ class PaymentFlowTests(BaseAPITestCase):
         self.assertEqual(services.resolve_orphan_payments(), 1)
         payment = Payment.objects.get(pk=p['id'])
         self.assertIsNotNone(payment.request_id)
-        self.assertEqual(payment.request.money_som, 5500)
+        self.assertEqual(payment.request.money_som, 7000)
 
     @mock.patch('apps.payments.services.refund_payment')
     def test_orphan_that_cannot_become_request_is_refunded(self, refund):

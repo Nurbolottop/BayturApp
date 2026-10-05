@@ -299,27 +299,23 @@ def _pay_item(user, item_id):
 def points_quote(user, member, item_id, quantity=None, check_amount=None):
     """
     Хватает ли баллов, чтобы оплатить услугу целиком. Баланс клиента сотруднику не показывается —
-    только «хватает» или «не хватает N сом» и причина (лимит раздела или баланс).
+    только «хватает» или «не хватает N сом». Лимита доли по разделам нет: reason — только 'balance'.
     """
     from django.utils import timezone
 
     from apps.loyalty.services import get_wallet
 
-    from .calc import compute_total, floor_int, max_points_som, resolve_rules
+    from .calc import balance_som, compute_total, resolve_rules
     item = _pay_item(user, item_id)
     rules = resolve_rules(item, member, ProgramSettings.get(), timezone.now())
     total, quantity = compute_total(item, quantity, check_amount)
     available = get_wallet(member).available
-    by_share = floor_int(total * rules.max_points_share)
-    payable = max_points_som(total, rules, available)
-    enough = payable >= total
-    reason = None
-    if not enough:
-        reason = 'limit' if by_share < total and payable == by_share else 'balance'
+    balance = balance_som(available, rules)
+    enough = balance >= total
     return {
         'itemId': item.pk, 'total': total, 'quantity': quantity, 'points': total * rules.points_per_som,
-        'enough': enough, 'shortSom': max(0, total - payable), 'reason': reason,
-        'limitPercent': int(rules.max_points_share * 100),
+        'enough': enough, 'shortSom': max(0, total - balance), 'reason': None if enough else 'balance',
+        'limitPercent': 100,  # устарело: лимита доли больше нет, оставлено для совместимости
     }
 
 
@@ -332,8 +328,7 @@ def charge_points(request, pay_token, item_id, quantity=None, check_amount=None)
     member = read_pay_token(user, pay_token)
     quote = points_quote(user, member, item_id, quantity, check_amount)
     if not quote['enough']:
-        code = 'points_limit_exceeded' if quote['reason'] == 'limit' else 'insufficient_points'
-        raise ApiError(code, 422, extra={'shortSom': quote['shortSom']})
+        raise ApiError('insufficient_points', 422, extra={'shortSom': quote['shortSom']})
     check_not_own_member(user, member)
     with transaction.atomic():  # заявка и подтверждение — вместе, без «висящего» резерва при сбое
         req, _ = services.create_request(member, {

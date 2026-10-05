@@ -14,8 +14,7 @@ class StaffDeskTests(BaseAPITestCase):
         self.spa_staff = self.make_staff('staff', outlets=['spa'])
         self.waiter = self.make_staff('staff', outlets=['davinci'])
         self.spa = self.staff_client(self.spa_staff)
-        self.req, _ = services.create_request(self.member, {'itemId': 'spa-stone', 'quantity': 2, 'pointsSom': 1000,
-                                                            'method': 'cash'})
+        self.req, _ = services.create_request(self.member, {'itemId': 'spa-stone', 'quantity': 2, 'method': 'cash'})
 
     def test_queue_only_own_outlet(self):
         food, _ = services.create_request(self.member, {'itemId': 'food-davinci', 'checkAmount': 4000,
@@ -55,7 +54,7 @@ class StaffDeskTests(BaseAPITestCase):
 
     def test_adjust_preview_small_adjust_and_escalation(self):
         p = self.spa.post(f'{S}/requests/{self.req.pk}/adjust/preview', {'total': 6500}, format='json').json()
-        self.assertEqual((p['total'], p['cashback'], p['needsManager']), (6500, 5500 * 7, False))
+        self.assertEqual((p['total'], p['cashback'], p['needsManager']), (6500, 6500 * 7, False))
         r = self.spa.post(f'{S}/requests/{self.req.pk}/adjust', {'total': 6500}, format='json')
         self.assertEqual(r.json()['error']['code'], 'validation_error')  # причина обязательна
         r = self.spa.post(f'{S}/requests/{self.req.pk}/adjust', {'total': 6500, 'reason': 'чек'}, format='json')
@@ -109,4 +108,4 @@ class StaffDeskTests(BaseAPITestCase):
         self.spa.post(f'{S}/requests/{self.req.pk}/confirm', {'cashReceived': True}, format='json')
         d = self.spa.get(f'{S}/shift').json()
         self.assertEqual(len(d['confirmed']), 1)
-        self.assertEqual(d['cashTotal'], 6000)
+        self.assertEqual(d['cashTotal'], 7000)

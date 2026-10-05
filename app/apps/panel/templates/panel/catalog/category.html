@@ -11,7 +11,6 @@
       <div class="photo-field" data-photo="id_cover"><div class="ph">{% icon 'image' 24 %}</div>
         <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.cover }}</div>
     {% include 'panel/components/field.html' with f=form.rate %}
-    {% include 'panel/components/field.html' with f=form.max_points_share %}
     <div class="field full"><span class="label">{{ form.methods.label }}</span><div class="checks">{{ form.methods }}</div>{{ form.methods.errors }}</div>
     {% include 'panel/components/field.html' with f=form.sort_order %}
     {% include 'panel/components/field.html' with f=form.is_active %}
