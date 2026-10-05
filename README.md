@@ -8,6 +8,7 @@
 
 ---
 
+> **Сводное ТЗ на backend (как реализовано):** [docs/BACKEND_SPEC.md](docs/BACKEND_SPEC.md).
 > **Мобильной команде:** документация по интеграции API — [docs/MOBILE_API.md](docs/MOBILE_API.md).
 > Staging: https://app.baytur.kg/api/v1 · Swagger: https://app.baytur.kg/api/v1/docs
 
