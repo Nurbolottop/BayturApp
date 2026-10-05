@@ -17,6 +17,7 @@ from apps.common.media import process_upload
 from apps.common.models import AuditLog, ProgramSettings, Upload
 from apps.common.pagination import paginate
 from apps.members.models import LegalDocument, LegalKind, Member, MemberStatus
+from apps.staff.auth import validate_pin
 from apps.staff.models import StaffRefreshToken, StaffUser
 from apps.staff.roles import PERMISSIONS, Role
 
@@ -145,7 +146,11 @@ def staff_snapshot(user):
 
 
 class StaffListView(CollectionView):
-    """GET ?role=&active= ; POST {email, fullName, role, phone, outletIds, password?} → temporaryPassword."""
+    """
+    GET ?role=&active= ;
+    POST директор {email, fullName, role:"owner", password?} → temporaryPassword;
+    POST администратор кассы {fullName, role:"staff", phone, pin, outletIds} — вход в приложение по телефону и PIN.
+    """
 
     model = StaffUser
     serializer_class = StaffSerializer
@@ -170,6 +175,16 @@ class StaffListView(CollectionView):
         data = body(request)
         s = StaffSerializer(data=data, context=self.ctx())
         s.is_valid(raise_exception=True)
+        if s.validated_data['role'] == Role.STAFF:
+            pin = validate_pin(data.get('pin'))
+            with transaction.atomic():
+                outlets = s.validated_data.pop('outlets', [])
+                user = StaffUser.objects.create_user(password=None, **s.validated_data)  # без пароля: только PIN
+                user.set_pin(pin)
+                user.save(update_fields=['pin_hash', 'pin_failed', 'pin_locked_until'])
+                user.outlets.set(outlets)
+                audit(request, 'staff.create', user, after=staff_snapshot(user))
+            return Response(self.serialize(user), status=201)
         password = data.get('password') or temporary_password()
         if data.get('password'):
             check_password(password)
@@ -233,6 +248,12 @@ class StaffActionView(ObjectView):
                 user.totp_enabled = False
                 user.totp_secret = ''
                 user.save(update_fields=['totp_enabled', 'totp_secret'])
+                revoke_staff_sessions(user)
+            elif self.action == 'set-pin':
+                if user.is_director:
+                    raise field_error('pin', 'PIN — только у администраторов касс')
+                user.set_pin(validate_pin(body(request).get('pin')))
+                user.save(update_fields=['pin_hash', 'pin_failed', 'pin_locked_until'])
                 revoke_staff_sessions(user)
             elif self.action == 'reset-password':
                 password = temporary_password()

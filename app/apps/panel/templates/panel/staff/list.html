@@ -1,17 +1,17 @@
 {% extends 'panel/base.html' %}{% load panel %}
 {% block title %}Сотрудники{% endblock %}
 {% block content %}
-<div class="topbar"><div><h1 class="page-title">Сотрудники</h1><div class="muted" style="margin-top:6px">Доступ в админку и на рабочее место</div></div><div class="actions"><a class="btn btn-accent" href="{% url 'panel:staff-new' %}">{% icon 'plus' 18 %} Сотрудник</a></div></div>
+<div class="topbar"><div><h1 class="page-title">Сотрудники</h1><div class="muted" style="margin-top:6px">Директор — веб-панель; администраторы касс — приложение кассира по телефону и PIN</div></div><div class="actions"><a class="btn btn-accent" href="{% url 'panel:staff-new' %}">{% icon 'plus' 18 %} Сотрудник</a><a class="btn" href="{% url 'panel:settings-tab' 'outlets' %}">Точки (кассы)</a></div></div>
 <form class="filters" method="get" data-autosubmit>
-  <div class="field grow search"><label>Поиск</label>{% icon 'search' 18 %}<input type="search" name="q" value="{{ f.q }}" placeholder="Имя или email"></div>
+  <div class="field grow search"><label>Поиск</label>{% icon 'search' 18 %}<input type="search" name="q" value="{{ f.q }}" placeholder="Имя, email или телефон"></div>
   <div class="field"><label>Роль</label><select name="role"><option value="">Все</option>{% for v, l in roles %}<option value="{{ v }}" {% if f.role == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
 </form>
 <div class="card flush appear"><div class="table-wrap"><table class="table">
-  <thead><tr><th>Сотрудник</th><th>Роль</th><th class="hide-s">Точки</th><th class="hide-s">2FA</th><th class="hide-s">Последний вход</th><th>Статус</th></tr></thead>
+  <thead><tr><th>Сотрудник</th><th>Роль</th><th class="hide-s">Точки</th><th class="hide-s">Вход</th><th class="hide-s">Последний вход</th><th>Статус</th></tr></thead>
   <tbody>{% for u in users %}
-    <tr class="link" data-href="{% url 'panel:staff-edit' u.pk %}"><td><div class="title-cell"><span class="ic-bubble s">{{ u.full_name|slice:":1" }}</span><div><b>{{ u.full_name }}</b><span class="small muted">{{ u.email }}</span></div></div></td>
+    <tr class="link" data-href="{% url 'panel:staff-edit' u.pk %}"><td><div class="title-cell"><span class="ic-bubble s">{{ u.full_name|slice:":1" }}</span><div><b>{{ u.full_name }}</b><span class="small muted tabular">{% if u.role == 'staff' %}{{ u.phone }}{% else %}{{ u.email }}{% endif %}</span></div></div></td>
       <td>{{ u.get_role_display }}</td><td class="hide-s small">{% for o in u.outlets.all %}{{ o.name|tr }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
-      <td class="hide-s">{% if u.totp_enabled %}<span class="pill pill-positive">вкл</span>{% else %}<span class="pill pill-muted">не настроена</span>{% endif %}{% if u.must_change_password %} <span class="tag">врем. пароль</span>{% endif %}</td>
+      <td class="hide-s">{% if u.role == 'staff' %}{% if u.pin_hash %}<span class="pill pill-positive">PIN задан</span>{% else %}<span class="pill pill-muted">нет PIN</span>{% endif %}{% else %}{% if u.totp_enabled %}<span class="pill pill-positive">2FA вкл</span>{% else %}<span class="pill pill-muted">2FA не настроена</span>{% endif %}{% if u.must_change_password %} <span class="tag">врем. пароль</span>{% endif %}{% endif %}</td>
       <td class="hide-s small tabular">{{ u.last_login|local }}</td>
       <td>{% if u.is_active %}{% pill 'bool' True 'активен' %}{% else %}{% pill 'bool' False 'отключён' %}{% endif %}</td></tr>
   {% endfor %}</tbody>

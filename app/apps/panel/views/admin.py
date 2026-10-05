@@ -16,7 +16,7 @@ from ..access import panel_view
 from ..forms import ContactsForm, LegalForm, OutletForm, ProgramSettingsForm, StaffUserForm, StoreTestForm
 from .money import _date, page
 
-SETTINGS_TABS = [('program', 'Программа'), ('contacts', 'Контакты'), ('outlets', 'Точки'),
+SETTINGS_TABS = [('program', 'Программа'), ('contacts', 'Контакты'), ('outlets', 'Точки (кассы)'),
                  ('legal', 'Документы'), ('store', 'Тестовый аккаунт')]
 
 
@@ -80,7 +80,7 @@ def staff_list(request):
     if g.get('role'):
         qs = qs.filter(role=g['role'])
     if g.get('q'):
-        qs = qs.filter(Q(email__icontains=g['q']) | Q(full_name__icontains=g['q']))
+        qs = qs.filter(Q(email__icontains=g['q']) | Q(full_name__icontains=g['q']) | Q(phone__icontains=g['q']))
     return render(request, 'panel/staff/list.html', {'users': qs, 'roles': Role.choices, 'f': g})
 
 
@@ -96,16 +96,23 @@ def staff_edit(request, pk=None):
     if request.method == 'POST' and form.is_valid():
         if obj and obj.pk == request.user.pk and (not form.cleaned_data['is_active']
                                                   or form.cleaned_data['role'] != Role.OWNER):
-            messages.error(request, 'Нельзя отключить себя или снять с себя роль владельца')
+            messages.error(request, 'Нельзя отключить себя или снять с себя роль директора')
         else:
             before = _staff_snapshot(obj) if obj else None
             saved = form.save(commit=False)
-            if form.cleaned_data.get('password') and saved.pk != request.user.pk:
-                saved.must_change_password = True  # временный пароль — сотрудник сменит при входе
+            director = saved.role == Role.OWNER
+            if director and form.cleaned_data.get('password') and saved.pk != request.user.pk:
+                saved.must_change_password = True  # временный пароль — директор сменит при входе
+            if not director:
+                saved.must_change_password = False
             saved.save()
             form.save_m2m()
+            if not director and form.cleaned_data.get('pin') and obj:
+                # PIN сменили — выйти из приложения на всех устройствах
+                saved.refresh_tokens.filter(revoked_at__isnull=True).update(revoked_at=timezone.now())
+            changed = [w for w, k in (('пароль', 'password'), ('PIN', 'pin')) if form.cleaned_data.get(k)]
             audit(request, 'staff.update' if obj else 'staff.create', saved, before=before,
-                  after=_staff_snapshot(saved), comment='пароль изменён' if form.cleaned_data.get('password') else '')
+                  after=_staff_snapshot(saved), comment=(', '.join(changed) + ' изменён') if changed else '')
             messages.success(request, 'Сотрудник сохранён')
             return redirect('panel:staff')
     return render(request, 'panel/staff/edit.html', {'form': form, 'obj': obj})

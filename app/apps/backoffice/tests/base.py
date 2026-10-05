@@ -31,10 +31,11 @@ class AdminTestCase(APITestCase):
             Tier.objects.create(id=tid, order=order, name=l10n(tid.title(), tid.title(), tid.title()),
                                 threshold=threshold)
         cls.owner = cls.make_staff(Role.OWNER)
-        cls.manager = cls.make_staff(Role.MANAGER)
-        cls.editor = cls.make_staff(Role.EDITOR)
-        cls.accountant = cls.make_staff(Role.ACCOUNTANT)
-        cls.care = cls.make_staff(Role.CARE)
+        # Ролей две: директор и администратор кассы. Бывшие офисные роли — тоже директоры
+        cls.manager = cls.make_staff(Role.OWNER)
+        cls.editor = cls.make_staff(Role.OWNER)
+        cls.accountant = cls.make_staff(Role.OWNER)
+        cls.care = cls.make_staff(Role.OWNER)
         cls.staff = cls.make_staff(Role.STAFF, outlets=[cls.reception])
         cls.spa_staff = cls.make_staff(Role.STAFF, outlets=[cls.spa_outlet])
         cls.member = Member.objects.create(phone='+996700000001', first_name='Айбек', last_name='Токтогулов',

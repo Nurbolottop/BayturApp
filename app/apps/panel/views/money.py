@@ -63,7 +63,7 @@ def requests_list(request):
         'statuses': RequestStatus.choices,
         'categories': Category.objects.all(),
         'outlets': Outlet.objects.all(),
-        'staff_users': StaffUser.objects.filter(role__in=['staff', 'manager', 'owner']).order_by('full_name'),
+        'staff_users': StaffUser.objects.filter(role__in=['staff', 'owner']).order_by('full_name'),
         'f': g,
     }
     return render(request, 'panel/requests/list.html', ctx)

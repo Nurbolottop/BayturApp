@@ -3146,6 +3146,495 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/staff/auth/login:
+    post:
+      operationId: staff_auth_login_create
+      description: POST {phone, pin} → {accessToken, refreshToken, expiresIn, profile}.
+        Только администраторы касс.
+      summary: 'Вход администратора кассы: телефон + 6-значный PIN'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffPinLoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffPinLoginRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffTokens'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/auth/logout:
+    post:
+      operationId: staff_auth_logout_create
+      summary: Выход сотрудника
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - 'Админка: вход'
+      security:
+      - staffBearer: []
+      responses:
+        '204':
+          description: Без тела
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/auth/refresh:
+    post:
+      operationId: staff_auth_refresh_create
+      summary: Обновить токены сотрудника
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - 'Админка: вход'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tokens'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/complaints:
+    get:
+      operationId: staff_complaints_list
+      description: GET ?status=&category=&outlet=&assignee=<id|me|none>&overdue=1&priority=&q=&cursor=
+      summary: Обращения своих точек
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: query
+        name: cursor
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: По умолчанию 20
+      tags:
+      - Сотрудник
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+                description: Unspecified response body
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/complaints/{id}:
+    get:
+      operationId: staff_complaints_retrieve
+      description: GET — карточка; PATCH {priority?, tags?}.
+      summary: Карточка обращения
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Сотрудник
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+                description: Unspecified response body
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+    patch:
+      operationId: staff_complaints_partial_update
+      description: GET — карточка; PATCH {priority?, tags?}.
+      summary: Изменить обращение (только директор)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+              description: Unspecified request body
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+              description: Unspecified request body
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+                description: Unspecified response body
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/complaints/{id}/notes:
+    post:
+      operationId: staff_complaints_notes_create
+      description: POST {text} — внутренняя заметка (клиенту не видна). Сотрудник
+        точки — тоже может.
+      summary: Внутренняя заметка к обращению (клиенту не видна)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffComplaintNoteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffComplaintNoteRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+                description: Unspecified response body
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/me:
+    get:
+      operationId: staff_me_retrieve
+      summary: Профиль и права сотрудника
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - 'Админка: вход'
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffProfile'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/me/pin:
+    post:
+      operationId: staff_me_pin_create
+      description: POST {currentPin, newPin} — администратор меняет свой PIN.
+      summary: Сменить свой PIN
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffPinChangeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffPinChangeRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+                description: Unspecified response body
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/staff/members:
     get:
       operationId: staff_members_retrieve
@@ -3474,7 +3963,7 @@ paths:
   /api/v1/staff/requests/{request_id}/adjust:
     post:
       operationId: staff_requests_adjust_create
-      summary: Изменить сумму (202 — ушло менеджеру)
+      summary: Изменить сумму (202 — ушло директору)
       parameters:
       - in: header
         name: Accept-Language
@@ -3606,7 +4095,7 @@ paths:
   /api/v1/staff/requests/{request_id}/confirm:
     post:
       operationId: staff_requests_confirm_create
-      summary: Подтвердить (202 — ушло менеджеру)
+      summary: Подтвердить (202 — ушло директору)
       parameters:
       - in: header
         name: Accept-Language
@@ -6256,6 +6745,14 @@ components:
       - email
       - firstName
       - lastName
+    StaffComplaintNoteRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+      required:
+      - text
     StaffLoginRequest:
       type: object
       properties:
@@ -6366,6 +6863,30 @@ components:
       required:
       - currentPassword
       - newPassword
+    StaffPinChangeRequest:
+      type: object
+      properties:
+        currentPin:
+          type: string
+          minLength: 1
+        newPin:
+          type: string
+          minLength: 1
+      required:
+      - currentPin
+      - newPin
+    StaffPinLoginRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+          minLength: 1
+        pin:
+          type: string
+          minLength: 1
+      required:
+      - phone
+      - pin
     StaffProfile:
       type: object
       properties:
@@ -6527,6 +7048,23 @@ components:
       - split
       - status
       - timeline
+    StaffTokens:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+        profile:
+          type: object
+          additionalProperties: {}
+      required:
+      - accessToken
+      - expiresIn
+      - profile
+      - refreshToken
     StaffTwoFactorRequest:
       type: object
       properties:

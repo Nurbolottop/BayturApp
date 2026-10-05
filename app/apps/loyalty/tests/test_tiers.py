@@ -46,7 +46,7 @@ class TierManagementTests(BaseAPITestCase):
         self.assertEqual(e.exception.code, 'base_tier_protected')
 
     def test_admin_api_create_delete(self):
-        owner = self.staff_client(self.make_staff('manager'))
+        owner = self.staff_client(self.make_staff('owner'))
         r = owner.post('/api/v1/admin/tiers', {'name': {'ru': 'Рубин', 'ky': '', 'en': 'Ruby'}, 'threshold': 3_000_000,
                                                'colors': ['#111111', '#555555', '#999999']}, format='json')
         self.assertEqual(r.status_code, 201, r.content)
@@ -55,7 +55,7 @@ class TierManagementTests(BaseAPITestCase):
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(Tier.objects.get(pk='rubin').colors[0], '#222222')
         self.assertEqual(owner.delete('/api/v1/admin/tiers/rubin').status_code, 200)
-        editor = self.staff_client(self.make_staff('editor'))
+        editor = self.staff_client(self.make_staff('staff'))
         self.assertEqual(editor.post('/api/v1/admin/tiers', {'name': {'ru': 'X'}, 'threshold': 5,
                                                              'colors': ['#111111'] * 3}, format='json').status_code, 403)
 

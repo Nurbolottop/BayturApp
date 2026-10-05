@@ -77,7 +77,7 @@ class MemberActionsTests(AdminTestCase):
         r = self.post(self.manager, f'/members/{self.member.pk}/restore')
         self.assertStatus(r, 200)
         self.assertEqual(r.data['status'], MemberStatus.ACTIVE)
-        self.assertStatus(self.post(self.editor, f'/members/{self.member.pk}/purge-now', {'comment': 'x'}), 403)
+        self.assertStatus(self.post(self.staff, f'/members/{self.member.pk}/purge-now', {'comment': 'x'}), 403)
         self.assertStatus(self.post(self.manager, f'/members/{self.member.pk}/purge-now'), 400)
         r = self.post(self.manager, f'/members/{self.member.pk}/purge-now', {'comment': 'Обращение О-000001'})
         self.assertStatus(r, 200)

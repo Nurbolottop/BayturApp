@@ -19,7 +19,7 @@
       {% csrf_token %}
       <div class="card appear">
         {% include 'panel/components/form_errors.html' %}
-        {% if not can_edit %}<div class="lock-note" style="margin-bottom:14px">{% icon 'lock' 16 %} Ваша роль меняет тексты и фото; цена, правила и точка — у владельца и менеджера.</div>{% endif %}
+        {% if not can_edit %}<div class="lock-note" style="margin-bottom:14px">{% icon 'lock' 16 %} Ваша роль меняет тексты и фото; цена, правила и точка — у директора.</div>{% endif %}
         <div class="form-grid">
           {% include 'panel/components/field.html' with f=form.title full=1 %}
           {% include 'panel/components/field.html' with f=form.meta full=1 %}

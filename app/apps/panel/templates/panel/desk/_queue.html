@@ -9,7 +9,7 @@
       </div>
       <div class="q-sum">
         <b>{{ r.total|som }}</b>
-        {% if r.escalated %}<span class="pill pill-warning">у менеджера</span>{% elif r.method == 'cash' and r.money_som %}<span class="pill pill-live"><i class="dot"></i>наличные {{ r.money_som|num }}</span>{% elif r.money_som %}<span class="pill pill-positive">оплачено онлайн</span>{% else %}<span class="pill pill-live"><i class="dot"></i>баллами</span>{% endif %}
+        {% if r.escalated %}<span class="pill pill-warning">у директора</span>{% elif r.method == 'cash' and r.money_som %}<span class="pill pill-live"><i class="dot"></i>наличные {{ r.money_som|num }}</span>{% elif r.money_som %}<span class="pill pill-positive">оплачено онлайн</span>{% else %}<span class="pill pill-live"><i class="dot"></i>баллами</span>{% endif %}
       </div>
     </a>
   {% empty %}

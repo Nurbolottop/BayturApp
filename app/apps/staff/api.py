@@ -62,3 +62,29 @@ class PasswordView(APIView):
     def post(self, request):
         auth.change_password(request.user, request.data.get('currentPassword'), request.data.get('newPassword'))
         return Response(auth.staff_profile(request.user))
+
+
+# ---------------------------------------------------------------- приложение кассира (телефон + PIN)
+
+class PinLoginView(APIView):
+    """POST {phone, pin} → {accessToken, refreshToken, expiresIn, profile}. Только администраторы касс."""
+
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        user = auth.check_pin_login(request.data.get('phone'), request.data.get('pin'), client_ip(request))
+        from apps.common.audit import audit
+        audit(user, 'staff.login', user, comment='приложение кассира')
+        return Response(auth.issue_tokens(user))
+
+
+class PinChangeView(APIView):
+    """POST {currentPin, newPin} — администратор меняет свой PIN."""
+
+    authentication_classes = [auth.StaffAuthentication]
+    permission_classes = [auth.IsStaff]
+
+    def post(self, request):
+        auth.change_pin(request.user, request.data.get('currentPin'), request.data.get('newPin'))
+        return Response(auth.staff_profile(request.user))

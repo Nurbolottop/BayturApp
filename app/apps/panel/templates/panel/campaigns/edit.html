@@ -18,7 +18,7 @@
   <div class="stack">
     <form method="post" id="edit-form" class="card appear" novalidate>
       {% csrf_token %}{% include 'panel/components/form_errors.html' %}
-      {% if locked %}<div class="lock-note" style="margin-bottom:14px">{% icon 'lock' 16 %} {% if c.status == 'scheduled' and not can_send %}Рассылка запланирована — править может менеджер.{% else %}Рассылка уже отправлена или отменена — только просмотр.{% endif %}</div>{% endif %}
+      {% if locked %}<div class="lock-note" style="margin-bottom:14px">{% icon 'lock' 16 %} {% if c.status == 'scheduled' and not can_send %}Рассылка запланирована — править может директор.{% else %}Рассылка уже отправлена или отменена — только просмотр.{% endif %}</div>{% endif %}
       <fieldset {% if locked %}disabled{% endif %} style="border:0;padding:0;margin:0">
       <div class="form-grid">
         {% include 'panel/components/field.html' with f=form.title full=1 %}
@@ -45,7 +45,7 @@
             <form method="post" action="{% url 'panel:campaign-action' c.pk 'send' %}" data-confirm="Отправить рассылку сейчас {{ audience }} клиентам?">{% csrf_token %}<button class="btn btn-accent btn-l">{% icon 'send' 18 %} Отправить сейчас</button></form>
             <form method="post" action="{% url 'panel:campaign-action' c.pk 'cancel' %}" data-confirm="Отменить рассылку?">{% csrf_token %}<button class="btn btn-ghost">Отменить</button></form>
           {% endif %}
-        {% else %}<span class="small muted">Редактор готовит черновик — отправляет менеджер или владелец.</span>{% endif %}
+        {% else %}<span class="small muted">Редактор готовит черновик — отправляет директор.</span>{% endif %}
       </div>
       <p class="small muted">Тест уходит на участника с вашим номером телефона из профиля сотрудника. Рекламных push — не больше лимита в месяц на клиента.</p>
     </div>

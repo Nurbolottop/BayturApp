@@ -1,8 +1,12 @@
 """
-Вход в админку и рабочее место: email + пароль + TOTP (обязательно, ТЗ §7.1).
-Первый вход без настроенной 2FA → otpauthUri для приложения-аутентификатора, код подтверждает настройку.
+Вход сотрудников.
+- Директор (веб-панель, Admin-API): email + пароль + TOTP; первый вход без 2FA → otpauthUri, код подтверждает настройку.
+- Администратор кассы (приложение кассира): телефон + 6-значный PIN. После PIN_MAX_FAILS неверных PIN подряд
+  вход блокируется на PIN_LOCK; PIN задаёт директор, администратор может сменить свой.
 """
+import re
 import uuid
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import authenticate
@@ -24,6 +28,8 @@ TWO_FACTOR_SALT = 'baytur.staff-2fa'
 TWO_FACTOR_TTL = 300
 LOGIN_ATTEMPTS = 10
 LOGIN_WINDOW = 900
+PIN_MAX_FAILS = 5
+PIN_LOCK = timedelta(minutes=15)
 
 
 def _too_many(key):
@@ -49,6 +55,8 @@ def check_password_step(email, password, ip=None):
     if user is None or not user.is_active:
         _fail(key)
         raise ApiError('invalid_credentials', 401)
+    if not user.is_director:
+        raise ApiError('staff_use_app', 403)  # администраторы касс входят в приложение по PIN
     cache.delete(key)
     token = signing.dumps({'u': user.pk}, salt=TWO_FACTOR_SALT)
     if user.totp_enabled:
@@ -78,6 +86,64 @@ def check_totp_step(two_factor_token, code):
     user.last_login = timezone.now()
     user.save(update_fields=['last_login'])
     return user
+
+
+# ---------------------------------------------------------------- PIN (приложение кассира)
+
+PIN_RE = re.compile(r'^\d{6}$')
+
+
+def validate_pin(pin, field='pin'):
+    """6 цифр; не одинаковые (111111) и не подряд (123456, 654321)."""
+    pin = str(pin or '').strip()
+    if not PIN_RE.match(pin):
+        raise ApiError('validation_error', 400, extra={'fields': {field: ['ровно 6 цифр']}})
+    if len(set(pin)) == 1 or pin in '0123456789' or pin in '9876543210':
+        raise ApiError('pin_weak', 400, extra={'fields': {field: ['слишком простой PIN']}})
+    return pin
+
+
+def check_pin_login(phone, pin, ip=None):
+    """Телефон + PIN → активный администратор кассы. Ошибки не раскрывают, есть ли такой номер."""
+    from apps.members.auth import normalize_phone
+    try:
+        phone = normalize_phone(phone)
+    except ApiError:
+        raise ApiError('invalid_credentials', 401)
+    key = f'staff-pin:{phone}:{ip}'
+    if _too_many(key):
+        raise ApiError('rate_limited', 429, extra={'retryIn': LOGIN_WINDOW})
+    now = timezone.now()
+    error = None
+    with transaction.atomic():  # ошибку поднимаем после фиксации — счётчик неверных PIN должен сохраниться
+        user = StaffUser.objects.select_for_update().filter(phone=phone, is_active=True).first()
+        if user is not None and user.pin_locked_until and user.pin_locked_until > now:
+            error = ApiError('rate_limited', 429, extra={'retryIn': int((user.pin_locked_until - now).total_seconds())})
+        elif user is None or user.is_director or not user.check_pin(pin):
+            _fail(key)
+            if user is not None and not user.is_director:
+                user.pin_failed += 1
+                if user.pin_failed >= PIN_MAX_FAILS:
+                    user.pin_failed, user.pin_locked_until = 0, now + PIN_LOCK
+                user.save(update_fields=['pin_failed', 'pin_locked_until'])
+            error = ApiError('invalid_credentials', 401)
+        else:
+            user.pin_failed, user.pin_locked_until, user.last_login = 0, None, now
+            user.save(update_fields=['pin_failed', 'pin_locked_until', 'last_login'])
+    if error is not None:
+        raise error
+    cache.delete(key)
+    return user
+
+
+def change_pin(user, current, new):
+    if not user.check_pin(str(current or '')):
+        raise ApiError('invalid_credentials', 401)
+    new = validate_pin(new, 'newPin')
+    if new == str(current):
+        raise ApiError('validation_error', 400, extra={'fields': {'newPin': ['совпадает с текущим']}})
+    user.set_pin(new)
+    user.save(update_fields=['pin_hash', 'pin_failed', 'pin_locked_until'])
 
 
 def issue_tokens(user, family=None):
@@ -115,6 +181,7 @@ def staff_profile(user):
     return {
         'id': user.pk,
         'email': user.email,
+        'phone': user.phone or None,
         'fullName': user.full_name,
         'role': user.role,
         'outlets': sorted(user.outlet_ids),

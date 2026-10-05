@@ -101,6 +101,7 @@ urlpatterns = [
     path('staff/<int:pk>/deactivate', system.StaffActionView.as_view(action='deactivate')),
     path('staff/<int:pk>/reset-2fa', system.StaffActionView.as_view(action='reset-2fa')),
     path('staff/<int:pk>/reset-password', system.StaffActionView.as_view(action='reset-password')),
+    path('staff/<int:pk>/set-pin', system.StaffActionView.as_view(action='set-pin')),
     path('uploads', system.UploadView.as_view()),
     path('audit', system.AuditView.as_view()),
 

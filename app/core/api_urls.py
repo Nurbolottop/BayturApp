@@ -3,6 +3,7 @@ from django.urls import include, path, re_path
 
 from apps.analytics import api as analytics
 from apps.cashback import api as cashback
+from apps.backoffice.views import complaints as staff_complaints
 from apps.cashback import staff_api as staffdesk
 from apps.catalog import api as catalog
 from apps.complaints import api as complaints
@@ -81,6 +82,16 @@ client = [
 ]
 
 staff = [
+    # приложение кассира: вход по телефону и PIN, токены, профиль
+    path('staff/auth/login', staff_auth.PinLoginView.as_view()),
+    path('staff/auth/refresh', staff_auth.RefreshView.as_view()),
+    path('staff/auth/logout', staff_auth.LogoutView.as_view()),
+    path('staff/me', staff_auth.MeView.as_view()),
+    path('staff/me/pin', staff_auth.PinChangeView.as_view()),
+    # обращения своих точек: список, карточка, внутренняя заметка
+    path('staff/complaints', staff_complaints.ComplaintsView.as_view()),
+    path('staff/complaints/<str:pk>', staff_complaints.ComplaintDetailView.as_view()),
+    path('staff/complaints/<str:pk>/notes', staff_complaints.NotesView.as_view()),
     path('staff/queue', staffdesk.QueueView.as_view()),
     path('staff/requests/<str:request_id>', staffdesk.StaffRequestView.as_view()),
     path('staff/requests/<str:request_id>/confirm', staffdesk.ConfirmView.as_view()),

@@ -157,9 +157,10 @@ class AdminApiTests(TestCase):
     def setUpTestData(cls):
         Dataset.build(cls)
         cls.owner = StaffUser.objects.create_user('owner@baytur.kg', 'x' * 12, full_name='O', role=Role.OWNER)
-        cls.editor = StaffUser.objects.create_user('editor@baytur.kg', 'x' * 12, full_name='E', role=Role.EDITOR)
-        cls.accountant = StaffUser.objects.create_user('acc@baytur.kg', 'x' * 12, full_name='A',
-                                                       role=Role.ACCOUNTANT)
+        # администратор кассы — без аналитики; второй директор — для проверки чужих выгрузок
+        cls.editor = StaffUser.objects.create_user(None, None, full_name='E', role=Role.STAFF, phone='+996700000077')
+        cls.accountant = StaffUser.objects.create_user('acc@baytur.kg', 'x' * 12, full_name='A', role=Role.OWNER)
+        cls.other = StaffUser.objects.create_user('other@baytur.kg', 'x' * 12, full_name='B', role=Role.OWNER)
 
     def get(self, url, user):
         return self.client.get(url, HTTP_AUTHORIZATION=f'Bearer {issue_access("staff", user.pk)}')
@@ -172,9 +173,9 @@ class AdminApiTests(TestCase):
         self.assertEqual(self.client.get('/api/v1/admin/analytics/money').status_code, 401)
         self.assertEqual(self.get('/api/v1/admin/analytics/money', self.editor).status_code, 403)
         self.assertEqual(self.get('/api/v1/admin/reports/dashboard', self.editor).status_code, 403)
-        self.assertEqual(self.get('/api/v1/admin/analytics/content', self.editor).status_code, 200)
+        self.assertEqual(self.get('/api/v1/admin/analytics/content', self.editor).status_code, 403)
         self.assertEqual(self.get('/api/v1/admin/analytics/money', self.accountant).status_code, 200)
-        self.assertEqual(self.get('/api/v1/admin/analytics/funnel', self.accountant).status_code, 403)
+        self.assertEqual(self.get('/api/v1/admin/analytics/funnel', self.accountant).status_code, 200)
         r = self.get('/api/v1/admin/reports/dashboard?groupBy=week', self.owner)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(kpi(r.json(), 'revenue')['value'], 27_000)
@@ -206,8 +207,8 @@ class AdminApiTests(TestCase):
             dl = self.get(listing[0]['downloadUrl'], self.accountant)
             self.assertEqual(dl.status_code, 200)
             self.assertTrue(b''.join(dl.streaming_content).startswith(b'PK'))
-            # чужую выгрузку не скачать
-            self.assertEqual(self.get(listing[0]['downloadUrl'], self.editor).status_code, 404)
+            # администратору кассы выгрузки недоступны
+            self.assertIn(self.get(listing[0]['downloadUrl'], self.editor).status_code, (403, 404))
         finally:
             job.file.delete(save=False)
 

@@ -30,9 +30,13 @@ class ComplaintTests(AdminTestCase):
         self.assertEqual(self.get(self.spa_staff, '/complaints').data['items'], [])
         self.assertStatus(self.post(self.spa_staff, self.url + '/notes', {'text': 'x'}), 404)
 
-    def test_roles_without_complaints(self):
-        self.assertStatus(self.get(self.editor, '/complaints'), 403)
-        self.assertStatus(self.get(self.accountant, self.url), 403)
+    def test_staff_app_routes(self):
+        """Приложение кассира: те же обращения своих точек по /staff/complaints."""
+        app = self.as_(self.staff)
+        self.assertEqual(len(app.get('/api/v1/staff/complaints').data['items']), 1)
+        self.assertEqual(app.get(f'/api/v1/staff/complaints/{self.complaint.pk}').status_code, 200)
+        r = app.post(f'/api/v1/staff/complaints/{self.complaint.pk}/notes', {'text': 'клиент у кассы'}, format='json')
+        self.assertEqual(r.status_code, 201, r.content)
 
     def test_care_replies_with_template_in_client_language(self):
         t = ReplyTemplate.objects.create(title='Извинение', text={'ru': 'Здравствуйте, {name}! {number}',
@@ -55,7 +59,7 @@ class ComplaintTests(AdminTestCase):
         self.assertEqual(r.data['status'], 'in_progress')
         r = self.get(self.care, '/complaints', assignee='me')
         self.assertEqual(len(r.data['items']), 1)
-        self.assertStatus(self.post(self.care, self.url + '/compensate', {'points': 100, 'comment': 'x'}), 403)
+        self.assertStatus(self.post(self.staff, self.url + '/compensate', {'points': 100, 'comment': 'x'}), 403)
         r = self.post(self.manager, self.url + '/compensate', {'points': 100, 'comment': 'Извините за ожидание'})
         self.assertStatus(r, 201)
         self.assertEqual(r.data['compensations'][0]['points'], 100)
@@ -64,7 +68,7 @@ class ComplaintTests(AdminTestCase):
         r = self.post(self.manager, '/complaint-categories', {'id': 'food', 'title': {'ru': 'Еда', 'ky': 'Тамак',
                                                                                         'en': 'Food'}})
         self.assertStatus(r, 201)
-        self.assertStatus(self.post(self.care, '/complaint-categories', {'id': 'x', 'title': {'ru': 'X'}}), 403)
+        self.assertStatus(self.post(self.staff, '/complaint-categories', {'id': 'x', 'title': {'ru': 'X'}}), 403)
         self.assertError(self.delete(self.manager, '/complaint-categories/service'), 409, 'in_use')
         r = self.post(self.manager, '/reply-templates', {'title': 'T', 'text': {'ru': 'Ответ'}, 'category': 'food'})
         self.assertStatus(r, 201)

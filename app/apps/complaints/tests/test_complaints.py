@@ -58,7 +58,7 @@ class ComplaintTests(BaseAPITestCase):
 
     def test_conversation_statuses_and_rating(self):
         c = Complaint.objects.get(pk=self.create(outletId='davinci').json()['id'])
-        care = self.make_staff('care')
+        care = self.make_staff('owner')
         waiter = self.make_staff('staff', outlets=['davinci'])
         with self.assertRaises(ApiError):
             services.resort_reply(c.pk, waiter, 'Мы разберёмся')   # сотрудник точки не отвечает

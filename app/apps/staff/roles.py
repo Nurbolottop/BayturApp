@@ -1,65 +1,64 @@
 """
-Роли админки и матрица прав (ТЗ §7.1, §7.5, §9.3). Права проверяет бек — это единственное
-место, где они описаны; интерфейс админки и API читают их отсюда.
+Роли сотрудников и матрица прав. Две роли:
+- Директор — полный доступ, работает в веб-панели (email + пароль + 2FA), создаёт точки и администраторов;
+- Администратор кассы — привязан к точкам (ресепшен, бассейн, баня, спортзал…), работает в приложении
+  кассира (телефон + 6-значный PIN): заявки, оплата баллами по QR, поиск клиента, обращения своих точек.
+Права проверяет бек — это единственное место, где они описаны.
 """
 from django.db import models
 
 
 class Role(models.TextChoices):
-    OWNER = 'owner', 'Владелец'
-    MANAGER = 'manager', 'Менеджер программы'
-    EDITOR = 'editor', 'Редактор контента'
-    STAFF = 'staff', 'Сотрудник'
-    ACCOUNTANT = 'accountant', 'Бухгалтер'
-    CARE = 'care', 'Служба заботы'
+    OWNER = 'owner', 'Директор'
+    STAFF = 'staff', 'Администратор кассы'
 
 
-O, M, E, S, A, C = Role.OWNER, Role.MANAGER, Role.EDITOR, Role.STAFF, Role.ACCOUNTANT, Role.CARE
+O, S = Role.OWNER, Role.STAFF
 
 PERMISSIONS = {
     # Заявки
-    'requests.process': {O, M, S},        # сотрудник — только своих точек
-    'requests.view_all': {O, M, A},
-    'requests.approve_escalated': {O, M},
+    'requests.process': {O, S},        # администратор — только своих точек
+    'requests.view_all': {O},
+    'requests.approve_escalated': {O},
     # Клиенты
-    'members.view': {O, M, S, A, C},      # сотрудник — без баланса и истории
-    'members.history': {O, M, A, C},
-    'members.manage': {O, M},             # блокировка, корректировки, ДР, телефон, экспорт
-    'members.restore': {O, M},            # удалённые аккаунты
+    'members.view': {O, S},      # администратор — без баланса и истории
+    'members.history': {O},
+    'members.manage': {O},             # блокировка, корректировки, ДР, телефон, экспорт
+    'members.restore': {O},            # удалённые аккаунты
     # Каталог и правила
-    'catalog.edit': {O, M},
-    'catalog.texts': {O, M, E},
-    'tiers.edit': {O, M},
-    'tiers.texts': {O, M, E},
+    'catalog.edit': {O},
+    'catalog.texts': {O},
+    'tiers.edit': {O},
+    'tiers.texts': {O},
     # Контент и рассылки
-    'content.edit': {O, M, E},
-    'campaigns.send': {O, M},
-    'campaigns.draft': {O, M, E},
+    'content.edit': {O},
+    'campaigns.send': {O},
+    'campaigns.draft': {O},
     # Деньги
-    'payments.view': {O, M, A},
-    'payments.refund': {O, A},
-    'reports.view': {O, M, A},
+    'payments.view': {O},
+    'payments.refund': {O},
+    'reports.view': {O},
     # Администрирование
     'settings.edit': {O},
     'staff.manage': {O},
     'audit.view_all': {O},
-    'audit.view_own': {O, M},
+    'audit.view_own': {O},
     # Обращения
-    'complaints.view': {O, M, C, S},      # сотрудник — только своей точки
-    'complaints.reply': {O, M, C},
-    'complaints.notes': {O, M, C, S},
-    'complaints.compensate': {O, M},
-    'complaints.settings': {O, M},
+    'complaints.view': {O, S},      # администратор — только своих точек
+    'complaints.reply': {O},
+    'complaints.notes': {O, S},
+    'complaints.compensate': {O},
+    'complaints.settings': {O},
     # Аналитика по блокам
-    'analytics.funnel': {O, M},
-    'analytics.members': {O, M},
-    'analytics.cohorts': {O, M},
-    'analytics.points': {O, M, A},
-    'analytics.money': {O, M, A},
-    'analytics.catalog': {O, M},
-    'analytics.content': {O, M, E},
-    'analytics.operations': {O, M, C},
-    'analytics.export': {O, M, A, E, C},
+    'analytics.funnel': {O},
+    'analytics.members': {O},
+    'analytics.cohorts': {O},
+    'analytics.points': {O},
+    'analytics.money': {O},
+    'analytics.catalog': {O},
+    'analytics.content': {O},
+    'analytics.operations': {O},
+    'analytics.export': {O},
 }
 
 

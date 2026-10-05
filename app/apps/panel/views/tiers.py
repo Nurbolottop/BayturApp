@@ -69,7 +69,7 @@ def privilege_edit(request, privilege_id=None):
     obj = get_object_or_404(Privilege, pk=privilege_id) if privilege_id else None
     if obj is None and not user.can('tiers.edit'):
         from ..access import forbidden
-        return forbidden(request, 'Добавлять привилегии может владелец или менеджер')
+        return forbidden(request, 'Добавлять привилегии может директор')
     initial = {'tier': request.GET.get('tier')} if obj is None else {}
     form = PrivilegeForm(request.POST or None, instance=obj, initial=initial)
     if not user.can('tiers.edit'):

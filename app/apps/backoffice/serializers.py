@@ -564,7 +564,9 @@ class LegalDocumentSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------- сотрудники
 
 class StaffSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField()
+    """Директор — email обязателен; администратор кассы — телефон и хотя бы одна точка (PIN — отдельным полем)."""
+
+    email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
     fullName = serializers.CharField(source='full_name', max_length=150)
     role = serializers.ChoiceField(choices=Role.choices)
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
@@ -572,17 +574,38 @@ class StaffSerializer(serializers.ModelSerializer):
                                                    required=False)
     isActive = serializers.BooleanField(source='is_active', read_only=True)
     totpEnabled = serializers.BooleanField(source='totp_enabled', read_only=True)
+    pinSet = serializers.SerializerMethodField()
     lastLogin = IsoDateTimeField(source='last_login', read_only=True)
     createdAt = IsoDateTimeField(source='created_at', read_only=True)
 
     class Meta:
         model = StaffUser
-        fields = ['id', 'email', 'fullName', 'role', 'phone', 'outletIds', 'isActive', 'totpEnabled', 'lastLogin',
-                  'createdAt']
+        fields = ['id', 'email', 'fullName', 'role', 'phone', 'outletIds', 'isActive', 'totpEnabled', 'pinSet',
+                  'lastLogin', 'createdAt']
         read_only_fields = ['id']
 
+    def get_pinSet(self, obj):
+        return bool(obj.pin_hash)
+
+    def validate(self, attrs):
+        role = attrs.get('role', getattr(self.instance, 'role', None))
+        email = attrs.get('email', getattr(self.instance, 'email', None))
+        phone = attrs.get('phone', getattr(self.instance, 'phone', ''))
+        outlets = attrs['outlets'] if 'outlets' in attrs else (
+            list(self.instance.outlets.all()) if self.instance is not None else [])
+        if role == Role.STAFF:
+            if not phone:
+                raise serializers.ValidationError({'phone': ['администратор входит по телефону']})
+            if not outlets:
+                raise serializers.ValidationError({'outletIds': ['хотя бы одна точка']})
+        elif not email:
+            raise serializers.ValidationError({'email': ['директор входит по email']})
+        return attrs
+
     def validate_email(self, value):
-        value = value.strip().lower()
+        value = (value or '').strip().lower()
+        if not value:
+            return None
         qs = StaffUser.objects.filter(email__iexact=value)
         if self.instance is not None:
             qs = qs.exclude(pk=self.instance.pk)
@@ -596,9 +619,15 @@ class StaffSerializer(serializers.ModelSerializer):
         from apps.common.errors import ApiError
         from apps.members.auth import normalize_phone
         try:
-            return normalize_phone(value)
+            value = normalize_phone(value)
         except ApiError:
             raise serializers.ValidationError('неверный номер')
+        qs = StaffUser.objects.filter(phone=value)
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError('уже используется')
+        return value
 
 
 def staff_brief(user):

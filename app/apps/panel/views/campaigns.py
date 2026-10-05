@@ -55,7 +55,7 @@ def campaign_action(request, pk, action):
     user = request.user
     c = get_object_or_404(Campaign, pk=pk)
     if action in ('send', 'schedule', 'cancel') and not user.can('campaigns.send'):
-        return forbidden(request, 'Редактор создаёт только черновики — отправляет менеджер')
+        return forbidden(request, 'Редактор создаёт только черновики — отправляет директор')
     back = redirect('panel:campaign', pk=c.pk)
     if action == 'test':
         n, ok = run_action(request, lambda: ns.send_campaign_test(c, user))

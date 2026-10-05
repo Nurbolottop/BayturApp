@@ -2,19 +2,33 @@
 {% block title %}{% if obj %}{{ obj.full_name }}{% else %}Новый сотрудник{% endif %}{% endblock %}
 {% block content %}
 <div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:staff' %}">{% icon 'arrow-left' 14 %} Сотрудники</a></div><h1 class="page-title">{% if obj %}{{ obj.full_name }}{% else %}Новый сотрудник{% endif %}</h1></div>
-  {% if obj %}<div class="actions"><form method="post" action="{% url 'panel:staff-reset-2fa' obj.pk %}" data-confirm="Сбросить 2FA? Сотрудник заново настроит приложение при входе.">{% csrf_token %}<button class="btn">{% icon 'key' 18 %} Сбросить 2FA</button></form></div>{% endif %}</div>
-<form method="post" class="card appear" style="max-width:860px" novalidate autocomplete="off">
+  {% if obj and obj.role == 'owner' %}<div class="actions"><form method="post" action="{% url 'panel:staff-reset-2fa' obj.pk %}" data-confirm="Сбросить 2FA? Директор заново настроит приложение-аутентификатор при входе.">{% csrf_token %}<button class="btn">{% icon 'key' 18 %} Сбросить 2FA</button></form></div>{% endif %}</div>
+<form method="post" class="card appear" style="max-width:860px" novalidate autocomplete="off" id="staff-form">
   {% csrf_token %}{% include 'panel/components/form_errors.html' %}
   <div class="form-grid">
     {% include 'panel/components/field.html' with f=form.full_name %}
-    {% include 'panel/components/field.html' with f=form.email %}
     {% include 'panel/components/field.html' with f=form.role %}
-    {% include 'panel/components/field.html' with f=form.phone %}
-    <div class="field full"><span class="label">{{ form.outlets.label }} <span class="muted">— роль «Сотрудник» видит заявки только этих точек</span></span><div class="checks">{{ form.outlets }}</div>{{ form.outlets.errors }}</div>
-    {% include 'panel/components/field.html' with f=form.password %}
+    <div data-for="staff">{% include 'panel/components/field.html' with f=form.phone %}</div>
+    <div data-for="staff">{% include 'panel/components/field.html' with f=form.pin %}</div>
+    <div class="field full" data-for="staff"><span class="label">{{ form.outlets.label }} <span class="muted">— администратор видит заявки и обращения только этих точек</span></span><div class="checks">{{ form.outlets }}</div>{{ form.outlets.errors }}
+      <div class="small muted" style="margin-top:6px">Нет нужной кассы (бассейн, баня, спортзал…)? <a href="{% url 'panel:outlet-new' %}">Создайте точку</a>.</div></div>
+    <div data-for="owner">{% include 'panel/components/field.html' with f=form.email %}</div>
+    <div data-for="owner">{% include 'panel/components/field.html' with f=form.password %}</div>
     {% include 'panel/components/field.html' with f=form.is_active %}
   </div>
-  <div class="small muted" style="margin-top:10px">Заданный здесь пароль — временный: при входе сотрудник сменит его сам.</div>
+  <div class="small muted" style="margin-top:10px" data-for="staff">Администратор входит в приложение кассира по номеру телефона и PIN-коду. Сообщите PIN лично — в панели он не показывается.</div>
+  <div class="small muted" style="margin-top:10px" data-for="owner">Директор входит в веб-панель по email и паролю с кодом из приложения-аутентификатора. Заданный здесь пароль — временный: при входе директор сменит его сам.</div>
   <div class="form-actions"><a class="btn btn-ghost" href="{% url 'panel:staff' %}">Отмена</a><button class="btn btn-accent">Сохранить</button></div>
 </form>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var form = document.getElementById('staff-form'), role = form.querySelector('[name="role"]');
+  function sync() {
+    form.querySelectorAll('[data-for]').forEach(function (el) { el.hidden = el.getAttribute('data-for') !== role.value; });
+  }
+  role.addEventListener('change', sync); sync();
+});
+</script>
 {% endblock %}

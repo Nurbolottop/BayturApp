@@ -27,7 +27,7 @@ class LoginTests(PanelBase):
         user = self.make_staff('owner', email='boss@baytur.kg')
         c = Client()
         r = c.post('/panel/login/', {'email': 'boss@baytur.kg', 'password': 'wrong'})
-        self.assertContains(r, 'Неверный email или пароль')
+        self.assertContains(r, 'Неверные данные для входа')
 
         r = c.post('/panel/login/', {'email': 'boss@baytur.kg', 'password': 'Passw0rd!x'})
         self.assertRedirects(r, '/panel/login/2fa/')
@@ -49,7 +49,7 @@ class LoginTests(PanelBase):
         self.assertTrue(AuditLog.objects.filter(action='staff.login', actor=user).exists())
 
     def test_second_login_asks_code_without_qr(self):
-        user = self.make_staff('manager', email='m@baytur.kg')
+        user = self.make_staff('owner', email='m@baytur.kg')
         user.ensure_totp_secret()
         user.totp_enabled = True
         user.save()
@@ -61,13 +61,36 @@ class LoginTests(PanelBase):
         c.post('/panel/login/2fa/', {'code': pyotp.TOTP(user.totp_secret).now()})
         self.assertEqual(c.session['_auth_user_id'], str(user.pk))
 
+    def test_cashier_administrator_cannot_sign_in_to_web(self):
+        self.make_staff('staff', email='cash@baytur.kg', outlets=['spa'])
+        r = Client().post('/panel/login/', {'email': 'cash@baytur.kg', 'password': 'Passw0rd!x'})
+        self.assertContains(r, 'входят в приложение кассира')
+
+    def test_director_creates_cashier_with_phone_and_pin(self):
+        from apps.staff.models import StaffUser
+        c = self.login(self.make_staff('owner'))
+        data = {'full_name': 'Касса бассейна', 'role': 'staff', 'phone': '0700 123 456', 'pin': '123456',
+                'outlets': ['spa'], 'is_active': 'on', 'email': '', 'password': ''}
+        r = c.post('/panel/staff/new/', data)
+        self.assertContains(r, 'слишком простой PIN')
+        r = c.post('/panel/staff/new/', {**data, 'phone': '+996700123456', 'pin': '480215'})
+        self.assertEqual(r.status_code, 302)
+        u = StaffUser.objects.get(phone='+996700123456')
+        self.assertEqual((u.role, u.email, u.has_usable_password()), ('staff', None, False))
+        self.assertTrue(u.check_pin('480215'))
+        self.assertEqual(list(u.outlets.values_list('pk', flat=True)), ['spa'])
+        r = c.post('/panel/staff/new/', {**data, 'phone': '+996700123456', 'pin': '480215'})
+        self.assertContains(r, 'таким телефоном уже есть')
+        r = c.post('/panel/staff/new/', {**data, 'phone': '+996700123499', 'pin': '480215', 'outlets': []})
+        self.assertContains(r, 'Выберите точку')
+
     def test_anonymous_redirected_to_login(self):
         r = Client().get('/panel/members/')
         self.assertEqual(r.status_code, 302)
         self.assertIn('/panel/login/', r['Location'])
 
     def test_temporary_password_must_be_changed(self):
-        user = self.make_staff('manager', email='temp@baytur.kg')
+        user = self.make_staff('owner', email='temp@baytur.kg')
         user.must_change_password = True
         user.save()
         c = self.login(user)
@@ -83,14 +106,9 @@ class LoginTests(PanelBase):
 class PermissionTests(PanelBase):
     def test_role_gated_pages_return_403(self):
         staff = self.make_staff('staff', outlets=['spa'])
-        editor = self.make_staff('editor')
-        accountant = self.make_staff('accountant')
         cases = [
             (staff, ['/panel/dashboard/', '/panel/settings/', '/panel/staff/', '/panel/catalog/', '/panel/requests/',
-                     '/panel/payments/', '/panel/campaigns/', '/panel/audit/']),
-            (editor, ['/panel/members/', '/panel/desk/', '/panel/settings/', '/panel/payments/',
-                      '/panel/analytics/money/']),
-            (accountant, ['/panel/desk/', '/panel/catalog/', '/panel/staff/', '/panel/analytics/funnel/']),
+                     '/panel/payments/', '/panel/campaigns/', '/panel/audit/', '/panel/analytics/money/']),
         ]
         for user, urls in cases:
             c = self.login(user)
@@ -105,20 +123,6 @@ class PermissionTests(PanelBase):
         self.assertIn('data-nav="desk"', html)
         self.assertNotIn('data-nav="settings"', html)
         self.assertNotIn('data-nav="dashboard"', html)
-
-    def test_editor_cannot_change_prices(self):
-        editor = self.make_staff('editor')
-        c = self.login(editor)
-        from apps.catalog.models import Item
-        item = Item.objects.get(pk='spa-bochka')
-        price = item.price
-        r = c.get('/panel/catalog/items/spa-bochka/')
-        self.assertEqual(r.status_code, 200)
-        data = {'title_ru': 'Новое', 'title_ky': '', 'title_en': '', 'price': 1, 'features': '[]', 'gallery': '[]'}
-        c.post('/panel/catalog/items/spa-bochka/', data)
-        item.refresh_from_db()
-        self.assertEqual(item.title['ru'], 'Новое')
-        self.assertEqual(item.price, price)
 
     def test_all_pages_render_for_owner(self):
         c = self.login(self.make_staff('owner'))
@@ -188,7 +192,7 @@ class DeskTests(PanelBase):
         req.refresh_from_db()
         self.assertTrue(req.escalated)
         self.assertEqual(req.proposed_total, req.total * 2)
-        manager = self.login(self.make_staff('manager'))
+        manager = self.login(self.make_staff('owner'))
         manager.post(f'/panel/r/{req.pk}/approve/')
         req.refresh_from_db()
         self.assertFalse(req.escalated)
@@ -216,7 +220,7 @@ class DeskTests(PanelBase):
 class MemberActionTests(PanelBase):
     def test_manual_adjustment_requires_comment_and_is_audited(self):
         member = self.make_member(points=1000)
-        c = self.login(self.make_staff('manager'))
+        c = self.login(self.make_staff('owner'))
         c.post(f'/panel/members/{member.pk}/adjust/', {'points': 500, 'comment': ''})
         self.assertEqual(self.wallet(member).balance, 1000)
         c.post(f'/panel/members/{member.pk}/adjust/', {'points': 500, 'comment': 'Компенсация'})
@@ -236,7 +240,7 @@ class MemberActionTests(PanelBase):
 
 class ContentTests(PanelBase):
     def test_publish_blocked_without_translations(self):
-        c = self.login(self.make_staff('editor'))
+        c = self.login(self.make_staff('owner'))
         data = {'id': 'new-article', 'title_ru': 'Заголовок', 'title_ky': '', 'title_en': '', 'date': '2026-09-01',
                 'minutes': 3, 'then': 'publish'}
         r = c.post('/panel/content/articles/new/', data, follow=True)
@@ -251,7 +255,7 @@ class ContentTests(PanelBase):
         self.assertEqual(a.status, PublishStatus.PUBLISHED)
 
     def test_publish_with_all_translations(self):
-        c = self.login(self.make_staff('editor'))
+        c = self.login(self.make_staff('owner'))
         c.post('/panel/content/articles/new/', {'id': 'full', 'title_ru': 'А', 'title_ky': 'Б', 'title_en': 'C',
                                                 'date': '2026-09-01', 'minutes': 3})
         c.post('/panel/content/articles/full/publish/')
@@ -288,18 +292,18 @@ class MemberExportAndCategoriesTests(PanelBase):
     def test_member_export_audited_and_permissioned(self):
         from apps.common.models import AuditLog
         member = self.make_member(points=1000)
-        manager = self.login(self.make_staff('manager'))
+        manager = self.login(self.make_staff('owner'))
         r = manager.get(f'/panel/members/{member.pk}/export/')
         self.assertEqual(r.status_code, 200)
         self.assertIn(member.member_id, r['Content-Disposition'])
         self.assertIn(member.phone, r.content.decode())
         self.assertTrue(AuditLog.objects.filter(action='member.export').exists())
-        editor = self.login(self.make_staff('editor'))
-        self.assertEqual(editor.get(f'/panel/members/{member.pk}/export/').status_code, 403)
+        cashier = self.login(self.make_staff('staff', outlets=['spa']))
+        self.assertEqual(cashier.get(f'/panel/members/{member.pk}/export/').status_code, 403)
 
     def test_complaint_categories_crud(self):
         from apps.complaints.models import ComplaintCategory
-        c = self.login(self.make_staff('manager'))
+        c = self.login(self.make_staff('owner'))
         self.assertEqual(c.get('/panel/complaints/categories/').status_code, 200)
         r = c.post('/panel/complaints/categories/', {'id': 'parking', 'title_ru': 'Парковка', 'title_ky': '',
                                                      'title_en': 'Parking', 'sort_order': 9, 'is_active': 'on'})

@@ -187,14 +187,14 @@ def apply():
         response=inline_serializer('StaffQueue', {'items': o.StaffRequest(many=True), 'count': s.IntegerField()}),
         params=[OpenApiParameter('outlet', str)])
     doc(staffdesk.StaffRequestView, 'get', STAFF, 'Карточка заявки', response=o.StaffRequest)
-    doc(staffdesk.ConfirmView, 'post', STAFF, 'Подтвердить (202 — ушло менеджеру)',
+    doc(staffdesk.ConfirmView, 'post', STAFF, 'Подтвердить (202 — ушло директору)',
         inline_serializer('ConfirmInput', {'cashReceived': s.BooleanField(required=False)}), o.StaffRequest,
         errors=staff_err)
     doc(staffdesk.AdjustPreviewView, 'post', STAFF, 'Правка суммы: расчёт без сохранения',
         inline_serializer('AdjustPreviewInput', {'total': s.IntegerField()}),
         inline_serializer('AdjustPreview', {**{k: v for k, v in o.PaymentSplit().fields.items()},
                                             'maxPointsSom': s.IntegerField(), 'needsManager': s.BooleanField()}))
-    doc(staffdesk.AdjustView, 'post', STAFF, 'Изменить сумму (202 — ушло менеджеру)',
+    doc(staffdesk.AdjustView, 'post', STAFF, 'Изменить сумму (202 — ушло директору)',
         inline_serializer('AdjustInput', {'total': s.IntegerField(), 'reason': s.CharField()}), o.StaffRequest,
         errors=staff_err)
     doc(staffdesk.RejectView, 'post', STAFF, 'Отклонить',
@@ -229,6 +229,26 @@ def apply():
         response=inline_serializer('Shift', {'date': s.DateField(), 'confirmed': o.StaffRequest(many=True),
                                              'rejected': o.StaffRequest(many=True), 'adjustedCount': s.IntegerField(),
                                              'cashTotal': s.IntegerField()}))
+
+    # приложение кассира: вход по телефону и PIN
+    tokens = inline_serializer('StaffTokens', {'accessToken': s.CharField(), 'refreshToken': s.CharField(),
+                                               'expiresIn': s.IntegerField(), 'profile': s.DictField()})
+    doc(staff_auth.PinLoginView, 'post', STAFF, 'Вход администратора кассы: телефон + 6-значный PIN',
+        inline_serializer('StaffPinLogin', {'phone': s.CharField(), 'pin': s.CharField()}), tokens, auth=False,
+        errors=(400, 401, 429))
+    doc(staff_auth.PinChangeView, 'post', STAFF, 'Сменить свой PIN',
+        inline_serializer('StaffPinChange', {'currentPin': s.CharField(), 'newPin': s.CharField()}),
+        s.DictField(), errors=(400, 401))
+    from apps.backoffice.views import complaints as staff_complaints
+    doc(staff_complaints.ComplaintsView, 'get', STAFF, 'Обращения своих точек', response=s.DictField(),
+        params=[o.CURSOR, o.LIMIT], operation_id='staff_complaints_list')
+    doc(staff_complaints.ComplaintDetailView, 'get', STAFF, 'Карточка обращения', response=s.DictField(),
+        errors=(401, 403, 404))
+    doc(staff_complaints.ComplaintDetailView, 'patch', STAFF, 'Изменить обращение (только директор)',
+        s.DictField(), s.DictField(), errors=(400, 401, 403, 404))
+    doc(staff_complaints.NotesView, 'post', STAFF, 'Внутренняя заметка к обращению (клиенту не видна)',
+        inline_serializer('StaffComplaintNote', {'text': s.CharField()}), s.DictField(), status=201,
+        errors=(400, 401, 403, 404))
 
     # вход в админку
     ADM = ['Админка: вход']

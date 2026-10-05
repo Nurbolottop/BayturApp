@@ -131,7 +131,7 @@ class TierTests(AdminTestCase):
                                                     'title': FULL, 'short': FULL, 'description': FULL})
         self.assertStatus(r, 201)
         self.assertStatus(self.patch(self.editor, '/privileges/parking', {'short': FULL}), 200)
-        self.assertStatus(self.patch(self.editor, '/privileges/parking', {'tier': 'gold'}), 403)
+        self.assertStatus(self.patch(self.staff, '/privileges/parking', {'short': FULL}), 403)
         self.assertStatus(self.post(self.manager, '/privileges', {'id': 'x', 'tier': 'silver', 'icon': 'rocket',
                                                                   'title': FULL, 'short': FULL,
                                                                   'description': FULL}), 400)

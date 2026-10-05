@@ -4,7 +4,7 @@
 <div class="topbar">
   <div><h1 class="page-title">Заявки</h1><div class="muted" style="margin-top:6px">Все заявки на кешбек · {{ page.paginator.count }}</div></div>
   <div class="actions">
-    {% if panel_counters.escalated %}<a class="btn {% if f.escalated %}btn-dark{% endif %}" href="?escalated=1">{% icon 'warning' 18 %} Ждут менеджера <span class="tag">{{ panel_counters.escalated }}</span></a>{% endif %}
+    {% if panel_counters.escalated %}<a class="btn {% if f.escalated %}btn-dark{% endif %}" href="?escalated=1">{% icon 'warning' 18 %} Ждут директора <span class="tag">{{ panel_counters.escalated }}</span></a>{% endif %}
   </div>
 </div>
 <form class="filters" method="get" data-autosubmit>
@@ -29,7 +29,7 @@
         <td class="hide-s small">{{ r.outlet.name|tr|default:"—" }}</td>
         <td class="n">{{ r.total|som }}{% if r.points_som %}<div class="small muted">баллами {{ r.points_som|num }}</div>{% endif %}</td>
         <td class="n hide-s pos">+{{ r.cashback|num }}</td>
-        <td>{% pill 'request' r.status %}{% if r.escalated and r.status == 'pending' %} <span class="pill pill-warning">менеджер</span>{% endif %}</td>
+        <td>{% pill 'request' r.status %}{% if r.escalated and r.status == 'pending' %} <span class="pill pill-warning">директор</span>{% endif %}</td>
       </tr>
     {% empty %}<tr><td colspan="6"><div class="empty">Заявок не найдено</div></td></tr>{% endfor %}
     </tbody>

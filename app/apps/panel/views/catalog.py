@@ -54,7 +54,7 @@ def item_edit(request, item_id=None):
     item = get_object_or_404(Item.objects.select_related('category'), pk=item_id) if item_id else None
     if item is None and not user.can('catalog.edit'):
         from ..access import forbidden
-        return forbidden(request, 'Создавать услуги может владелец или менеджер')
+        return forbidden(request, 'Создавать услуги может директор')
     initial = {}
     if item is None and request.GET.get('category'):
         initial['category'] = request.GET['category']

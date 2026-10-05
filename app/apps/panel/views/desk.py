@@ -83,14 +83,14 @@ def request_action(request, request_id, action):
         if action == 'confirm':
             req, escalated = actions.confirm(request, request_id, bool(request.POST.get('cash_received')))
             if escalated:
-                messages.warning(request, 'Кешбек выше лимита — заявка ушла на подтверждение менеджеру')
+                messages.warning(request, 'Кешбек выше лимита — заявка ушла на подтверждение директору')
             else:
                 messages.success(request, 'Заявка подтверждена — кешбек начислится автоматически')
         elif action == 'adjust':
             req, escalated = actions.adjust(request, request_id, _int(request.POST.get('total')),
                                             request.POST.get('reason'))
             if escalated:
-                messages.warning(request, 'Правка больше допустимого порога — ушла на подтверждение менеджеру')
+                messages.warning(request, 'Правка больше допустимого порога — ушла на подтверждение директору')
             else:
                 messages.success(request, 'Сумма изменена')
         elif action == 'reject':

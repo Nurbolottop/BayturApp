@@ -621,18 +621,34 @@ class LegalForm(forms.ModelForm):
 
 
 class StaffUserForm(forms.ModelForm):
+    """
+    Директор: email + пароль (+ 2FA при входе) — веб-панель.
+    Администратор кассы: телефон + 6-значный PIN + точки — приложение кассира.
+    """
+
     password = forms.CharField(label='Пароль', required=False, widget=forms.PasswordInput(render_value=False),
-                               help_text='Для нового сотрудника обязателен; для существующего — оставьте пустым')
-    outlets = forms.ModelMultipleChoiceField(label='Точки', queryset=Outlet.objects.all(), required=False,
+                               help_text='Директору: для нового обязателен; для существующего — оставьте пустым')
+    pin = forms.CharField(label='PIN-код (6 цифр)', required=False, max_length=6,
+                          widget=forms.PasswordInput(render_value=False, attrs={
+                              'inputmode': 'numeric', 'autocomplete': 'new-password', 'maxlength': '6'}),
+                          help_text='Администратору: для нового обязателен; заполните, чтобы сменить PIN')
+    outlets = forms.ModelMultipleChoiceField(label='Точки (кассы)', queryset=Outlet.objects.all(), required=False,
                                              widget=forms.CheckboxSelectMultiple)
 
     class Meta:
         model = StaffUser
-        fields = ['email', 'full_name', 'role', 'phone', 'outlets', 'is_active']
-        labels = {'is_active': 'Активен'}
+        fields = ['full_name', 'role', 'phone', 'email', 'outlets', 'is_active']
+        labels = {'is_active': 'Активен', 'phone': 'Телефон', 'role': 'Роль'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['email'].required = False
+        self.fields['phone'].widget.attrs.update({'placeholder': '+996 555 000 000', 'inputmode': 'tel'})
 
     def clean_email(self):
-        email = self.cleaned_data['email'].strip().lower()
+        email = (self.cleaned_data.get('email') or '').strip().lower()
+        if not email:
+            return None
         qs = StaffUser.objects.filter(email__iexact=email)
         if self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)
@@ -640,25 +656,68 @@ class StaffUserForm(forms.ModelForm):
             raise ValidationError('Сотрудник с таким email уже есть')
         return email
 
+    def clean_phone(self):
+        from apps.common.errors import ApiError
+        from apps.members.auth import normalize_phone
+        phone = (self.cleaned_data.get('phone') or '').strip()
+        if not phone:
+            return ''
+        try:
+            phone = normalize_phone(phone)
+        except ApiError:
+            raise ValidationError('Номер в формате +996…')
+        qs = StaffUser.objects.filter(phone=phone)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError('Сотрудник с таким телефоном уже есть')
+        return phone
+
     def clean(self):
+        from apps.common.errors import ApiError
+        from apps.staff.auth import validate_pin
         d = super().clean()
-        if not self.instance.pk and not d.get('password'):
-            self.add_error('password', 'Задайте пароль')
-        pw = d.get('password')
-        if pw:
-            from django.contrib.auth.password_validation import validate_password
-            try:
-                validate_password(pw, self.instance)
-            except ValidationError as e:
-                self.add_error('password', e)
-        if d.get('role') == Role.STAFF and not d.get('outlets'):
-            self.add_error('outlets', 'Сотруднику нужна хотя бы одна точка')
+        creating = not self.instance.pk
+        if d.get('role') == Role.STAFF:
+            if not d.get('phone') and 'phone' not in self.errors:
+                self.add_error('phone', 'Администратор входит по номеру телефона')
+            if not d.get('outlets'):
+                self.add_error('outlets', 'Выберите точку (кассу) администратора')
+            if creating and not d.get('pin'):
+                self.add_error('pin', 'Задайте PIN')
+            if d.get('pin'):
+                try:
+                    d['pin'] = validate_pin(d['pin'])
+                except ApiError as e:
+                    self.add_error('pin', '; '.join((e.extra or {}).get('fields', {}).get('pin', [])) or 'неверный PIN')
+        else:
+            if not d.get('email') and 'email' not in self.errors:
+                self.add_error('email', 'Директор входит в панель по email')
+            no_password = creating or not self.instance.has_usable_password()
+            if no_password and not d.get('password'):
+                self.add_error('password', 'Задайте пароль')
+            pw = d.get('password')
+            if pw:
+                from django.contrib.auth.password_validation import validate_password
+                try:
+                    validate_password(pw, self.instance)
+                except ValidationError as e:
+                    self.add_error('password', e)
         return d
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        if self.cleaned_data.get('password'):
-            user.set_password(self.cleaned_data['password'])
+        d = self.cleaned_data
+        if d.get('role') == Role.STAFF:
+            if not self.instance.pk or user.has_usable_password():
+                user.set_unusable_password()  # в веб-панель администратор не входит
+            user.totp_enabled, user.totp_secret = False, ''
+            if d.get('pin'):
+                user.set_pin(d['pin'])
+        else:
+            user.pin_hash = ''
+            if d.get('password'):
+                user.set_password(d['password'])
         if commit:
             user.save()
             self.save_m2m()

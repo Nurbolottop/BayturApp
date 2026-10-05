@@ -29,9 +29,9 @@ class ProgramSettings(models.Model):
     credit_delay_ms = models.PositiveIntegerField('Задержка начисления после подтверждения, мс', default=2500)
     pending_ttl_hours = models.PositiveIntegerField('Срок жизни заявки в pending, ч', default=72)
     staff_adjust_threshold_percent = models.PositiveSmallIntegerField(
-        'Правка суммы сотрудником без менеджера, %', default=20)
+        'Правка суммы администратором без директора, %', default=20)
     staff_cashback_limit_points = models.PositiveIntegerField(
-        'Кешбек выше лимита — подтверждает менеджер, баллов', default=1_000_000)
+        'Кешбек выше лимита — подтверждает директор, баллов', default=1_000_000)
 
     # Удаление аккаунта (баллы не сгорают — ТЗ лояльности §2.2)
     purge_days = models.PositiveSmallIntegerField('Хранение удалённого аккаунта, дней', default=30)

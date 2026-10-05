@@ -11,10 +11,10 @@ from .roles import Role, role_has
 class StaffManager(BaseUserManager):
     use_in_migrations = True
 
-    def create_user(self, email, password=None, **extra):
-        if not email:
-            raise ValueError('email обязателен')
-        user = self.model(email=self.normalize_email(email).lower(), **extra)
+    def create_user(self, email=None, password=None, **extra):
+        if not email and not extra.get('phone'):
+            raise ValueError('нужен email (директор) или телефон (администратор)')
+        user = self.model(email=self.normalize_email(email).lower() if email else None, **extra)
         user.set_password(password)
         user.save(using=self._db)
         return user
@@ -27,13 +27,20 @@ class StaffManager(BaseUserManager):
 
 
 class StaffUser(AbstractBaseUser, PermissionsMixin):
-    """Сотрудник админки / рабочего места. Отдельно от клиентов: email + пароль + TOTP."""
+    """
+    Сотрудник. Директор входит в веб-панель (email + пароль + TOTP), администратор кассы —
+    в приложение кассира (телефон + 6-значный PIN). Отдельно от клиентов.
+    """
 
-    email = models.EmailField('Email', unique=True)
+    email = models.EmailField('Email', unique=True, null=True, blank=True)
     full_name = models.CharField('Имя', max_length=150)
     role = models.CharField('Роль', max_length=20, choices=Role.choices, default=Role.STAFF)
     phone = models.CharField('Телефон', max_length=20, blank=True,
-                             help_text='Нужен, чтобы сотрудник не подтверждал заявки своего клиентского аккаунта')
+                             help_text='Вход администратора в приложение; сотрудник не подтверждает заявки '
+                                       'своего клиентского аккаунта')
+    pin_hash = models.CharField(max_length=128, blank=True)
+    pin_failed = models.PositiveSmallIntegerField(default=0)
+    pin_locked_until = models.DateTimeField(null=True, blank=True)
     outlets = models.ManyToManyField('catalog.Outlet', blank=True, related_name='staff', verbose_name='Точки')
     is_active = models.BooleanField('Активен', default=True)
     is_staff = models.BooleanField('Доступ к техническому Django admin', default=False)
@@ -53,10 +60,28 @@ class StaffUser(AbstractBaseUser, PermissionsMixin):
     class Meta:
         verbose_name = 'Сотрудник'
         verbose_name_plural = 'Сотрудники'
-        constraints = [models.UniqueConstraint(Lower('email'), name='staff_email_ci_unique')]
+        constraints = [
+            models.UniqueConstraint(Lower('email'), name='staff_email_ci_unique'),
+            models.UniqueConstraint(fields=['phone'], condition=~models.Q(phone=''), name='staff_phone_unique'),
+        ]
 
     def __str__(self):
-        return f'{self.full_name} <{self.email}>'
+        return f'{self.full_name} <{self.email or self.phone}>'
+
+    @property
+    def is_director(self):
+        return self.role == Role.OWNER or self.is_superuser
+
+    # PIN (приложение кассира)
+    def set_pin(self, pin):
+        from django.contrib.auth.hashers import make_password
+        self.pin_hash = make_password(pin)
+        self.pin_failed = 0
+        self.pin_locked_until = None
+
+    def check_pin(self, pin):
+        from django.contrib.auth.hashers import check_password
+        return bool(self.pin_hash) and check_password(pin or '', self.pin_hash)
 
     # Права
     def can(self, perm):

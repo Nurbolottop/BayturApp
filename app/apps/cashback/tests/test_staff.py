@@ -75,7 +75,7 @@ class StaffDeskTests(BaseAPITestCase):
         self.req.refresh_from_db()
         self.assertEqual(self.req.status, RequestStatus.PENDING)
         # менеджер (не привязан к точкам) подтверждает сам
-        manager = self.staff_client(self.make_staff('manager'))
+        manager = self.staff_client(self.make_staff('owner'))
         r = manager.post(f'{S}/requests/{self.req.pk}/confirm', {'cashReceived': True}, format='json')
         self.assertEqual(r.json()['status'], 'confirmed')
 
