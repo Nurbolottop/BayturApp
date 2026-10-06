@@ -158,11 +158,18 @@ class FreedomPayGateway(Gateway):
             log.error('freedompay %s error %s: %s', script, data.get('pg_error_code'), data.get('pg_error_description'))
         return data
 
+    # Язык страницы оплаты: язык приложения клиента (у Freedom Pay кыргызский — «kg»)
+    LANGUAGES = {'ru': 'ru', 'ky': 'kg', 'en': 'en'}
+
     def _description(self, payment):
+        """«BAYTUR: Тестовый номер × 2» — на языке клиента; так услуга видна на странице оплаты и в выписке."""
         from apps.catalog.models import Item
         from apps.common.i18n import tr
         item = Item.objects.filter(pk=payment.params.get('itemId')).first()
-        title = tr(item.title, 'ru') if item else ''
+        title = tr(item.title, payment.member.language) if item else ''
+        quantity = payment.params.get('quantity') or 1
+        if title and item.pricing_type == 'unit' and int(quantity) > 1:
+            title = f'{title} × {quantity}'
         return f'BAYTUR: {title}' if title else 'BAYTUR'
 
     def create(self, payment):
@@ -178,14 +185,16 @@ class FreedomPayGateway(Gateway):
             'pg_request_method': 'POST',
             'pg_success_url': back,
             'pg_failure_url': back,
-            'pg_language': 'ru',
+            'pg_language': self.LANGUAGES.get(payment.member.language, 'ru'),
             'pg_auto_clearing': 1,  # списать сразу, а не держать холд до ручного clearing
         }
         if settings.FREEDOMPAY_TESTING_MODE:
             params['pg_testing_mode'] = 1
         phone = (payment.member.phone or '').lstrip('+')
         if phone:
-            params['pg_user_phone'] = phone
+            params['pg_user_phone'] = phone  # поле телефона (MBank, MegaPay, O!Деньги) уже заполнено
+        if payment.member.email:
+            params['pg_user_contact_email'] = payment.member.email  # чек на почту без ввода email
         data = self._call('init_payment.php', params)
         if data.get('pg_status') != 'ok' or not data.get('pg_redirect_url'):
             raise GatewayError(data.get('pg_error_description') or 'init_payment failed')

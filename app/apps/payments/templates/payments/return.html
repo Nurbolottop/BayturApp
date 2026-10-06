@@ -1,5 +1,5 @@
-{% load static %}<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BAYTUR — оплата</title>
+{% load static %}<!doctype html><html lang="{{ lang }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ t.title }}</title>
 <style>
 :root{--bg:#F4F6F1;--card:#fff;--text:#1C2118;--muted:#6B7365;--accent:#3E7A1F;--gold:#C9A45C;--ok:#3E7A1F;--fail:#C2453A}
 @media (prefers-color-scheme:dark){:root{--bg:#141712;--card:#1E221B;--text:#EEF1EA;--muted:#9AA394}}
@@ -12,13 +12,10 @@ p{color:var(--muted);margin:0 0 6px;line-height:1.45}.amount{font-size:28px;font
 .hint{font-size:13px;margin-top:14px}
 </style></head><body><div class="card">
 <img class="logo" src="{% static 'payments/baytur-logo.png' %}" alt="BAYTUR">
-{% if status == 'paid' %}<h1 class="ok">Оплата прошла</h1><p>Спасибо! Вернитесь в приложение — заявка оформится автоматически.</p>
-{% elif status == 'pending' %}<h1>Проверяем оплату…</h1><p>Обычно это занимает несколько секунд.</p>
-{% elif status == 'refunded' %}<h1>Оплата возвращена</h1><p>Деньги вернутся на карту — обычно в течение нескольких дней.</p>
-{% else %}<h1 class="fail">Оплата не прошла</h1><p>Деньги не списаны. Вернитесь в приложение и попробуйте ещё раз.</p>{% endif %}
-<div class="amount">{{ amount }} сом</div>
-<a class="btn" href="{{ return_url }}">Вернуться в приложение</a>
-<p class="hint">Если приложение не открылось — откройте BAYTUR на телефоне, статус оплаты обновится сам.</p>
+<h1 class="{% if status == 'paid' %}ok{% elif status == 'failed' %}fail{% endif %}">{{ heading }}</h1><p>{{ text }}</p>
+<div class="amount">{{ amount }} {{ t.som }}</div>
+<a class="btn" href="{{ return_url }}">{{ t.back }}</a>
+<p class="hint">{{ t.hint }}</p>
 </div>
 <script>
 try{if(!sessionStorage.getItem('opened-{{ payment_id }}')){sessionStorage.setItem('opened-{{ payment_id }}','1');location.href='{{ return_url }}'}}catch(e){}

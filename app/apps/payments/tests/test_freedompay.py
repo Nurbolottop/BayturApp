@@ -50,6 +50,14 @@ class FreedomPayTests(BaseAPITestCase):
         p = Payment.objects.get(pk=r.json()['id'])
         self.assertEqual((p.provider, p.provider_ref), ('freedompay', '777'))
 
+    def test_page_in_member_language_with_email_and_quantity(self):
+        self.member.language, self.member.email = 'ky', 'guest@example.com'
+        self.member.save()
+        self.pay()
+        sent = self.post.call_args.kwargs['data']
+        self.assertEqual((sent['pg_language'], sent['pg_user_contact_email']), ('kg', 'guest@example.com'))
+        self.assertTrue(sent['pg_description'].startswith('BAYTUR: ') and sent['pg_description'].endswith(' × 2'))
+
     def test_other_methods_stay_on_backend(self):
         self.assertTrue(self.pay(method='finik').json()['redirectUrl'].endswith('/checkout'))
         self.post.assert_not_called()
@@ -102,6 +110,9 @@ class FreedomPayTests(BaseAPITestCase):
         self.assertContains(r, 'Проверяем оплату')
         self.callback(p)
         self.assertContains(self.client.get(f'/api/v1/payments/{p["id"]}/return'), 'Оплата прошла')
+        self.member.language = 'ky'
+        self.member.save()
+        self.assertContains(self.client.get(f'/api/v1/payments/{p["id"]}/return'), 'Төлөм өттү')
 
     @override_settings(FREEDOMPAY_MERCHANT_ID='')
     def test_disabled_falls_back(self):

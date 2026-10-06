@@ -66,6 +66,28 @@ class WebhookView(APIView):
             raise ApiError('token_invalid', 401, message='bad signature')
 
 
+RETURN_TEXTS = {
+    'ru': {'title': 'BAYTUR — оплата', 'som': 'сом', 'back': 'Вернуться в приложение',
+           'hint': 'Если приложение не открылось — откройте BAYTUR на телефоне, статус оплаты обновится сам.',
+           'paid': ('Оплата прошла', 'Спасибо! Вернитесь в приложение — заявка оформится автоматически.'),
+           'pending': ('Проверяем оплату…', 'Обычно это занимает несколько секунд.'),
+           'refunded': ('Оплата возвращена', 'Деньги вернутся на карту — обычно в течение нескольких дней.'),
+           'failed': ('Оплата не прошла', 'Деньги не списаны. Вернитесь в приложение и попробуйте ещё раз.')},
+    'ky': {'title': 'BAYTUR — төлөм', 'som': 'сом', 'back': 'Колдонмого кайтуу',
+           'hint': 'Колдонмо ачылбаса — телефондон BAYTUR ачыңыз, төлөмдүн абалы өзү жаңыланат.',
+           'paid': ('Төлөм өттү', 'Рахмат! Колдонмого кайтыңыз — өтүнмө автоматтык түрдө түзүлөт.'),
+           'pending': ('Төлөмдү текшерип жатабыз…', 'Адатта бул бир нече секунд алат.'),
+           'refunded': ('Төлөм кайтарылды', 'Акча картага кайтат — адатта бир нече күндүн ичинде.'),
+           'failed': ('Төлөм өткөн жок', 'Акча алынган жок. Колдонмого кайтып, кайра аракет кылыңыз.')},
+    'en': {'title': 'BAYTUR — payment', 'som': 'som', 'back': 'Back to the app',
+           'hint': 'If the app did not open, open BAYTUR on your phone — the payment status updates by itself.',
+           'paid': ('Payment successful', 'Thank you! Go back to the app — your request will be created automatically.'),
+           'pending': ('Checking the payment…', 'This usually takes a few seconds.'),
+           'refunded': ('Payment refunded', 'The money will be returned to your card, usually within a few days.'),
+           'failed': ('Payment failed', 'No money was charged. Go back to the app and try again.')},
+}
+
+
 def payment_return(request, payment_id):
     """pg_success_url / pg_failure_url провайдера: браузер оплаты → диплинк baytur://payment/{id}."""
     payment = get_object_or_404(Payment, pk=payment_id)
@@ -74,8 +96,12 @@ def payment_return(request, payment_id):
               PaymentStatus.PENDING: 'pending', PaymentStatus.REFUNDED: 'refunded'}.get(payment.status, 'failed')
     if status == 'pending' and payment.created_at < timezone.now() - timedelta(minutes=40):
         status = 'failed'
-    return render(request, 'payments/return.html', {'return_url': f'baytur://payment/{payment.pk}', 'status': status,
-                                                    'amount': payment.amount, 'payment_id': payment.pk})
+    lang = payment.member.language if payment.member.language in RETURN_TEXTS else 'ru'
+    texts = RETURN_TEXTS[lang]
+    heading, text = texts[status]
+    return render(request, 'payments/return.html', {
+        'return_url': f'baytur://payment/{payment.pk}', 'status': status, 'amount': payment.amount,
+        'payment_id': payment.pk, 'lang': lang, 't': texts, 'heading': heading, 'text': text})
 
 
 @csrf_exempt
