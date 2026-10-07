@@ -63,12 +63,17 @@ class Command(BaseCommand):
 
         # при потере уровень падает на один ниже: Амбассадор → Титан, Титан → Платина (§2.6)
         for order, (tid, name, threshold, can_be_floor, retention) in enumerate(D.TIERS):
+            permanent = D.TIER_PERMANENT.get(tid)
             upsert(Tier, {'id': tid}, {
                 'order': order, 'name': name, 'threshold': threshold, 'can_be_floor': can_be_floor,
-                'retention': retention, 'colors': DEFAULT_TIER_COLORS[tid]})
-        for i, (pid, tier, icon, title, short, desc) in enumerate(D.PRIVILEGES):
-            upsert(Privilege, {'id': pid}, {
-                'tier_id': tier, 'icon': icon, 'title': title, 'short': short, 'description': desc, 'sort_order': i})
+                'retention': retention, 'colors': DEFAULT_TIER_COLORS[tid],
+                'cashback_bonus': D.TIER_CASHBACK_BONUS.get(tid, 0),
+                'permanent_lifetime': permanent[0] if permanent else None,
+                'permanent_years': permanent[1] if permanent else 0})
+        for i, p in enumerate(D.PRIVILEGES):
+            upsert(Privilege, {'id': p['id']}, {
+                'tier_id': p['tier'], 'group': p['group'], 'icon': p['icon'], 'title': p['title'], 'short': p['short'],
+                'description': p['description'], 'footnote': p['footnote'], 'sort_order': i})
 
         today = timezone.localdate()
         now = timezone.now()

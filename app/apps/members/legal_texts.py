@@ -139,8 +139,8 @@ TERMS = {
 - Один номер телефона — один аккаунт. Передавать аккаунт другим лицам нельзя.
 
 ## Баллы
-- Курс: 100 баллов = 1 сом.
-- Баллы начисляются за услуги курорта (кешбек) только с части, оплаченной деньгами. Процент кешбека зависит от категории услуги и показывается в приложении до отправки заявки.
+- Курс: 1 балл = 1 сом.
+- Баллы начисляются за услуги курорта (кешбек) только с части, оплаченной деньгами: базовая ставка — 5 % от суммы, на более высоких уровнях к ней добавляется надбавка. Ставка вашего уровня показывается в приложении до отправки заявки.
 - В день рождения и в дни акций кешбек может быть выше — условия показываются в приложении.
 - Баллы начисляются после того, как сотрудник курорта подтвердит заявку.
 - Баллы не сгорают и не обмениваются на деньги.
@@ -155,10 +155,10 @@ TERMS = {
 - При переходе на новый уровень «Нынешние» начинаются с нуля. 1 января каждого года «Нынешние» обнуляются.
 - Для Титана и Амбассадора, помимо баллов, могут потребоваться задания — они показаны в приложении.
 
-## Подтверждение уровня и вечный уровень
+## Подтверждение уровня и постоянный статус
 - Уровень нужно подтверждать каждый год: собрать за год не меньше лимита, указанного в приложении. Лимит = собранное на уровне за предыдущий год + 10 000 баллов и со временем только растёт.
 - Если уровень не подтверждён, 1 января он понижается на одну ступень. В год получения уровня подтверждать его не нужно.
-- Вечный уровень: уровень на ступень ниже наивысшего достигнутого (не выше Платины) остаётся с вами навсегда — ниже него уровень не опускается.
+- Постоянный статус: если у вас достаточно баллов за всё время и лет в программе (условия для каждого уровня — в приложении), уровень присваивается навсегда и больше не понижается.
 - Траты баллов на уровень не влияют.
 
 ## Изменение и отмена
@@ -180,8 +180,8 @@ These terms set out the rules of the BAYTUR resort loyalty programme in the mobi
 - One phone number — one account. Accounts may not be transferred to others.
 
 ## Points
-- Rate: 100 points = 1 KGS.
-- Points (cashback) are earned for resort services only on the part paid with money. The cashback rate depends on the service category and is shown in the app before you send a request.
+- Rate: 1 point = 1 KGS.
+- Points (cashback) are earned for resort services only on the part paid with money: the base rate is 5% of the amount, and higher tiers add a bonus on top. Your tier's rate is shown in the app before you send a request.
 - On your birthday and during promotions cashback may be higher — the conditions are shown in the app.
 - Points are credited after a resort employee confirms the request.
 - Points do not expire and cannot be exchanged for money.
@@ -196,10 +196,10 @@ These terms set out the rules of the BAYTUR resort loyalty programme in the mobi
 - When you move up a tier, current points start again from zero. Current points are also reset on 1 January every year.
 - Titanium and Ambassador may require achievements in addition to points — they are shown in the app.
 
-## Keeping your tier and permanent tier
+## Keeping your tier and permanent status
 - A tier must be confirmed every year by collecting at least the limit shown in the app. The limit = points collected on the tier in the previous year + 10,000 points, and it only grows.
 - If a tier is not confirmed, it drops by one step on 1 January. No confirmation is needed in the year you reach a tier.
-- Permanent tier: the tier one step below the highest you have reached (no higher than Platinum) stays with you forever — your tier never drops below it.
+- Permanent status: if you have enough lifetime points and years in the programme (the conditions for each tier are shown in the app), the tier is yours forever and never drops.
 - Spending points does not affect your tier.
 
 ## Changes and cancellations
@@ -221,8 +221,8 @@ Phone {phone}, WhatsApp +{whatsapp}, or the Support section in the app.""",
 - Бир телефон номери — бир аккаунт. Аккаунтту башка адамдарга өткөрүүгө болбойт.
 
 ## Упайлар
-- Курс: 100 упай = 1 сом.
-- Упайлар (кешбек) курорттун кызматтары үчүн акча менен төлөнгөн бөлүгүнөн гана чегерилет. Кешбектин пайызы кызматтын категориясына жараша болот жана өтүнмө жөнөтүлгөнгө чейин тиркемеде көрсөтүлөт.
+- Курс: 1 упай = 1 сом.
+- Упайлар (кешбек) курорттун кызматтары үчүн акча менен төлөнгөн бөлүгүнөн гана чегерилет: негизги чен — сумманын 5 %, жогорку деңгээлдерде ага кошумча кошулат. Деңгээлиңиздин чени өтүнмө жөнөтүлгөнгө чейин тиркемеде көрсөтүлөт.
 - Туулган күнүңүздө жана акция күндөрүндө кешбек жогору болушу мүмкүн — шарттары тиркемеде көрсөтүлөт.
 - Упайлар курорттун кызматкери өтүнмөнү ырастагандан кийин чегерилет.
 - Упайлар күйбөйт жана акчага алмаштырылбайт.
@@ -237,10 +237,10 @@ Phone {phone}, WhatsApp +{whatsapp}, or the Support section in the app.""",
 - Жаңы деңгээлге өткөндө «Учурдагы» упайлар нөлдөн башталат. Ар жылы 1-январда «Учурдагы» упайлар нөлгө түшөт.
 - Титан жана Амбассадор үчүн упайлардан тышкары тапшырмалар талап кылынышы мүмкүн — алар тиркемеде көрсөтүлгөн.
 
-## Деңгээлди ырастоо жана түбөлүк деңгээл
+## Деңгээлди ырастоо жана туруктуу статус
 - Деңгээлди ар жылы ырастоо керек: жыл ичинде тиркемеде көрсөтүлгөн лимиттен кем эмес топтоо. Лимит = мурунку жылы деңгээлде топтолгону + 10 000 упай, убакыт өткөн сайын өсөт гана.
 - Деңгээл ырасталбаса, 1-январда бир тепкичке төмөндөйт. Деңгээлге жеткен жылы аны ырастоонун кереги жок.
-- Түбөлүк деңгээл: жеткен эң жогорку деңгээлден бир тепкич төмөн деңгээл (Платинадан жогору эмес) сизде түбөлүк калат — деңгээл андан төмөн түшпөйт.
+- Туруктуу статус: бардык убакыттагы упайларыңыз жана программадагы жылдарыңыз жетиштүү болсо (ар бир деңгээлдин шарттары тиркемеде), деңгээл түбөлүккө ыйгарылат жана төмөндөбөйт.
 - Упайларды коротуу деңгээлге таасир этпейт.
 
 ## Өзгөртүү жана жокко чыгаруу

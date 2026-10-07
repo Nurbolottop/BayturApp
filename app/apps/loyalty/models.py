@@ -74,7 +74,12 @@ class Tier(models.Model):
     entry_n = models.PositiveSmallIntegerField('N для «любые N из M»', null=True, blank=True)
     retention = models.CharField('Подтверждение каждый год', max_length=30, choices=Retention.choices,
                                  default=Retention.POINTS)
-    can_be_floor = models.BooleanField('Может стать вечным', default=True)
+    can_be_floor = models.BooleanField('Может стать вечным', default=True)  # не используется: см. permanent_*
+    cashback_bonus = models.DecimalField('Надбавка к кешбеку, %', max_digits=6, decimal_places=2, default=0,
+                                         help_text='Баллы = Сумма × базовая ставка × (1 + надбавка / 100)')
+    permanent_lifetime = models.PositiveBigIntegerField('Навсегда: баллов за всё время', null=True, blank=True,
+                                                        help_text='Пусто — уровень не бывает постоянным')
+    permanent_years = models.PositiveSmallIntegerField('Навсегда: лет в программе', default=0)
     limit_bonus = models.PositiveBigIntegerField('Надбавка к лимиту', default=10_000)
     limit_only_grows = models.BooleanField('Лимит только растёт', default=True)
     min_limit = models.PositiveBigIntegerField('Минимальный лимит', default=0)
@@ -160,7 +165,14 @@ class LoyaltySettings(models.Model):
 
 
 class Privilege(models.Model):
+    """
+    Привилегия уровня. group объединяет одну привилегию на разных уровнях для экрана «Апгрейдер»
+    (поздний выезд 13:00 → 14:00 → 16:00 → 18:00). {rate} в текстах — ставка кешбека уровня, %.
+    """
+
     id = models.SlugField(primary_key=True, max_length=40)
+    group = models.SlugField('Группа (апгрейдер)', max_length=40, blank=True)
+    footnote = models.JSONField('Сноска мелким шрифтом', default=dict, blank=True)
     tier = models.ForeignKey(Tier, on_delete=models.PROTECT, related_name='privileges')
     icon = models.CharField(max_length=30)
     title = models.JSONField('Название', default=dict)
@@ -305,6 +317,7 @@ class TierLimit(models.Model):
 
 class TierChangeCause(models.TextChoices):
     PROMOTION = 'promotion', 'Повышение'
+    PERMANENT = 'permanent', 'Постоянный статус'
     PERIOD_DROP = 'period_drop', 'Понижение при закрытии периода'
     ADMIN = 'admin', 'Администратор'
     MIGRATION = 'migration', 'Миграция'

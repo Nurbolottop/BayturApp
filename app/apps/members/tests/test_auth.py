@@ -269,7 +269,7 @@ class DeletionTests(BaseAPITestCase):
         self.assertEqual(purge_due_members(later), {'purged': 0, 'postponed': 1})
         cs.confirm_request(req.pk)
         cs.credit_request(req.pk)                     # кешбек ложится на замороженный кошелёк
-        self.assertEqual(self.wallet(self.member).balance, 50_000 + 23_000 * 7)
+        self.assertEqual(self.wallet(self.member).balance, 50_000 + 1_150)  # 23 000 × 5 %
         self.assertEqual(purge_due_members(later + timedelta(days=2)), {'purged': 1, 'postponed': 0})
         self.member.refresh_from_db()
         self.assertEqual(self.member.full_name, 'Удалённый участник')

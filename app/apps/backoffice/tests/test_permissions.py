@@ -78,7 +78,7 @@ class OwnerSmokeTests(AdminTestCase):
         self.assertEqual((r.data['pointsPerSom'], r.data['purgeDays']), (50, 14))
         from apps.common.models import AuditLog
         e = AuditLog.objects.get(action='settings.update')
-        self.assertEqual(e.before, {'points_per_som': 100, 'purge_days': 30})
+        self.assertEqual(e.before, {'points_per_som': 1, 'purge_days': 30})
         self.assertStatus(self.patch(self.owner, '/settings', {'nope': 1}), 400)
 
     def test_staff_create_and_reset_2fa(self):

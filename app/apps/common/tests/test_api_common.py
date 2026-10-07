@@ -19,7 +19,7 @@ class CommonApiTests(BaseAPITestCase):
         self.assertEqual(cats[3]['rules']['methods'], ['cash', 'finik', 'elqr'])
         item = next(i for i in cats[1]['items'] if i['id'] == 'spa-bochka')
         self.assertEqual(item['promoRate'], 0.14)
-        self.assertEqual(item['cashbackPreview'], 35_000)
+        self.assertEqual(item['cashbackPreview'], 350)   # 2 500 × 14 % (акция), 1 балл = 1 сом
         self.assertTrue(item['image'].startswith('https://api.test/'))
         self.assertEqual(r['Cache-Control'], 'public, max-age=300')
         r2 = self.api.get('/api/v1/catalog', HTTP_ACCEPT_LANGUAGE='en', HTTP_IF_NONE_MATCH=r['ETag'])
@@ -41,7 +41,7 @@ class CommonApiTests(BaseAPITestCase):
         self.assertEqual([t['threshold'] for t in program['tiers']], [0, 200_000, 300_000, 900_000, 2_000_000, 3_000_000])
         # from — для старых версий: накопленная сумма порогов
         self.assertEqual([t['from'] for t in program['tiers']], [0, 200_000, 500_000, 1_400_000, 3_400_000, 6_400_000])
-        self.assertEqual(len(program['privileges']), 26)
+        self.assertEqual(len(program['privileges']), 21)
         self.assertEqual(len(self.api.get('/api/v1/content/promos').json()), 5)
 
     def test_bad_token_on_public_endpoint_is_ignored(self):

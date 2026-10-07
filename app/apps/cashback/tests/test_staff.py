@@ -54,7 +54,7 @@ class StaffDeskTests(BaseAPITestCase):
 
     def test_adjust_preview_small_adjust_and_escalation(self):
         p = self.spa.post(f'{S}/requests/{self.req.pk}/adjust/preview', {'total': 6500}, format='json').json()
-        self.assertEqual((p['total'], p['cashback'], p['needsManager']), (6500, 6500 * 7, False))
+        self.assertEqual((p['total'], p['cashback'], p['needsManager']), (6500, 325, False))  # 5 %
         r = self.spa.post(f'{S}/requests/{self.req.pk}/adjust', {'total': 6500}, format='json')
         self.assertEqual(r.json()['error']['code'], 'validation_error')  # причина обязательна
         r = self.spa.post(f'{S}/requests/{self.req.pk}/adjust', {'total': 6500, 'reason': 'чек'}, format='json')
@@ -68,7 +68,7 @@ class StaffDeskTests(BaseAPITestCase):
         self.assertEqual(r.json()['error']['code'], 'needs_manager')
 
     def test_cashback_limit_escalation(self):
-        self.settings_obj(staff_cashback_limit_points=10_000)
+        self.settings_obj(staff_cashback_limit_points=100)        # кешбек 350 > 100
         r = self.spa.post(f'{S}/requests/{self.req.pk}/confirm', {'cashReceived': True}, format='json')
         self.assertEqual(r.status_code, 202)
         self.req.refresh_from_db()

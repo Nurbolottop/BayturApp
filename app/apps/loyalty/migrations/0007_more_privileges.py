@@ -13,7 +13,10 @@ def forward(apps, schema_editor):
     if not Tier.objects.exists():
         return  # пустая база — привилегии создаст сид
     order = (Privilege.objects.aggregate(m=Max('sort_order'))['m'] or 0) + 1
-    for pid, tier, icon, title, short, desc in PRIVILEGES:
+    for row in PRIVILEGES:
+        if not isinstance(row, tuple):  # список привилегий в сиде с тех пор заменён (0010) — здесь нечего добавлять
+            continue
+        pid, tier, icon, title, short, desc = row
         if pid not in NEW_IDS or Privilege.objects.filter(pk=pid).exists():
             continue
         if not Tier.objects.filter(pk=tier, deleted_at__isnull=True).exists():

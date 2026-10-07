@@ -13,14 +13,31 @@ from .models import (SERVICE_KINDS, Achievement, AchievementScope, LoyaltySettin
 from .services import cumulative_from, get_wallet, refresh_wallet, wallet_payload
 
 
-def tier_program_payload(t, cumulative):
+def tier_cashback_rate(tier, base):
+    """Ставка кешбека уровня: база × (1 + надбавка / 100) — доля (0.0625 = 6,25 %)."""
+    from decimal import Decimal
+    return (Decimal(base) * (1 + Decimal(tier.cashback_bonus) / 100)).quantize(Decimal('0.0001'))
+
+
+def percent_text(rate):
+    """0.0625 → «6,25»; 0.05 → «5»."""
+    value = f'{float(rate) * 100:.2f}'.rstrip('0').rstrip('.')
+    return value.replace('.', ',')
+
+
+def tier_program_payload(t, cumulative, base_rate):
     gradient = t.gradient
+    rate = tier_cashback_rate(t, base_rate)
     return {
         'id': t.id,
         'order': t.order,
         'name': tr(t.name),
         'threshold': t.threshold,
-        'canBeFloor': t.can_be_floor,
+        'cashbackBonus': float(t.cashback_bonus),
+        'cashbackRate': float(rate),
+        'permanent': ({'lifetime': t.permanent_lifetime, 'years': t.permanent_years}
+                      if t.permanent_lifetime is not None else None),
+        'canBeFloor': t.permanent_lifetime is not None,
         'retention': t.retention,
         'entryRule': {'mode': t.entry_rule, 'n': t.entry_n if t.entry_rule == 'any_n' else None},
         'style': {'gradient': gradient, 'glow': t.glow_color,
@@ -37,20 +54,29 @@ def tier_program_payload(t, cumulative):
 
 
 def build_program():
+    from apps.common.models import ProgramSettings
     tiers = list(Tier.objects.active().order_by('order', 'id').prefetch_related('tier_achievements__achievement'))
     cumulative = cumulative_from(tiers)
     ls = LoyaltySettings.get()
+    ps = ProgramSettings.get()
+    rates = {t.pk: percent_text(tier_cashback_rate(t, ps.base_cashback_rate)) for t in tiers}
+
+    def text(value, tier_id):
+        return (tr(value) or '').replace('{rate}', rates.get(tier_id, '')) or None
+
     return {
-        'tiers': [tier_program_payload(t, cumulative) for t in tiers],
+        'tiers': [tier_program_payload(t, cumulative, ps.base_cashback_rate) for t in tiers],
         'privileges': [{
-            'id': p.id, 'tier': p.tier_id, 'icon': p.icon, 'title': tr(p.title), 'short': tr(p.short),
-            'description': tr(p.description),
+            'id': p.id, 'tier': p.tier_id, 'group': p.group or None, 'icon': p.icon, 'title': text(p.title, p.tier_id),
+            'short': text(p.short, p.tier_id), 'description': text(p.description, p.tier_id),
+            'footnote': text(p.footnote, p.tier_id),
         } for p in Privilege.objects.select_related('tier').filter(tier__deleted_at__isnull=True)],
         'achievements': [{
             'id': a.id, 'title': tr(a.title), 'description': tr(a.description) or None, 'icon': a.icon or None,
             'scope': a.scope,
         } for a in Achievement.objects.active().filter(visible=True)],
-        'settings': {'periodType': ls.period_type, 'floorDepth': ls.floor_depth},
+        'settings': {'periodType': ls.period_type, 'floorDepth': ls.floor_depth,
+                     'baseCashbackRate': float(ps.base_cashback_rate), 'pointsPerSom': ps.points_per_som},
     }
 
 

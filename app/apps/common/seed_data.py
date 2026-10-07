@@ -134,63 +134,82 @@ TIERS = [
     ('ambassador', L('Амбассадор', 'Амбассадор', 'Ambassador'), 3_000_000, False, 'points_and_achievements'),
 ]
 
-# id, tier, icon, title, short, description — id/уровни из ТЗ §3.2, тексты — заготовка
+# ТЗ лояльности 08.10.2026: надбавка к кешбеку, % (Баллы = Сумма × 10/200 × (1 + надбавка / 100))
+# и постоянный статус «навсегда»: (баллов за всё время, лет в программе); None — уровень не бывает постоянным.
+TIER_CASHBACK_BONUS = {'bronze': 0, 'silver': 10, 'gold': 25, 'platinum': 50, 'titanium': 75, 'ambassador': 100}
+TIER_PERMANENT = {'bronze': None, 'silver': (50_000, 1), 'gold': (100_000, 2), 'platinum': (175_000, 3),
+                  'titanium': (200_000, 4), 'ambassador': (250_000, 5)}
+
+# Привилегии «Апгрейдер» (ТЗ лояльности 08.10.2026): group — одна привилегия по уровням, footnote — мелким шрифтом.
+# {rate} — ставка кешбека уровня, % (подставляется в API). Всё правится в админке.
+_LATE_NOTE = L('Не гарантированно, предоставляется при наличии возможности',
+               'Кепилденбейт, мүмкүнчүлүк болгондо берилет', 'Not guaranteed, subject to availability')
+_NO_NOTE = {}
+
+
+def _rate(tier):
+    return {'id': f'points-rate-{tier}', 'tier': tier, 'group': 'points-rate', 'icon': 'cashback',
+            'title': L('Начисление {rate}% баллами', '{rate}% упай кешбеги', '{rate}% back in points'),
+            'short': L('{rate}%', '{rate}%', '{rate}%'),
+            'description': L('С каждой оплаты деньгами возвращается {rate}% баллами (1 балл = 1 сом).',
+                             'Акча менен ар бир төлөмдөн {rate}% упай кайтат (1 упай = 1 сом).',
+                             '{rate}% of every money payment comes back in points (1 point = 1 KGS).'),
+            'footnote': _NO_NOTE}
+
+
+def _late(tier, time):
+    return {'id': f'late-checkout-{tier}', 'tier': tier, 'group': 'late-checkout', 'icon': 'lateCheckOut',
+            'title': L(f'Поздний выезд до {time}', f'{time} чейин кеч чыгуу', f'Late check-out until {time}'),
+            'short': L(f'Выезд до {time}', f'{time} чейин', f'Until {time}'),
+            'description': L(f'Номер можно освободить до {time}.', f'Бөлмөнү {time} чейин бошотсо болот.',
+                             f'You can keep your room until {time}.'),
+            'footnote': _LATE_NOTE}
+
+
+def _upgrade(tier, ru, ky, en, short_ru, short_ky, short_en):
+    return {'id': f'room-upgrade-{tier}', 'tier': tier, 'group': 'room-upgrade', 'icon': 'upgrade',
+            'title': L(f'Апгрейд номера: {ru}', f'Бөлмөнү жакшыртуу: {ky}', f'Room upgrade: {en}'),
+            'short': L(short_ru, short_ky, short_en),
+            'description': L(f'При заселении — номер выше забронированного: {ru}.',
+                             f'Жайгашканда — брондолгондон жогору бөлмө: {ky}.',
+                             f'At check-in you get a room above the one you booked: {en}.'),
+            'footnote': _NO_NOTE}
+
+
+def _club(tier):
+    return {'id': f'bai-club-{tier}', 'tier': tier, 'group': 'bai-club', 'icon': 'concierge',
+            'title': L('Доступ в Bai Club', 'Bai Club\'ка кирүү', 'Bai Club access'),
+            'short': L('Bai Club', 'Bai Club', 'Bai Club'),
+            'description': L('Закрытый клуб для гостей высоких уровней.', 'Жогорку деңгээлдеги коноктор үчүн жабык клуб.',
+                             'A private club for top-tier guests.'),
+            'footnote': _NO_NOTE}
+
+
+def _gift(tier):
+    return {'id': f'welcome-gift-{tier}', 'tier': tier, 'group': 'welcome-gift', 'icon': 'gift',
+            'title': L('Приветственный подарок', 'Тосуу белеги', 'Welcome gift'),
+            'short': L('Подарок', 'Белек', 'Gift'),
+            'description': L('Подарок от курорта при заселении.', 'Жайгашканда курорттон белек.',
+                             'A gift from the resort at check-in.'),
+            'footnote': _NO_NOTE}
+
+
 PRIVILEGES = [
-    ('cashback', 'bronze', 'cashback', L('Кешбек баллами', 'Упай кешбеги', 'Points cashback'), L('Кешбек', 'Кешбек', 'Cashback'),
-     L('Баллы за каждую оплату деньгами: 100 баллов = 1 сом.', '', 'Points for every money payment: 100 points = 1 KGS.')),
-    ('birthday', 'bronze', 'birthday', L('Кешбек ×2 в день рождения', 'Туулган күнү ×2 кешбек', '×2 cashback on birthday'), L('ДР ×2', 'ТК ×2', 'B-day ×2'),
-     L('Неделя дня рождения — двойной кешбек.', '', 'Double cashback during your birthday week.')),
-    ('welcome', 'bronze', 'drink', L('Приветственный напиток', 'Тосуу суусундугу', 'Welcome drink'), L('Напиток', 'Суусундук', 'Drink'),
-     L('Напиток при заезде.', '', 'A drink on check-in.')),
-    ('early', 'silver', 'earlyCheckIn', L('Ранний заезд', 'Эрте кирүү', 'Early check-in'), L('Ранний заезд', 'Эрте кирүү', 'Early in'),
-     L('Заезд с 10:00 при наличии номеров.', '', 'Check-in from 10:00 subject to availability.')),
-    ('lounger', 'silver', 'beach', L('Шезлонг на пляже', 'Пляждагы шезлонг', 'Beach lounger'), L('Шезлонг', 'Шезлонг', 'Lounger'),
-     L('Закреплённый шезлонг на пляже.', '', 'A reserved beach lounger.')),
-    ('parking', 'silver', 'parking', L('Бесплатная парковка', 'Акысыз унаа токтотуучу жай', 'Free parking'), L('Парковка', 'Паркинг', 'Parking'),
-     L('Парковка на территории курорта.', '', 'Parking on the resort grounds.')),
-    ('late', 'gold', 'lateCheckOut', L('Поздний выезд', 'Кеч чыгуу', 'Late check-out'), L('Поздний выезд', 'Кеч чыгуу', 'Late out'),
-     L('Выезд до 16:00.', '', 'Check-out until 16:00.')),
-    ('upgrade', 'gold', 'upgrade', L('Повышение категории номера', 'Бөлмөнүн категориясын жогорулатуу', 'Room upgrade'), L('Апгрейд', 'Апгрейд', 'Upgrade'),
-     L('При наличии свободных номеров.', '', 'Subject to availability.')),
-    ('spa-priority', 'gold', 'spa', L('Приоритетная запись в SPA', 'SPAга артыкчылыктуу жазылуу', 'SPA priority booking'), L('SPA', 'SPA', 'SPA'),
-     L('Запись в SPA без очереди.', '', 'Priority SPA booking.')),
-    ('transfer', 'platinum', 'transfer', L('Трансфер', 'Трансфер', 'Transfer'), L('Трансфер', 'Трансфер', 'Transfer'),
-     L('Трансфер из аэропорта.', '', 'Airport transfer.')),
-    ('concierge', 'platinum', 'concierge', L('Личный консьерж', 'Жеке консьерж', 'Personal concierge'), L('Консьерж', 'Консьерж', 'Concierge'),
-     L('Консьерж 24/7 в WhatsApp.', '', '24/7 concierge on WhatsApp.')),
-    ('chef', 'platinum', 'chef', L('Ужин от шефа', 'Шефтен кечки тамак', 'Chef’s dinner'), L('Шеф', 'Шеф', 'Chef'),
-     L('Авторский ужин раз в сезон.', '', 'A signature dinner once a season.')),
-    ('villa', 'titanium', 'villa', L('Вилла по цене делюкса', 'Делюкс баасындагы вилла', 'Villa at deluxe price'), L('Вилла', 'Вилла', 'Villa'),
-     L('Проживание на вилле по цене делюкса.', '', 'Stay in a villa at the deluxe rate.')),
-    ('events', 'titanium', 'events', L('Закрытые события', 'Жабык иш-чаралар', 'Private events'), L('События', 'Иш-чаралар', 'Events'),
-     L('Приглашения на закрытые вечера.', '', 'Invitations to private evenings.')),
-    ('spa-day', 'titanium', 'gift', L('SPA-день в подарок', 'Белекке SPA күнү', 'Complimentary SPA day'), L('SPA-день', 'SPA күнү', 'SPA day'),
-     L('Один SPA-день в год бесплатно.', '', 'One free SPA day a year.')),
-    # Добавлены 07.10.2026 по списку мобилки (содержание — на согласование с курортом)
-    ('wifi', 'bronze', 'wifi', L('Премиум Wi‑Fi', 'Премиум Wi‑Fi', 'Premium Wi‑Fi'), L('Wi‑Fi', 'Wi‑Fi', 'Wi‑Fi'),
-     L('Быстрая сеть на всей территории курорта', 'Курорттун бүт аймагында ылдам интернет', 'Fast network across the whole resort')),
-    ('coffee', 'bronze', 'coffee', L('Кофе в лобби', 'Лоббиде кофе', 'Coffee in the lobby'), L('Кофе', 'Кофе', 'Coffee'),
-     L('Чашка свежего кофе каждое утро', 'Ар бир таң сайын бир чыны жаңы кофе', 'A cup of fresh coffee every morning')),
-    ('gym', 'silver', 'gym', L('Фитнес-зал без доплаты', 'Акысыз фитнес-зал', 'Gym at no extra cost'), L('Фитнес', 'Фитнес', 'Gym'),
-     L('Тренажёры и кардио в любое время', 'Тренажёрлор жана кардио каалаган убакта', 'Weights and cardio at any time')),
-    ('bike', 'silver', 'bike', L('Велосипеды', 'Велосипеддер', 'Bikes'), L('Велосипед', 'Велосипед', 'Bike'),
-     L('Прогулки вдоль берега Иссык-Куля', 'Ысык-Көлдүн жээги боюнча сейилдөө', 'Rides along the shore of Issyk-Kul')),
-    ('breakfast', 'gold', 'breakfast', L('Завтрак в номер', 'Бөлмөгө эртең мененки тамак', 'Breakfast in your room'),
-     L('Завтрак в номер', 'Бөлмөгө тамак', 'Room breakfast'),
-     L('Доставка без доплаты', 'Кошумча акысыз жеткирүү', 'Delivered at no extra charge')),
-    ('yoga', 'gold', 'yoga', L('Йога на рассвете', 'Таң атканда йога', 'Sunrise yoga'), L('Йога', 'Йога', 'Yoga'),
-     L('Групповые занятия на пирсе', 'Пирстеги топтук сабактар', 'Group sessions on the pier')),
-    ('kids', 'gold', 'kids', L('Детский клуб', 'Балдар клубу', "Kids' club"), L('Детский клуб', 'Балдар клубу', "Kids' club"),
-     L('Аниматоры и мастер-классы для детей', 'Балдар үчүн аниматорлор жана мастер-класстар', 'Entertainers and workshops for children')),
-    ('laundry', 'platinum', 'laundry', L('Прачечная', 'Кир жуучу жай', 'Laundry'), L('Прачечная', 'Кир жуу', 'Laundry'),
-     L('Стирка и глажка вещей во время отдыха', 'Эс алуу учурунда кийим жуу жана үтүктөө', 'Washing and ironing during your stay')),
-    ('night-pool', 'platinum', 'pool', L('Ночной бассейн', 'Түнкү бассейн', 'Night pool'), L('Ночной бассейн', 'Түнкү бассейн', 'Night pool'),
-     L('Бассейн после закрытия — только для вас', 'Жабылгандан кийин бассейн — сиз үчүн гана', 'The pool after hours — just for you')),
-    ('excursion', 'titanium', 'excursion', L('Экскурсия в горы', 'Тоого экскурсия', 'Mountain trip'), L('Экскурсия', 'Экскурсия', 'Trip'),
-     L('Джип-тур к ущелью раз в сезон', 'Мезгилине бир жолу капчыгайга джип-тур', 'A jeep tour to the gorge once a season')),
-    ('photo', 'titanium', 'photo', L('Фотосессия', 'Фотосессия', 'Photo session'), L('Фотосессия', 'Фотосессия', 'Photo session'),
-     L('Час с фотографом курорта', 'Курорттун фотографы менен бир саат', 'An hour with the resort photographer')),
+    _rate('bronze'),
+    _rate('silver'), _late('silver', '13:00'),
+    _rate('gold'), _late('gold', '14:00'), _upgrade('gold', '+1 категория', '+1 категория', '+1 category', '+1 категория', '+1 категория', '+1 category'),
+    _rate('platinum'), _late('platinum', '16:00'),
+    _upgrade('platinum', '+2 категории', '+2 категория', '+2 categories', '+2 категории', '+2 категория', '+2 categories'),
+    _club('platinum'), _gift('platinum'),
+    _rate('titanium'), _late('titanium', '16:00'),
+    _upgrade('titanium', '+3 категории', '+3 категория', '+3 categories', '+3 категории', '+3 категория', '+3 categories'),
+    _club('titanium'), _gift('titanium'),
+    _rate('ambassador'), _late('ambassador', '18:00'),
+    _upgrade('ambassador', 'до Президентского люкса', 'Президенттик люкска чейин', 'up to the Presidential suite',
+             'Президентский люкс', 'Президенттик люкс', 'Presidential suite'),
+    _club('ambassador'), _gift('ambassador'),
 ]
+
 
 
 def article(aid, category, tag, title, lead, body, quote=None, days_ago=0, minutes=3):

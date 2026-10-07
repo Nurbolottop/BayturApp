@@ -145,7 +145,8 @@ class TierDetailView(AdminAPIView):
     def patch(self, request, pk):
         tier = self.get_object(pk)
         data = body(request)
-        style = {k: data[k] for k in ('colors', 'medal') if k in data}
+        style = {k: data[k] for k in ('colors', 'medal', 'cashbackBonus', 'permanentLifetime', 'permanentYears')
+                 if k in data}
         if 'threshold' in data:
             data = {**{k: v for k, v in data.items() if k != 'threshold'}, 'from': data['threshold']}
         if style:

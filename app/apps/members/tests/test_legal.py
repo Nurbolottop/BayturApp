@@ -18,7 +18,7 @@ class LegalPagesTests(BaseAPITestCase):
             self.assertContains(r, 'Freedom Pay')
             self.assertNotContains(r, '{phone}')
         r = self.client.get('/legal/terms?lang=ru')
-        self.assertContains(r, '100 баллов = 1 сом')
+        self.assertContains(r, '1 балл = 1 сом')
         self.assertContains(r, '<h2>Уровни</h2>', html=True)
         self.assertEqual(self.client.get('/legal/deletion').status_code, 404)
 
@@ -30,11 +30,46 @@ class LegalPagesTests(BaseAPITestCase):
         self.assertIn('<li>пункт</li>', html)
 
 
-class NewPrivilegesTests(BaseAPITestCase):
-    def test_26_privileges_with_known_icons(self):
-        privileges = self.api.get('/api/v1/loyalty/program').json()['privileges']
-        self.assertEqual(len(privileges), 26)
+class UpgraderPrivilegesTests(BaseAPITestCase):
+    def test_21_privileges_grouped_with_rates_and_footnotes(self):
+        program = self.api.get('/api/v1/loyalty/program').json()
+        privileges = program['privileges']
+        self.assertEqual(len(privileges), 21)
         self.assertTrue(all(p['icon'] in PERK_ICONS for p in privileges))
-        by_id = {p['id']: p for p in privileges}
-        self.assertEqual((by_id['night-pool']['tier'], by_id['night-pool']['icon']), ('platinum', 'pool'))
-        self.assertEqual(by_id['photo']['tier'], 'titanium')
+        rate = {p['tier']: p['title'] for p in privileges if p['group'] == 'points-rate'}
+        self.assertEqual(rate['bronze'], 'Начисление 5% баллами')
+        self.assertEqual(rate['gold'], 'Начисление 6,25% баллами')
+        self.assertEqual(rate['ambassador'], 'Начисление 10% баллами')
+        late = {p['tier']: p for p in privileges if p['group'] == 'late-checkout'}
+        self.assertEqual(sorted(late), ['ambassador', 'gold', 'platinum', 'silver', 'titanium'])
+        self.assertEqual(late['ambassador']['title'], 'Поздний выезд до 18:00')
+        self.assertTrue(late['silver']['footnote'].startswith('Не гарантированно'))
+        tiers = {t['id']: t for t in program['tiers']}
+        self.assertEqual((tiers['platinum']['cashbackBonus'], tiers['platinum']['cashbackRate']), (50.0, 0.075))
+        self.assertEqual(tiers['titanium']['permanent'], {'lifetime': 200_000, 'years': 4})
+        self.assertIsNone(tiers['bronze']['permanent'])
+
+
+class TierSettingsAdminTests(BaseAPITestCase):
+    def test_admin_api_edits_bonus_and_permanent(self):
+        owner = self.staff_client(self.make_staff('owner'))
+        r = owner.patch('/api/v1/admin/tiers/gold', {'cashbackBonus': 30, 'permanentLifetime': 120_000,
+                                                     'permanentYears': 3}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual((r.json()['cashbackBonus'], r.json()['permanentLifetime'], r.json()['permanentYears']),
+                         (30.0, 120_000, 3))
+        program = self.api.get('/api/v1/loyalty/program').json()
+        gold = next(t for t in program['tiers'] if t['id'] == 'gold')
+        self.assertEqual((gold['cashbackRate'], gold['permanent']), (0.065, {'lifetime': 120_000, 'years': 3}))
+        r = owner.patch('/api/v1/admin/privileges/late-checkout-silver', {'footnote': {'ru': 'Если есть номера'}},
+                        format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+
+    def test_gold_member_gets_bonus_in_quote(self):
+        from apps.loyalty.models import Wallet
+        m = self.make_member(points=0)
+        Wallet.objects.filter(member=m).update(tier='gold')
+        self.auth(m)
+        d = self.api.post('/api/v1/cashback-requests/quote', {'itemId': 'spa-stone', 'quantity': 1}, format='json').json()
+        self.assertEqual((d['rate'], d['cashback']), (0.0625, 219))   # 3 500 × 5 % × 1,25 = 218,75 → 219
+        self.assertEqual(d['bonuses'][-1], {'kind': 'tier', 'tierId': 'gold', 'percent': 25.0})

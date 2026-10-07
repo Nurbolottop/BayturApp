@@ -1,4 +1,5 @@
 import datetime
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.cache import cache
@@ -17,7 +18,9 @@ class ProgramSettings(models.Model):
     CACHE_KEY = 'program_settings'
 
     # Курс и кешбек
-    points_per_som = models.PositiveIntegerField('Баллов за 1 сом', default=100)
+    points_per_som = models.PositiveIntegerField('Баллов за 1 сом', default=1)
+    base_cashback_rate = models.DecimalField('Базовая ставка кешбека (0.05 = 5 % = 10/200)', max_digits=6,
+                                             decimal_places=4, default=Decimal('0.05'))
     birthday_multiplier = models.DecimalField('Множитель дня рождения', max_digits=4, decimal_places=2, default=2)
     birthday_days_before = models.PositiveSmallIntegerField('Окно ДР: дней до', default=3)
     birthday_days_after = models.PositiveSmallIntegerField('Окно ДР: дней после', default=3)
@@ -31,7 +34,7 @@ class ProgramSettings(models.Model):
     staff_adjust_threshold_percent = models.PositiveSmallIntegerField(
         'Правка суммы администратором без директора, %', default=20)
     staff_cashback_limit_points = models.PositiveIntegerField(
-        'Кешбек выше лимита — подтверждает директор, баллов', default=1_000_000)
+        'Кешбек выше лимита — подтверждает директор, баллов', default=10_000)
 
     # Удаление аккаунта (баллы не сгорают — ТЗ лояльности §2.2)
     purge_days = models.PositiveSmallIntegerField('Хранение удалённого аккаунта, дней', default=30)

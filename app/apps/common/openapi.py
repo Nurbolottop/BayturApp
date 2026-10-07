@@ -129,12 +129,20 @@ class TierAchievementLink(s.Serializer):
     usage = s.ChoiceField(choices=['entry', 'retention', 'both'])
 
 
+class PermanentRule(s.Serializer):
+    lifetime = s.IntegerField(help_text='баллов за всё время не меньше')
+    years = s.IntegerField(help_text='лет в программе не меньше')
+
+
 class Tier(s.Serializer):
     id = s.CharField(help_text='slug: bronze, silver, gold, platinum, titanium, ambassador или новый из админки')
     order = s.IntegerField(help_text='порядок снизу вверх, у базового 0')
     name = s.CharField()
     threshold = s.IntegerField(help_text='сколько «Нынешних» собрать за год на предыдущем уровне; у базового 0')
-    canBeFloor = s.BooleanField(help_text='может стать вечным уровнем')
+    canBeFloor = s.BooleanField(help_text='у уровня есть постоянный статус (см. permanent)')
+    cashbackBonus = s.FloatField(help_text='надбавка к кешбеку, %: Баллы = Сумма × базовая ставка × (1 + надбавка/100)')
+    cashbackRate = s.FloatField(help_text='итоговая ставка кешбека уровня, доля (0.0625 = 6,25 %)')
+    permanent = PermanentRule(allow_null=True, help_text='условия «навсегда»; null — уровень не бывает постоянным')
     retention = s.ChoiceField(choices=['none', 'points', 'points_and_achievements'],
                               help_text='как удерживать уровень каждый год')
     entryRule = EntryRule()
@@ -149,6 +157,9 @@ class Tier(s.Serializer):
 class Privilege(s.Serializer):
     id = s.CharField()
     tier = s.CharField(help_text=TIER_HELP)
+    group = s.CharField(allow_null=True, help_text='«Апгрейдер»: одна привилегия на разных уровнях '
+                                                   '(points-rate, late-checkout, room-upgrade, bai-club, welcome-gift)')
+    footnote = s.CharField(allow_null=True, help_text='сноска мелким шрифтом')
     icon = s.ChoiceField(choices=PERK_ICONS)
     title = s.CharField()
     short = s.CharField()
@@ -165,7 +176,9 @@ class Achievement(s.Serializer):
 
 class ProgramSettings(s.Serializer):
     periodType = s.ChoiceField(choices=['calendar_year', 'anniversary'])
-    floorDepth = s.IntegerField(help_text='на сколько уровней ниже наивысшего вечного лежит пол')
+    floorDepth = s.IntegerField(help_text='устарело: пол теперь — постоянный статус уровня (tiers[].permanent)')
+    baseCashbackRate = s.FloatField(help_text='базовая ставка кешбека, доля (0.05 = 5 % = 10/200)')
+    pointsPerSom = s.IntegerField(help_text='курс: баллов за 1 сом (1)')
 
 
 class Program(s.Serializer):
@@ -301,9 +314,11 @@ class PaymentSplit(s.Serializer):
 
 
 class Bonus(s.Serializer):
-    kind = s.ChoiceField(choices=['promo', 'birthday'])
+    kind = s.ChoiceField(choices=['promo', 'birthday', 'tier'], help_text='tier — надбавка уровня клиента')
     title = s.CharField(required=False, allow_null=True)
     multiplier = s.FloatField(required=False)
+    tierId = s.CharField(required=False, help_text='для kind = tier')
+    percent = s.FloatField(required=False, help_text='для kind = tier: надбавка, %')
 
 
 class Quote(PaymentSplit):

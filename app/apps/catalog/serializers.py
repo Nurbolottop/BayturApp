@@ -5,11 +5,11 @@ from apps.common.models import ProgramSettings
 
 
 def cashback_preview(item, now=None, ps=None):
-    """Баллы за оплату деньгами по цене по умолчанию (без процента). Без учёта ДР — одинаково для всех."""
+    """Баллы за оплату деньгами по цене по умолчанию — по базовой ставке (Бронза), без ДР и надбавки уровня."""
     from decimal import Decimal
     ps = ps or ProgramSettings.get()
     promo = item.promo_rate(now)
-    rate = Decimal(promo if promo is not None else item.category.rate)
+    rate = max(Decimal(ps.base_cashback_rate), Decimal(promo) if promo is not None else Decimal(0))
     return round_half_up(Decimal(item.price) * rate * ps.points_per_som)
 
 
@@ -50,8 +50,9 @@ def item_payload(item, now=None, ps=None):
 
 
 def rules_payload(category):
+    # rate — единая базовая ставка (без надбавки уровня); точная ставка клиента — в /cashback-requests/quote
     return {
-        'rate': float(category.rate),
+        'rate': float(ProgramSettings.get().base_cashback_rate),
         'maxPointsShare': 1.0,  # устарело: лимита доли нет, баллами — только вся сумма
         'methods': list(category.methods),
     }

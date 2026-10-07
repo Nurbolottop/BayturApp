@@ -29,9 +29,8 @@ def table(data, key):
 
 class Dataset:
     """
-    m1: заявка room-standard 14 000 сом наличными → кешбек 98 000; вторая заявка (pending) — повтор.
-    m2: +100 000 корректировкой, заявка room-standard с оплатой 1 000 сом баллами → списано 100 000,
-        деньгами 13 000, кешбек 91 000.
+    m1: заявка room-standard 14 000 сом наличными → кешбек 700 (5 %, 1 балл = 1 сом); вторая (pending) — повтор.
+    m2: +14 000 корректировкой, заявка room-standard целиком баллами → списано 14 000, кешбека нет.
     mt: тестовый аккаунт с такой же заявкой — нигде не учитывается.
     """
 
@@ -52,7 +51,7 @@ class Dataset:
 
         tc.r1 = full(tc.m1, {'itemId': 'room-standard', 'quantity': 1, 'method': 'cash'})
         create_request(tc.m1, {'itemId': 'room-standard', 'quantity': 1, 'method': 'cash'})  # повтор, pending
-        manual_adjustment(tc.m2, 1_400_000, 'стартовые баллы', None)
+        manual_adjustment(tc.m2, 14_000, 'стартовые баллы', None)
         tc.r2 = full(tc.m2, {'itemId': 'room-standard', 'quantity': 1, 'pointsSom': 14_000})  # целиком баллами
         full(tc.mt, {'itemId': 'room-standard', 'quantity': 1, 'method': 'cash'})
 
@@ -78,11 +77,11 @@ class ReportsTests(TestCase):
         return ReportParams.from_query({**kw})
 
     def test_dashboard_numbers(self):
-        self.assertEqual(self.r1.cashback, 98_000)
-        self.assertEqual((self.r2.money_som, self.r2.points, self.r2.cashback), (0, 1_400_000, 0))
+        self.assertEqual(self.r1.cashback, 700)
+        self.assertEqual((self.r2.money_som, self.r2.points, self.r2.cashback), (0, 14_000, 0))
         d = reports.dashboard(self.params())
-        self.assertEqual(kpi(d, 'points_credited')['value'], 98_000)
-        self.assertEqual(kpi(d, 'points_spent')['value'], 1_400_000)
+        self.assertEqual(kpi(d, 'points_credited')['value'], 700)
+        self.assertEqual(kpi(d, 'points_spent')['value'], 14_000)
         self.assertEqual(kpi(d, 'revenue')['value'], 14_000)
         self.assertEqual(kpi(d, 'requests')['value'], 3)
         self.assertEqual(kpi(d, 'requests_done')['value'], 2)
@@ -90,8 +89,8 @@ class ReportsTests(TestCase):
         self.assertEqual(kpi(d, 'active_members')['value'], 2)
         self.assertEqual(kpi(d, 'new_members')['prev'], 0)
         # обязательство: 98 000 (m1) + 1 400 000 − 1 400 000 (m2)
-        self.assertEqual(d['liability']['points'], 98_000)
-        self.assertEqual(d['liability']['som'], 980)
+        self.assertEqual(d['liability']['points'], 700)
+        self.assertEqual(d['liability']['som'], 700)
         cat = table(d, 'by_category')['rows']
         self.assertEqual([(r['category_id'], r['requests'], r['revenue']) for r in cat], [('rooms', 2, 14_000)])
         method = table(d, 'by_method')['rows']
@@ -102,7 +101,7 @@ class ReportsTests(TestCase):
         self.assertEqual(sum(tiers.values()), 2)
         series = next(s for s in d['series'] if s['key'] == 'points_credited')
         self.assertEqual(len(series['points']), 30)
-        self.assertEqual(sum(pt['y'] for pt in series['points']), 98_000)
+        self.assertEqual(sum(pt['y'] for pt in series['points']), 700)
 
     def test_test_accounts_excluded(self):
         # тестовый аккаунт имеет начисление, но его нет ни в одном отчёте
@@ -111,10 +110,10 @@ class ReportsTests(TestCase):
         self.assertEqual(kpi(m, 'revenue')['value'], 14_000)
         self.assertEqual(kpi(m, 'requests')['value'], 2)
         p = reports.points(self.params())
-        self.assertEqual(kpi(p, 'credited')['value'], 98_000)
-        self.assertEqual(kpi(p, 'adjust_plus')['value'], 1_400_000)
+        self.assertEqual(kpi(p, 'credited')['value'], 700)
+        self.assertEqual(kpi(p, 'adjust_plus')['value'], 14_000)
         self.assertEqual(reports.members(self.params())['kpis'][0]['value'], 2)
-        self.assertEqual(reports.liability(timezone.localdate())['points'], 98_000)
+        self.assertEqual(reports.liability(timezone.localdate())['points'], 700)
 
     def test_filters(self):
         d = reports.dashboard(self.params(category='spa'))
@@ -126,10 +125,10 @@ class ReportsTests(TestCase):
     def test_liability_on_past_date(self):
         today = timezone.localdate()
         Operation.objects.filter(member=self.m1).update(at=timezone.now() - timedelta(days=10))
-        self.assertEqual(reports.liability(today - timedelta(days=5))['points'], 98_000)
-        self.assertEqual(reports.liability(today - timedelta(days=5))['som'], 980)
+        self.assertEqual(reports.liability(today - timedelta(days=5))['points'], 700)
+        self.assertEqual(reports.liability(today - timedelta(days=5))['som'], 700)
         self.assertEqual(reports.liability(today - timedelta(days=15))['points'], 0)
-        self.assertEqual(reports.liability(today)['points'], 98_000)
+        self.assertEqual(reports.liability(today)['points'], 700)
 
     def test_funnel_counts(self):
         f = reports.funnel(self.params())
@@ -180,7 +179,7 @@ class AdminApiTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(kpi(r.json(), 'revenue')['value'], 14_000)
         r = self.get(f'/api/v1/admin/analytics/liability?date={timezone.localdate()}', self.accountant)
-        self.assertEqual(r.json()['points'], 98_000)
+        self.assertEqual(r.json()['points'], 700)
         self.assertEqual(self.get('/api/v1/admin/analytics/complaints', self.owner).status_code, 200)
         # экспорт — только тех отчётов, которые пользователь видит
         r = self.post('/api/v1/admin/analytics/export', self.editor, {'report': 'money', 'format': 'xlsx'})

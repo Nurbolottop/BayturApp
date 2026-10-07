@@ -110,20 +110,18 @@ class Ladder:
         lower = [t for t in self.tiers if t.order < tier.order]
         return lower[-1] if lower else None
 
-    def floor(self, max_reached, depth):
+    def permanent(self, lifetime, years):
         """
-        Пол (вечный уровень): на depth ступеней ниже наивысшего достигнутого; если там уровень без canBeFloor —
-        спускаемся ниже до первого с canBeFloor, но не ниже базового.
-        Золото → Серебро, Платина → Золото, Титан → Платина, Амбассадор → (Титан нельзя) → Платина.
+        Постоянный статус: высший уровень, у которого выполнены оба условия — баллов за всё время ≥ permanent_lifetime
+        и лет в программе ≥ permanent_years. Уровень без permanent_lifetime постоянным не бывает. Иначе — базовый.
         """
         if not self.tiers:
             return None
-        ref = max_reached.order if max_reached is not None else self.tiers[0].order
-        reached = [i for i, t in enumerate(self.tiers) if t.order <= ref]
-        i = max(0, (reached[-1] if reached else 0) - depth)
-        while i > 0 and not self.tiers[i].can_be_floor:
-            i -= 1
-        return self.tiers[i]
+        found = self.tiers[0]
+        for t in self.tiers:
+            if t.permanent_lifetime is not None and lifetime >= t.permanent_lifetime and years >= t.permanent_years:
+                found = t
+        return found
 
     def drop_target(self, tier, floor):
         """Куда падает уровень: dropTo (только нижестоящий) или на один ниже, но не ниже пола."""
@@ -135,8 +133,16 @@ class Ladder:
         return target
 
 
-def ladder_floor(wallet, ladder, ls):
-    return ladder.floor(ladder.resolve(wallet.max_reached), ls.floor_depth)
+def member_years(wallet, at=None):
+    """Полных лет в программе (от даты регистрации участника)."""
+    from .achievements import full_years
+    since = wallet.member.member_since if wallet.member_id else None
+    return full_years(since, timezone.localdate(at) if at else timezone.localdate()) if since else 0
+
+
+def ladder_floor(wallet, ladder, ls=None, at=None):
+    """Пол (постоянный статус) клиента: ниже него уровень не опускается, и уровень не бывает ниже него."""
+    return ladder.permanent(wallet.lifetime, member_years(wallet, at))
 
 
 # ================================================================ кошелёк и журнал
@@ -342,11 +348,20 @@ def _set_tier(wallet, tier, at, cause, reason='', actor=None):
 
 
 def promote(wallet, at=None, ls=None, ladder=None):
-    """Повышает, пока «Нынешних» и заданий хватает на следующий уровень (с carryOver возможен прыжок)."""
+    """
+    Повышение: сначала постоянный статус (баллы за всё время + стаж), затем — пока «Нынешних» и заданий хватает
+    на следующий уровень (с carryOver возможен прыжок).
+    """
     at = at or timezone.now()
     ls = ls or LoyaltySettings.get()
     ladder = ladder or Ladder()
     changes = []
+    # Постоянный статус сразу поднимает уровень (без сброса «Нынешних»)
+    permanent = ladder_floor(wallet, ladder, ls, at)
+    current_tier = ladder.resolve(wallet.tier)
+    if permanent is not None and (current_tier is None or permanent.order > current_tier.order):
+        _set_tier(wallet, permanent, at, TierChangeCause.PERMANENT)
+        changes.append((current_tier, permanent))
     for _ in range(len(ladder.tiers) + 1):
         current_tier = ladder.resolve(wallet.tier)
         nxt = ladder.next(current_tier)
@@ -534,8 +549,8 @@ def adjust(member, amount, counters, reason, author=None, idempotency_key=None, 
             d_current=amount if 'current' in counters else 0, d_lifetime=amount if 'lifetime' in counters else 0,
             reason=str(reason).strip(), author=author, complaint=complaint, related=related,
             idempotency_key=idempotency_key, activity=False, at=now)
-        if not op.duplicate and amount > 0 and 'current' in counters:
-            evaluate(wallet, now)
+        if not op.duplicate and amount > 0 and counters & {'current', 'lifetime'}:
+            evaluate(wallet, now)  # «Нынешние» — повышение, «За всё время» — постоянный статус
     from .services import publish_wallet
     publish_wallet(member, wallet)
     if not op.duplicate and 'available' in counters:
@@ -672,18 +687,21 @@ def recalc_promotions():
 
 
 def daily_achievements(now=None):
-    """Задания, зависящие от даты (стаж, годы подряд), + проверка повышения."""
+    """Ежедневно: задания, зависящие от даты (стаж, годы подряд), и постоянный статус по стажу → проверка повышения."""
     now = now or timezone.now()
     ls, ladder = LoyaltySettings.get(), Ladder()
     types = ['member_years', 'consecutive_years']
-    if not Achievement.objects.active().filter(type__in=types).exists():
-        return 0
+    with_achievements = Achievement.objects.active().filter(type__in=types).exists()
     completed = 0
     for member_id in Wallet.objects.values_list('member_id', flat=True):
         with transaction.atomic():
-            wallet = Wallet.objects.select_for_update(of=('self',)).select_related('tier', 'max_reached').get(member_id=member_id)
-            newly, _ = evaluate(wallet, now, ls, ladder, types=types)
-            completed += len(newly)
+            wallet = Wallet.objects.select_for_update(of=('self',)).select_related('tier', 'max_reached', 'member') \
+                .get(member_id=member_id)
+            if with_achievements:
+                newly, _ = evaluate(wallet, now, ls, ladder, types=types)
+                completed += len(newly)
+            else:
+                promote(wallet, now, ls, ladder)
     return completed
 
 

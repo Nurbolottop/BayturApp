@@ -7,6 +7,7 @@
   pointsSom    = 0 или total
   moneySom     = total − pointsSom;  points = pointsSom × pointsPerSom
   cashback     = round(moneySom × rate × pointsPerSom) — только с денежной части
+  rate         = max(база 5 %, акция, база × множитель ДР) × (1 + надбавка уровня / 100)
 """
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -82,17 +83,30 @@ def in_birthday_window(birthday, on_date, days_before, days_after):
     return False
 
 
+def tier_bonus_for(member):
+    """(уровень, надбавка %) клиента — для формулы кешбека. Гость — базовый уровень без надбавки."""
+    if member is None:
+        return None, Decimal('0')
+    from apps.loyalty.services import get_wallet
+    tier = get_wallet(member).tier
+    return tier, Decimal(tier.cashback_bonus if tier is not None else 0)
+
+
 def resolve_rules(item, member, settings, at):
-    """Правила категории; promoRate акции заменяет rate; ДР — rate × множитель; берётся большая ставка."""
+    """
+    Ставка кешбека: база (единая для всех услуг, по умолчанию 10/200 = 5 %); акция услуги или ×N в день рождения
+    заменяют её, если больше; затем надбавка уровня клиента: rate × (1 + надбавка / 100).
+    Баллы = Сумма × rate × pointsPerSom (с денежной части).
+    """
     from apps.common.i18n import tr
     from django.utils import timezone
 
     category = item.category
-    base = Decimal(category.rate)
+    base = Decimal(settings.base_cashback_rate)
     rate = base
     bonuses = []
     promo = item.active_promo(at)
-    if promo is not None:
+    if promo is not None and Decimal(promo.rate) > rate:
         rate = Decimal(promo.rate)
         bonuses.append({'kind': 'promo', 'title': tr(promo.tag) or tr(item.tag) or None})
     if member is not None and in_birthday_window(member.birthday, timezone.localtime(at).date(),
@@ -101,6 +115,10 @@ def resolve_rules(item, member, settings, at):
         if bday_rate > rate:
             rate = bday_rate
             bonuses = [{'kind': 'birthday', 'multiplier': float(settings.birthday_multiplier)}]
+    tier, bonus = tier_bonus_for(member)
+    if bonus:
+        rate = (rate * (1 + bonus / 100)).quantize(Decimal('0.0001'))
+        bonuses.append({'kind': 'tier', 'tierId': tier.pk, 'percent': float(bonus)})
     rate = min(rate, Decimal('1'))
     # Лимита доли по категориям больше нет: баллами можно оплатить любую услугу целиком
     return Rules(rate=rate, base_rate=base, max_points_share=Decimal('1'),

@@ -28,6 +28,9 @@
       <div class="card stack-s">
         {% include 'panel/components/field.html' with f=r.form.name %}
         {% include 'panel/components/field.html' with f=r.form.threshold %}
+        {% include 'panel/components/field.html' with f=r.form.cashback_bonus %}
+        {% include 'panel/components/field.html' with f=r.form.permanent_lifetime %}
+        {% include 'panel/components/field.html' with f=r.form.permanent_years %}
         {% for e in r.form.non_field_errors %}<div class="err">{{ e }}</div>{% endfor %}
       </div>
     </div>

@@ -183,7 +183,7 @@ class DeskTests(PanelBase):
         c.post(f'/panel/r/{paid.pk}/confirm/')
         paid.refresh_from_db()
         self.assertEqual(paid.status, RequestStatus.CONFIRMED)
-        self.assertEqual(Operation.objects.get(request=paid, kind=OperationKind.SPEND).points, -250_000)
+        self.assertEqual(Operation.objects.get(request=paid, kind=OperationKind.SPEND).points, -2_500)
 
     def test_adjust_preview_and_escalation(self):
         member = self.make_member()
@@ -276,6 +276,9 @@ class TierTests(PanelBase):
             for t, v in zip(tiers, values):
                 d[f'{t.pk}-name_ru'] = t.name.get('ru') or t.pk
                 d[f'{t.pk}-threshold'] = v
+                d[f'{t.pk}-cashback_bonus'] = t.cashback_bonus
+                d[f'{t.pk}-permanent_lifetime'] = t.permanent_lifetime or ''
+                d[f'{t.pk}-permanent_years'] = t.permanent_years
             return d
         r = c.post('/panel/tiers/', payload([0, 0, 200, 900, 1000, 2000]))
         self.assertContains(r, 'у остальных — больше 0')

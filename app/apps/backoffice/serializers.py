@@ -280,6 +280,12 @@ class TierSerializer(serializers.ModelSerializer):
         fields['threshold'] = serializers.IntegerField(min_value=0, required=False)
         fields['from'] = serializers.IntegerField(source='threshold', min_value=0, required=False)
         fields['medal'] = MediaUrlField(required=False)
+        # надбавка к кешбеку и постоянный статус (ТЗ 08.10.2026)
+        fields['cashbackBonus'] = serializers.DecimalField(source='cashback_bonus', max_digits=6, decimal_places=2,
+                                                           min_value=0, coerce_to_string=False, required=False)
+        fields['permanentLifetime'] = serializers.IntegerField(source='permanent_lifetime', min_value=0,
+                                                               allow_null=True, required=False)
+        fields['permanentYears'] = serializers.IntegerField(source='permanent_years', min_value=0, required=False)
         return fields
 
     def validate_colors(self, value):
@@ -291,19 +297,21 @@ class TierSerializer(serializers.ModelSerializer):
 
 
 class PrivilegeSerializer(ImmutableIdMixin, serializers.ModelSerializer):
-    TEXT_FIELDS = {'title', 'short', 'description'}
+    TEXT_FIELDS = {'title', 'short', 'description', 'footnote'}
 
     id = serializers.SlugField(max_length=40)
     tier = serializers.PrimaryKeyRelatedField(queryset=Tier.objects.all())
+    group = serializers.SlugField(max_length=40, required=False, allow_blank=True)
     icon = serializers.ChoiceField(choices=PERK_ICONS)
     title = L10nField()
     short = L10nField()
     description = L10nField()
+    footnote = L10nField(required=False, required_ru=False)
     sortOrder = serializers.IntegerField(source='sort_order', required=False)
 
     class Meta:
         model = Privilege
-        fields = ['id', 'tier', 'icon', 'title', 'short', 'description', 'sortOrder']
+        fields = ['id', 'tier', 'group', 'icon', 'title', 'short', 'description', 'footnote', 'sortOrder']
 
 
 # ---------------------------------------------------------------- контент

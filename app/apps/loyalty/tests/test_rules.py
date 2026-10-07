@@ -3,7 +3,7 @@
 Пороги как в примере: Серебро 200 000, Золото 300 000, Платина 900 000, надбавка к лимиту 10 000 (сид).
 """
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import date, datetime
 from unittest import mock
 from zoneinfo import ZoneInfo
 
@@ -25,6 +25,12 @@ def dt(y, m=1, d=1, h=12, mi=0, s=0):
 
 class LoyaltyCase(BaseAPITestCase):
     phone_seq = 0
+    temporary_only = False  # True — проверяем только временный статус (постоянный по баллам и стажу отключён)
+
+    def setUp(self):
+        super().setUp()
+        if self.temporary_only:
+            Tier.objects.update(permanent_lifetime=None)
 
     @contextmanager
     def clock(self, when):
@@ -78,6 +84,8 @@ class LoyaltyCase(BaseAPITestCase):
 
 
 class EarnSpendTests(LoyaltyCase):
+    temporary_only = True
+
     def test_01_earn_goes_to_all_three(self):
         m = self.member()
         self.earn(m, 50_000, dt(2026, 4, 1))
@@ -136,6 +144,8 @@ class EarnSpendTests(LoyaltyCase):
 
 
 class PeriodCloseTests(LoyaltyCase):
+    temporary_only = True
+
     def test_05_promoted_in_period_sets_first_limit(self):
         m = self.gold_with_limit()
         r = PeriodResult.objects.get(member=m, period_key='2026')
@@ -152,7 +162,7 @@ class PeriodCloseTests(LoyaltyCase):
         self.assertEqual(self.limit(m, 'gold'), 510_000)
         self.assertEqual(PeriodResult.objects.get(member=m, period_key='2027').result, 'dropped')
         self.assertTrue(m.notifications.filter(kind='tier.downgraded', data__tierId='silver').exists())
-        self.assertEqual(tier_state(self.w(m))['floor'], 'silver')
+        self.assertEqual(tier_state(self.w(m))['floor'], 'bronze')   # постоянного статуса нет
 
     def test_07_retained_limit_grows(self):
         m = self.gold_with_limit()
@@ -169,17 +179,14 @@ class PeriodCloseTests(LoyaltyCase):
         self.assertEqual(self.w(m).tier_id, 'gold')
         self.assertEqual(self.limit(m, 'gold'), 520_000)
 
-    def test_09_10_11_floor_and_limit_only_grows(self):
+    def test_10_limit_kept_when_returning(self):
         m = self.gold_with_limit()
         self.earn(m, 400_000, dt(2027, 12, 1))
-        self.close(m, dt(2028, 1, 1, 0, 1))                       # → Серебро навсегда
-        self.close(m, dt(2029, 1, 1, 0, 1))                       # 9: пол не проверяется
-        self.assertEqual(self.w(m).tier_id, 'silver')
-        self.assertEqual(PeriodResult.objects.get(member=m, period_key='2028').result, 'floor')
-        self.earn(m, 300_000, dt(2029, 5, 1))                     # снова Золото
-        self.earn(m, 300_000, dt(2029, 11, 1))
-        self.close(m, dt(2030, 1, 1, 0, 1))                       # 10: 310 000 < 510 000 — лимит прежний
-        self.assertEqual(PeriodResult.objects.get(member=m, period_key='2029').result, 'promoted_in_period')
+        self.close(m, dt(2028, 1, 1, 0, 1))                       # → Серебро
+        self.earn(m, 300_000, dt(2028, 5, 1))                     # снова Золото
+        self.earn(m, 300_000, dt(2028, 11, 1))
+        self.close(m, dt(2029, 1, 1, 0, 1))                       # 310 000 < 510 000 — лимит прежний
+        self.assertEqual(PeriodResult.objects.get(member=m, period_key='2028').result, 'promoted_in_period')
         self.assertEqual((self.w(m).tier_id, self.limit(m, 'gold')), ('gold', 510_000))
 
     def test_11_limit_replaced_by_bigger(self):
@@ -198,15 +205,12 @@ class PeriodCloseTests(LoyaltyCase):
         self.assertEqual(self.limit(m, 'platinum'), 10_000)       # ничего не собрал после перехода → надбавка
         return m
 
-    def test_12_13_platinum_drops_to_eternal_gold(self):
+    def test_12_platinum_drops_one_step_without_permanent(self):
         m = self.platinum_since_2027()
-        self.close(m, dt(2029, 1, 1, 0, 1))                       # 0 < 10 000 → Золото навсегда
+        self.close(m, dt(2029, 1, 1, 0, 1))                       # 0 < 10 000 → на ступень ниже
         self.assertEqual(self.w(m).tier_id, 'gold')
         state = tier_state(self.w(m))
-        self.assertEqual((state['floor'], state['isFloor'], state['retention']['reason']), ('gold', True, 'floor'))
-        self.close(m, dt(2030, 1, 1, 0, 1))                       # 13: за год 0 — остаётся Золото
-        self.assertEqual(self.w(m).tier_id, 'gold')
-        self.assertEqual(PeriodResult.objects.get(member=m, period_key='2029').result, 'floor')
+        self.assertEqual((state['floor'], state['isFloor']), ('bronze', False))
 
     def link(self, tier_id, ach_id, usage, scope='lifetime'):
         ach, _ = Achievement.objects.get_or_create(id=ach_id, defaults={
@@ -246,40 +250,6 @@ class PeriodCloseTests(LoyaltyCase):
             engine.grant_achievement(m, Achievement.objects.get(pk='annual-evening'))
         self.close(m, dt(2030, 1, 1, 0, 1))
         self.assertEqual(self.w(m).tier_id, 'titanium')
-
-    def test_floor_rule_by_max_reached(self):
-        """Пол — ступенью ниже наивысшего достигнутого, пропуская уровни без canBeFloor."""
-        ladder, ls = engine.Ladder(), LoyaltySettings.get()
-        expected = {'bronze': 'bronze', 'silver': 'bronze', 'gold': 'silver', 'platinum': 'gold',
-                    'titanium': 'platinum', 'ambassador': 'platinum'}
-        for reached, floor in expected.items():
-            self.assertEqual(ladder.floor(ladder.get(reached), ls.floor_depth).pk, floor, reached)
-        ls.floor_depth = 0
-        self.assertEqual(ladder.floor(ladder.get('titanium'), 0).pk, 'platinum')  # сам Титан вечным не бывает
-        self.assertEqual(ladder.floor(ladder.get('gold'), 0).pk, 'gold')
-
-    def test_ambassador_drops_to_titanium_then_platinum_forever(self):
-        m = self.titanium_since_2028()
-        self.earn(m, 3_000_000, dt(2029, 7, 1))                   # → Амбассадор (без заданий на вход)
-        self.assertEqual(self.w(m).tier_id, 'ambassador')
-        self.assertEqual(tier_state(self.w(m))['floor'], 'platinum')
-        self.close(m, dt(2030, 1, 1, 0, 1))                       # получен в 2029 — без проверки
-        self.close(m, dt(2031, 1, 1, 0, 1))                       # не подтвердил → Титан
-        self.assertEqual(self.w(m).tier_id, 'titanium')
-        self.close(m, dt(2032, 1, 1, 0, 1))                       # Титан получен понижением в 2031 — без проверки
-        self.close(m, dt(2033, 1, 1, 0, 1))                       # не подтвердил → Платина
-        self.assertEqual(self.w(m).tier_id, 'platinum')
-        self.close(m, dt(2034, 1, 1, 0, 1))
-        self.close(m, dt(2035, 1, 1, 0, 1))
-        self.assertEqual(self.w(m).tier_id, 'platinum')           # Платина навсегда
-        self.assertTrue(tier_state(self.w(m))['isFloor'])
-
-    def test_17_titanium_can_be_floor(self):
-        Tier.objects.filter(pk='titanium').update(can_be_floor=True)
-        m = self.titanium_since_2028()
-        self.assertEqual(tier_state(self.w(m))['floor'], 'platinum')   # пол — уровень ниже Титана
-        self.close(m, dt(2030, 1, 1, 0, 1))
-        self.assertEqual(self.w(m).tier_id, 'platinum')
 
     def test_18_boundary_credit_and_close(self):
         m = self.member(dt(2026, 3, 1))
@@ -328,9 +298,8 @@ class PeriodCloseTests(LoyaltyCase):
         self.close(m, dt(2029, 1, 1, 0, 1))
         self.assertEqual(self.counters(m), (2_500_000, 0, 2_400_000, 'gold'))
         self.assertEqual(self.limit(m, 'gold'), 810_000)
-        self.earn(m, 900_000, dt(2029, 9, 1))                     # 900 000 → Платина, Золото становится полом
-        state = tier_state(self.w(m))
-        self.assertEqual((state['id'], state['floor']), ('platinum', 'gold'))
+        self.earn(m, 900_000, dt(2029, 9, 1))                     # 900 000 → Платина
+        self.assertEqual(tier_state(self.w(m))['id'], 'platinum')
         self.assertEqual(ledger_mismatches(), [])
         self.auth(m)
         data = self.api.get('/api/v1/me/loyalty/history').json()
@@ -383,13 +352,65 @@ class CorrectionTests(LoyaltyCase):
             engine.adjust(m, 10, [], 'без счётчиков')
 
     def test_set_tier_below_floor_needs_flag(self):
+        from apps.members.models import Member
         m = self.make_member(phone='+996700100004')
-        Wallet.objects.filter(member=m).update(tier='platinum', max_reached='platinum')
-        with self.assertRaises(ApiError) as e:
+        Member.objects.filter(pk=m.pk).update(member_since=date(2020, 1, 1))
+        Wallet.objects.filter(member=m).update(tier='platinum', max_reached='platinum', lifetime=175_000)
+        with self.assertRaises(ApiError) as e:                     # 175 000 + 3 года → Платина навсегда
             engine.set_tier(m, Tier.objects.get(pk='silver'), 'ошибка')
         self.assertEqual(e.exception.code, 'below_floor')
-        engine.set_tier(m, Tier.objects.get(pk='silver'), 'по решению владельца', allow_below_floor=True)
+        engine.set_tier(m, Tier.objects.get(pk='silver'), 'по решению директора', allow_below_floor=True)
         self.assertEqual(self.w(m).tier_id, 'silver')
+
+
+class PermanentStatusTests(LoyaltyCase):
+    """Постоянный статус: баллов за всё время ≥ X И лет в программе ≥ Y (ТЗ 08.10.2026)."""
+
+    def test_permanent_table(self):
+        ladder = engine.Ladder()
+        cases = [((49_999, 9), 'bronze'), ((50_000, 0), 'bronze'), ((50_000, 1), 'silver'), ((100_000, 1), 'silver'),
+                 ((100_000, 2), 'gold'), ((175_000, 3), 'platinum'), ((200_000, 4), 'titanium'),
+                 ((250_000, 5), 'ambassador'), ((250_000, 4), 'titanium'), ((1_000_000, 0), 'bronze')]
+        for (lifetime, years), tier in cases:
+            self.assertEqual(ladder.permanent(lifetime, years).pk, tier, (lifetime, years))
+
+    def test_permanent_raises_tier_at_once_and_never_drops(self):
+        m = self.member(dt(2026, 3, 1))
+        self.earn(m, 120_000, dt(2026, 4, 1))                     # Бронза: до Серебра 200 000 за год
+        self.close(m, dt(2027, 1, 1, 0, 1))
+        self.close(m, dt(2028, 1, 1, 0, 1))
+        self.assertEqual(self.w(m).tier_id, 'bronze')
+        with self.clock(dt(2028, 3, 2)), self.captureOnCommitCallbacks(execute=True):
+            engine.daily_achievements(dt(2028, 3, 2))            # 2 года стажа + 120 000 → Золото навсегда
+        w = self.w(m)
+        self.assertEqual((w.tier_id, w.lifetime), ('gold', 120_000))
+        self.assertTrue(m.tier_changes.filter(cause='permanent', to_tier='gold').exists())
+        self.assertTrue(m.notifications.filter(kind='tier.upgraded', data__tierId='gold').exists())
+        with self.clock(dt(2028, 3, 3)):
+            state = tier_state(w)
+        self.assertEqual((state['floor'], state['isFloor'], state['retention']['reason']), ('gold', True, 'floor'))
+        self.close(m, dt(2029, 1, 1, 0, 1))
+        self.close(m, dt(2030, 1, 1, 0, 1))
+        self.assertEqual(self.w(m).tier_id, 'gold')
+        self.assertEqual(PeriodResult.objects.get(member=m, period_key='2029').result, 'floor')
+
+    def test_ambassador_drops_to_titanium_then_stops_at_permanent_platinum(self):
+        from apps.members.models import Member
+        m = self.member(dt(2026, 3, 1))
+        Member.objects.filter(pk=m.pk).update(member_since=date(2020, 1, 1))
+        Wallet.objects.filter(member=m).update(tier='ambassador', max_reached='ambassador', tier_since=dt(2025, 1, 1),
+                                               lifetime=175_000)  # 175 000 + 6 лет → Платина навсегда
+        for tid in ('ambassador', 'titanium', 'platinum'):
+            TierLimit.objects.create(member=m, tier_id=tid, limit=10_000)
+        self.close(m, dt(2027, 1, 1, 0, 1))                       # не подтвердил → Титан
+        self.assertEqual(self.w(m).tier_id, 'titanium')
+        self.close(m, dt(2028, 1, 1, 0, 1))                       # Титан получен понижением — без проверки
+        self.close(m, dt(2029, 1, 1, 0, 1))                       # не подтвердил → Платина
+        self.assertEqual(self.w(m).tier_id, 'platinum')
+        self.close(m, dt(2030, 1, 1, 0, 1))
+        self.assertEqual(self.w(m).tier_id, 'platinum')           # Платина навсегда
+        with self.clock(dt(2030, 2, 1)):
+            self.assertTrue(tier_state(self.w(m))['isFloor'])
 
 
 class WalletApiTests(LoyaltyCase):
@@ -455,4 +476,5 @@ class WalletApiTests(LoyaltyCase):
         self.assertIsNotNone(item['completedAt'])
         program = self.api.get('/api/v1/loyalty/program').json()
         self.assertEqual([a['id'] for a in program['achievements']], ['rich'])
-        self.assertEqual(program['settings'], {'periodType': 'calendar_year', 'floorDepth': 1})
+        self.assertEqual(program['settings'], {'periodType': 'calendar_year', 'floorDepth': 1,
+                                               'baseCashbackRate': 0.05, 'pointsPerSom': 1})

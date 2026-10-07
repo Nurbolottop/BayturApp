@@ -182,16 +182,14 @@ class CategoryForm(PanelForm, forms.ModelForm):
     title = L10nField(label='Название')
     methods = forms.MultipleChoiceField(label='Способы доплаты', choices=PaymentMethod.choices,
                                         widget=forms.CheckboxSelectMultiple, required=False)
-    rate = forms.DecimalField(label='Кешбек, доля (0.07 = 7 %)', min_value=Decimal('0'), max_value=Decimal('1'),
-                              decimal_places=4)
 
     class Meta:
         model = Category
-        fields = ['title', 'cover', 'sort_order', 'is_active', 'rate', 'methods']
+        fields = ['title', 'cover', 'sort_order', 'is_active', 'methods']
         widgets = {'cover': forms.HiddenInput}
         labels = {'sort_order': 'Порядок', 'is_active': 'Показывать в приложении'}
 
-    RULE_FIELDS = ['sort_order', 'is_active', 'rate', 'methods']
+    RULE_FIELDS = ['sort_order', 'is_active', 'methods']
 
 
 class ItemForm(PanelForm, forms.ModelForm):
@@ -303,8 +301,11 @@ class TierForm(PanelForm, forms.ModelForm):
 
     class Meta:
         model = Tier
-        fields = ['name', 'threshold']
-        labels = {'threshold': 'Порог: «Нынешних» за год на предыдущем уровне'}
+        fields = ['name', 'threshold', 'cashback_bonus', 'permanent_lifetime', 'permanent_years']
+        labels = {'threshold': 'Порог: «Нынешних» за год на предыдущем уровне',
+                  'cashback_bonus': 'Надбавка к кешбеку, % (Баллы = Сумма × 5 % × (1 + надбавка/100))',
+                  'permanent_lifetime': 'Навсегда: баллов за всё время (пусто — не бывает постоянным)',
+                  'permanent_years': 'Навсегда: лет в программе'}
 
 
 def tier_choices():
@@ -343,13 +344,16 @@ class PrivilegeForm(PanelForm, forms.ModelForm):
     title = L10nField(label='Название', max_length=80)
     short = L10nField(label='Коротко (1–2 слова)', max_length=30)
     description = L10nField(label='Описание', textarea=True, rows=3)
+    footnote = L10nField(label='Сноска мелким шрифтом', required=False, max_length=200)
 
     class Meta:
         model = Privilege
-        fields = ['id', 'tier', 'icon', 'title', 'short', 'description', 'sort_order']
-        labels = {'tier': 'Уровень', 'sort_order': 'Порядок'}
+        fields = ['id', 'tier', 'group', 'icon', 'title', 'short', 'description', 'footnote', 'sort_order']
+        labels = {'tier': 'Уровень', 'sort_order': 'Порядок',
+                  'group': 'Группа «Апгрейдер» (одна привилегия на разных уровнях, напр. late-checkout)'}
+        help_texts = {'group': '{rate} в текстах подставляет ставку кешбека уровня, %'}
 
-    RULE_FIELDS = ['id', 'tier', 'icon', 'sort_order']
+    RULE_FIELDS = ['id', 'tier', 'group', 'icon', 'sort_order']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

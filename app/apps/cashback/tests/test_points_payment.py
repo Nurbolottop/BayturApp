@@ -8,7 +8,7 @@ S = '/api/v1/staff'
 class PointsPaymentTests(BaseAPITestCase):
     def setUp(self):
         super().setUp()
-        self.member = self.make_member(points=500_000)          # 5 000 сом
+        self.member = self.make_member(points=5_000)            # 5 000 сом (1 балл = 1 сом)
         self.spa_staff = self.make_staff('staff', outlets=['spa'])
         self.spa = self.staff_client(self.spa_staff)
         self.auth(self.member)
@@ -23,16 +23,16 @@ class PointsPaymentTests(BaseAPITestCase):
         self.assertIn('spa-stone', items)
         self.assertNotIn('food-davinci', items)                  # только услуги своей точки
         q = self.pay('quote', itemId='spa-stone', quantity=1).json()
-        self.assertEqual((q['total'], q['points'], q['enough']), (3500, 350_000, True))
+        self.assertEqual((q['total'], q['points'], q['enough']), (3500, 3_500, True))
         self.assertNotIn('available', q)                         # баланс сотруднику не показываем
         with self.captureOnCommitCallbacks(execute=True):
             r = self.pay('charge', itemId='spa-stone', quantity=1)
         self.assertEqual(r.status_code, 201, r.content)
         req = CashbackRequest.objects.get(pk=r.json()['id'])
         self.assertEqual((req.status, req.points, req.money_som, req.method, req.confirmed_by_id),
-                         ('confirmed', 350_000, 0, None, self.spa_staff.pk))
-        self.assertEqual(Operation.objects.get(request=req, kind='spend').points, -350_000)
-        self.assertEqual(self.wallet(self.member).balance, 150_000)
+                         ('confirmed', 3_500, 0, None, self.spa_staff.pk))
+        self.assertEqual(Operation.objects.get(request=req, kind='spend').points, -3_500)
+        self.assertEqual(self.wallet(self.member).balance, 1_500)
 
     def test_not_enough_points(self):
         q = self.pay('quote', itemId='spa-stone', quantity=2).json()  # 7 000 сом > 5 000
@@ -50,7 +50,7 @@ class PointsPaymentTests(BaseAPITestCase):
         q = reception.post(f'{S}/points/quote', {'payToken': token, 'itemId': 'pools-kids', 'quantity': 1},
                            format='json').json()
         self.assertTrue(q['enough'])
-        rich = self.make_member(phone='+996555000444', points=10_000_000)
+        rich = self.make_member(phone='+996555000444', points=100_000)
         self.auth(rich)
         qr = self.api.get('/api/v1/me/member-qr').json()['token']
         token = reception.post(f'{S}/scan', {'token': qr}, format='json').json()['payToken']
@@ -76,7 +76,7 @@ class PointsPaymentTests(BaseAPITestCase):
             credit_request(req_id)
         n = self.member.notifications.filter(kind='request.paid').first()
         self.assertIsNotNone(n)
-        self.assertIn('350 000', n.body)
+        self.assertIn('3 500', n.body)
         self.assertFalse(self.member.notifications.filter(kind='request.credited').exists())
 
     def test_panel_scan_and_charge(self):
@@ -91,4 +91,4 @@ class PointsPaymentTests(BaseAPITestCase):
         self.assertTrue(q['enough'])
         r = c.post('/panel/desk/pay/charge/', {'pay_token': token, 'item': 'spa-stone', 'quantity': 1})
         self.assertContains(r, 'Оплачено баллами')
-        self.assertEqual(self.wallet(self.member).balance, 150_000)
+        self.assertEqual(self.wallet(self.member).balance, 1_500)
