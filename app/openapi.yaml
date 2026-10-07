@@ -4959,23 +4959,39 @@ components:
       type: object
       properties:
         kind:
-          $ref: '#/components/schemas/BonusKind'
+          allOf:
+          - $ref: '#/components/schemas/BonusKindEnum'
+          description: |-
+            tier — надбавка уровня клиента
+
+            * `promo` - promo
+            * `birthday` - birthday
+            * `tier` - tier
         title:
           type: string
           nullable: true
         multiplier:
           type: number
           format: double
+        tierId:
+          type: string
+          description: для kind = tier
+        percent:
+          type: number
+          format: double
+          description: 'для kind = tier: надбавка, %'
       required:
       - kind
-    BonusKind:
+    BonusKindEnum:
       enum:
       - promo
       - birthday
+      - tier
       type: string
       description: |-
         * `promo` - promo
         * `birthday` - birthday
+        * `tier` - tier
     CashbackRequest:
       type: object
       properties:
@@ -6250,6 +6266,18 @@ components:
         * `pool` - pool
         * `excursion` - excursion
         * `photo` - photo
+    PermanentRule:
+      type: object
+      properties:
+        lifetime:
+          type: integer
+          description: баллов за всё время не меньше
+        years:
+          type: integer
+          description: лет в программе не меньше
+      required:
+      - lifetime
+      - years
     PhotoUploadRequest:
       type: object
       properties:
@@ -6357,6 +6385,15 @@ components:
           type: string
           description: id уровня из GET /loyalty/program (набор уровней задаётся в
             админке)
+        group:
+          type: string
+          nullable: true
+          description: '«Апгрейдер»: одна привилегия на разных уровнях (points-rate,
+            late-checkout, room-upgrade, bai-club, welcome-gift)'
+        footnote:
+          type: string
+          nullable: true
+          description: сноска мелким шрифтом
         icon:
           $ref: '#/components/schemas/PerkIcon'
         title:
@@ -6367,6 +6404,8 @@ components:
           type: string
       required:
       - description
+      - footnote
+      - group
       - icon
       - id
       - short
@@ -6458,10 +6497,19 @@ components:
           $ref: '#/components/schemas/PeriodTypeEnum'
         floorDepth:
           type: integer
-          description: на сколько уровней ниже наивысшего вечного лежит пол
+          description: 'устарело: пол теперь — постоянный статус уровня (tiers[].permanent)'
+        baseCashbackRate:
+          type: number
+          format: double
+          description: базовая ставка кешбека, доля (0.05 = 5 % = 10/200)
+        pointsPerSom:
+          type: integer
+          description: 'курс: баллов за 1 сом (1)'
       required:
+      - baseCashbackRate
       - floorDepth
       - periodType
+      - pointsPerSom
     Promo:
       type: object
       properties:
@@ -7539,7 +7587,21 @@ components:
             0
         canBeFloor:
           type: boolean
-          description: может стать вечным уровнем
+          description: у уровня есть постоянный статус (см. permanent)
+        cashbackBonus:
+          type: number
+          format: double
+          description: 'надбавка к кешбеку, %: Баллы = Сумма × базовая ставка × (1
+            + надбавка/100)'
+        cashbackRate:
+          type: number
+          format: double
+          description: итоговая ставка кешбека уровня, доля (0.0625 = 6,25 %)
+        permanent:
+          allOf:
+          - $ref: '#/components/schemas/PermanentRule'
+          nullable: true
+          description: условия «навсегда»; null — уровень не бывает постоянным
         retention:
           allOf:
           - $ref: '#/components/schemas/RetentionEnum'
@@ -7573,6 +7635,8 @@ components:
       required:
       - achievements
       - canBeFloor
+      - cashbackBonus
+      - cashbackRate
       - colors
       - entryRule
       - from
@@ -7580,6 +7644,7 @@ components:
       - medal
       - name
       - order
+      - permanent
       - retention
       - style
       - threshold
