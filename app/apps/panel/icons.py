@@ -113,6 +113,8 @@ P = {
     'laundry': '<rect x="4" y="3" width="16" height="18" rx="2.5"/><circle cx="12" cy="13" r="4.5"/><path d="M7 6.5h.01"/><path d="M10 6.5h.01"/>',
     'excursion': '<path d="m3 20 6-11 4 6 3-4 5 9z"/><path d="M8 4h.01"/>',
     'photo': '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>',
+    'ticket': '<path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v2"/><path d="M14 11v2"/><path d="M14 16v2"/>',
+    'food': '<circle cx="12" cy="13" r="6"/><circle cx="12" cy="13" r="2.5"/><path d="M3 4v5a2 2 0 0 0 2 2"/><path d="M5 4v16"/><path d="M21 4c-1.5 0-2.5 1.5-2.5 4v4h2.5"/><path d="M21 4v16"/>',
     'gift': '<rect x="3" y="8" width="18" height="5" rx="1.5"/><path d="M5 13v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/><path d="M12 8v13"/><path d="M12 8c-2-4-6-4-6-1.5S9.5 8 12 8c2.5 0 6 1 6-1.5S14 4 12 8z"/>',
 }
 

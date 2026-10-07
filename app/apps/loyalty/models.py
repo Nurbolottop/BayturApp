@@ -22,6 +22,9 @@ PERK_ICONS = [
     'wifi', 'coffee', 'gym', 'bike', 'breakfast', 'yoga', 'kids', 'laundry', 'pool', 'excursion', 'photo',
 ]
 
+# Иконки заданий, нарисованные в приложении (AchievementIcon мобилки); курорт выбирает только из них
+ACHIEVEMENT_ICONS = ['calendar', 'ticket', 'users', 'bed', 'spa', 'food', 'star', 'gift']
+
 
 # Градиенты уровней по умолчанию — из tier_style.dart мобилки (ТЗ §7.4)
 DEFAULT_TIER_COLORS = {
@@ -390,7 +393,7 @@ class Achievement(models.Model):
     id = models.SlugField(primary_key=True, max_length=40)
     title = models.JSONField('Название', default=dict)
     description = models.JSONField('Описание', default=dict, blank=True)
-    icon = models.CharField('Иконка', max_length=40, blank=True)
+    icon = models.CharField('Иконка', max_length=40, blank=True, choices=[(i, i) for i in ACHIEVEMENT_ICONS])
     type = models.CharField('Тип', max_length=30, choices=AchievementType.choices)
     params = models.JSONField('Параметры', default=dict, blank=True)
     scope = models.CharField('Область', max_length=10, choices=AchievementScope.choices,
