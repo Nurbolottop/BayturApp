@@ -313,6 +313,10 @@ NIKITA_SENDER = os.getenv('NIKITA_SENDER', '')
 NIKITA_TEST = os.getenv('NIKITA_TEST', '') in ('1', 'true', 'True')
 # Настоящие SMS только на эти номера (E.164, через запятую), остальным — OTP_FIXED_CODE без SMS.
 # Для тестового режима провайдера (шлёт только на номер из профиля). Пусто — SMS на все номера.
+# Чеки ККМ: проверка в налоговой (tax.salyk.kg) при скане; RECEIPT_ALLOWED_TINS — ИНН продавцов, чьи чеки
+# принимаются (через запятую; пусто — любые)
+RECEIPT_VERIFY = os.getenv('RECEIPT_VERIFY', '1') not in ('0', 'false', 'False')
+RECEIPT_ALLOWED_TINS = [x.strip() for x in os.getenv('RECEIPT_ALLOWED_TINS', '').split(',') if x.strip()]
 SMS_ONLY_PHONES = [x.strip() for x in os.getenv('SMS_ONLY_PHONES', '').split(',') if x.strip()]
 # Временный единый OTP-код для всех номеров (dev/staging, пока нет SMS-провайдера). В production игнорируется.
 OTP_FIXED_CODE = os.getenv('OTP_FIXED_CODE', '').strip()  # только для номеров без настоящей SMS

@@ -29,3 +29,5 @@ MEDIA_ROOT = '/tmp/baytur-test-media'
 import os  # noqa: E402
 DATABASES['default']['TEST'] = {'NAME': os.getenv('TEST_DB_NAME', 'test_baytur')}
 LOGGING = {'version': 1, 'disable_existing_loggers': False, 'root': {'handlers': [], 'level': 'CRITICAL'}}
+
+RECEIPT_VERIFY = False  # без походов в налоговую; проверка — в test_salyk.py с моком

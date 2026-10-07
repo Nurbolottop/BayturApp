@@ -6607,12 +6607,19 @@ components:
         requestId:
           type: string
           nullable: true
+        receipt:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          description: 'Чек из налоговой: number, shift, dateTime, seller, address,
+            tin, total, cash, cashless, items[], verified'
       required:
       - amount
       - cashback
       - itemId
       - quantity
       - rate
+      - receipt
       - receiptNumber
       - requestId
       - total

@@ -392,7 +392,9 @@ def receipt_preview(user, pay_token, item_id, receipt_qr, request_id=None):
     split = compute_split(total, rules, 0, 0)
     return {'itemId': item.pk, 'amount': receipt['amount'], 'total': total, 'quantity': quantity,
             'cashback': split.cashback, 'rate': str(split.rate), 'receiptNumber': receipt['key'],
-            'requestId': request_id or None}
+            'requestId': request_id or None,
+            # данные чека из налоговой (verified=false — налоговая не ответила, сумма взята из QR)
+            'receipt': receipt.get('details')}
 
 
 def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None):

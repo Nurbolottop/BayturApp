@@ -234,7 +234,9 @@ def apply():
         receipt_in, inline_serializer('ReceiptPreview', {
             'itemId': s.CharField(), 'amount': s.IntegerField(), 'total': s.IntegerField(),
             'quantity': s.IntegerField(), 'cashback': s.IntegerField(), 'rate': s.CharField(),
-            'receiptNumber': s.CharField(), 'requestId': s.CharField(allow_null=True)}),
+            'receiptNumber': s.CharField(), 'requestId': s.CharField(allow_null=True),
+            'receipt': s.DictField(allow_null=True, help_text='Чек из налоговой: number, shift, dateTime, seller, '
+                                   'address, tin, total, cash, cashless, items[], verified')}),
         errors=(400, 401, 403, 404, 409, 422))
     doc(staffdesk.ReceiptAcceptView, 'post', STAFF, 'Наличные: «Принять оплату» по чеку — проводится сразу',
         receipt_in, o.StaffRequest, status=201, errors=(400, 401, 403, 404, 409, 422))
