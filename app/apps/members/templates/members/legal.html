@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ title|default:"BAYTUR" }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--accent:#C6F24E;--ink:#12140F;--muted:rgba(18,20,15,.6);--page:#F4F6F1;--surface:#fff;--line:rgba(18,20,15,.08)}
+@media (prefers-color-scheme:dark){:root{--ink:#F1F3EE;--muted:rgba(241,243,238,.6);--page:#0D0E0C;--surface:#191B17;--line:rgba(241,243,238,.08)}}
+*{box-sizing:border-box}body{margin:0;font-family:Onest,system-ui,sans-serif;background:var(--page);color:var(--ink);padding:16px}
+.card{background:var(--surface);border-radius:28px;padding:28px;max-width:760px;margin:0 auto}
+.langs{display:flex;gap:6px;margin-bottom:18px}.langs a{padding:6px 12px;border-radius:999px;color:var(--ink);text-decoration:none;font-size:14px;background:var(--line)}
+.langs a.on{background:var(--accent);color:#12140F;font-weight:700}
+h1{font-size:28px;font-weight:800;letter-spacing:-.8px;line-height:1.15;margin:0 0 6px}
+.meta{color:var(--muted);font-size:13px;margin-bottom:20px}
+h2{font-size:19px;font-weight:700;margin:26px 0 8px}
+p,li{font-size:15px;line-height:1.6}p{margin:0 0 12px}ul{margin:0 0 12px;padding-left:20px}li{margin-bottom:6px}
+a{color:inherit}
+</style>
+</head>
+<body>
+<div class="card">
+  <nav class="langs"><a href="?lang=ru" class="{% if lang == 'ru' %}on{% endif %}">Рус</a><a href="?lang=ky" class="{% if lang == 'ky' %}on{% endif %}">Кыр</a><a href="?lang=en" class="{% if lang == 'en' %}on{% endif %}">Eng</a></nav>
+  {% if title %}<h1>{{ title }}</h1>{% endif %}
+  <div class="meta">{% if lang == 'en' %}Version{% else %}Версия{% endif %} {{ doc.version }}{% if doc.published_at %} · {{ doc.published_at|date:"d.m.Y" }}{% endif %}</div>
+  {{ html }}
+</div>
+</body>
+</html>

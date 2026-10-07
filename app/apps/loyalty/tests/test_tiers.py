@@ -32,7 +32,7 @@ class TierManagementTests(BaseAPITestCase):
         self.assertEqual((result['reassigned'], result['movedTo']), (1, 'silver'))
         w = Wallet.objects.get(member=m)
         self.assertEqual((w.tier_id, w.max_reached_id), ('silver', 'silver'))
-        self.assertEqual(Privilege.objects.filter(tier='silver').count(), 6)
+        self.assertEqual(Privilege.objects.filter(tier='silver').count(), 11)  # 5 серебряных + 6 перенесённых с Золота
         self.assertFalse(Tier.objects.live().filter(pk='gold').exists())   # мягкое удаление
         self.assertTrue(m.tier_changes.filter(cause='admin', to_tier='silver').exists())
         ids = [t['id'] for t in self.api.get('/api/v1/loyalty/program').json()['tiers']]

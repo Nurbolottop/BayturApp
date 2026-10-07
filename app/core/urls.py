@@ -13,6 +13,7 @@ urlpatterns = [
     path('img/<path:path>', resized_image, name='resized-image'),
     # публичная страница удаления аккаунта без приложения (требование Google Play)
     path('account/delete', members_web.delete_account, name='account-delete'),
+    path('legal/<slug:kind>', members_web.legal_page, name='legal-page'),
     path('panel/', include('apps.panel.urls')),
     # технический Django admin — только для разработчиков
     path('django-admin/', admin.site.urls),

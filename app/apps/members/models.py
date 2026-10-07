@@ -183,6 +183,8 @@ class LegalDocument(models.Model):
     kind = models.CharField(max_length=20, choices=LegalKind.choices)
     version = models.CharField(max_length=20)
     url = models.JSONField('URL на 3 языках', default=dict)
+    body = models.JSONField('Текст на 3 языках (для страницы /legal/<документ>)', default=dict, blank=True,
+                            help_text='«## Заголовок», «- пункт», пустая строка — абзац; {phone}, {whatsapp}, {purge_days}')
     requires_acceptance = models.BooleanField(default=True)
     published_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -103,12 +103,17 @@ class Command(BaseCommand):
         for kind, (title, body) in DEFAULT_TEMPLATES.items():
             PushTemplate.objects.get_or_create(kind=kind, defaults={'title': title, 'body': body})
 
-        base = 'https://baytur.kg'
-        # Условия и политика — заглушки на сайте курорта: заменить в админке на реальные версии
-        for kind, path in ((LegalKind.TERMS, 'terms'), (LegalKind.PRIVACY, 'privacy')):
-            LegalDocument.objects.get_or_create(kind=kind, version='1.0', defaults={
-                'url': l10n(f'{base}/ru/{path}', f'{base}/ky/{path}', f'{base}/en/{path}'),
-                'requires_acceptance': True, 'published_at': now})
+        # Условия и политика приложения — наши страницы /legal/<документ>?lang=… (текст правится в админке)
+        from django.conf import settings as dj_settings
+
+        from apps.members.legal_texts import PRIVACY, TERMS
+        for kind, body in ((LegalKind.TERMS, TERMS), (LegalKind.PRIVACY, PRIVACY)):
+            if LegalDocument.objects.filter(kind=kind).exists():
+                continue
+            page = f'{dj_settings.PUBLIC_BASE_URL}/legal/{kind}'
+            LegalDocument.objects.create(kind=kind, version='1.1', body=body, requires_acceptance=True,
+                                         published_at=now, url=l10n(f'{page}?lang=ru', f'{page}?lang=ky',
+                                                                    f'{page}?lang=en'))
         # Страница удаления аккаунта без приложения — наша /account/delete (Google Play)
         from django.conf import settings
         page = f'{settings.PUBLIC_BASE_URL}/account/delete'

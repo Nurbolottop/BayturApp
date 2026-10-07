@@ -106,6 +106,13 @@ P = {
     'concierge': '<path d="M4 17h16"/><path d="M5 17a7 7 0 0 1 14 0"/><path d="M12 10V8"/><path d="M10 8h4"/><path d="M3 20h18"/>',
     'villa': '<path d="M3 21V10l9-6 9 6v11"/><path d="M9 21v-6h6v6"/><path d="M3 21h18"/>',
     'events': '<path d="m4 20 5-14 9 9z"/><path d="M14 4v2"/><path d="M19 9h2"/><path d="m17 5 1.5-1.5"/><path d="M9 11l4 4"/>',
+    'coffee': '<path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3c-.8 1 .8 2 0 3"/><path d="M12 3c-.8 1 .8 2 0 3"/>',
+    'bike': '<circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7"/><path d="M10 9 8.5 6H7"/><path d="M14 6h2"/>',
+    'yoga': '<circle cx="12" cy="4.5" r="2"/><path d="M12 7v6"/><path d="M5 10l7 3 7-3"/><path d="M7 20c1.5-3 3-4.5 5-7 2 2.5 3.5 4 5 7"/>',
+    'kids': '<circle cx="12" cy="11" r="7"/><path d="M9.5 10h.01"/><path d="M14.5 10h.01"/><path d="M9.5 14a3.5 3.5 0 0 0 5 0"/><path d="M12 4c0-1 1-2 2-2"/>',
+    'laundry': '<rect x="4" y="3" width="16" height="18" rx="2.5"/><circle cx="12" cy="13" r="4.5"/><path d="M7 6.5h.01"/><path d="M10 6.5h.01"/>',
+    'excursion': '<path d="m3 20 6-11 4 6 3-4 5 9z"/><path d="M8 4h.01"/>',
+    'photo': '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>',
     'gift': '<rect x="3" y="8" width="18" height="5" rx="1.5"/><path d="M5 13v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/><path d="M12 8v13"/><path d="M12 8c-2-4-6-4-6-1.5S9.5 8 12 8c2.5 0 6 1 6-1.5S14 4 12 8z"/>',
 }
 

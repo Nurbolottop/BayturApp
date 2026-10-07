@@ -609,12 +609,25 @@ class OutletForm(forms.ModelForm):
 
 
 class LegalForm(forms.ModelForm):
-    url = L10nField(label='URL документа')
+    url = L10nField(label='URL документа', required=False,
+                    help_text='Пусто — страница на нашем сервере /legal/<документ>?lang=… с текстом ниже')
+    body = L10nField(label='Текст документа', required=False, textarea=True, rows=14)
     published_at = dt_field('Опубликовать с')
 
     class Meta:
         model = LegalDocument
-        fields = ['kind', 'version', 'url', 'requires_acceptance', 'published_at']
+        fields = ['kind', 'version', 'body', 'url', 'requires_acceptance', 'published_at']
+
+    def clean(self):
+        d = super().clean()
+        url, body = d.get('url') or {}, d.get('body') or {}
+        if not any((url or {}).values()):
+            if not any((body or {}).values()) and d.get('kind') != 'deletion':
+                self.add_error('body', 'Нужен текст документа или внешний URL')
+            from django.conf import settings
+            page = f"{settings.PUBLIC_BASE_URL}/legal/{d.get('kind')}"
+            d['url'] = {lang: f'{page}?lang={lang}' for lang in ('ru', 'ky', 'en')}
+        return d
         labels = {'kind': 'Документ', 'version': 'Версия', 'requires_acceptance': 'Требует повторного согласия'}
 
 

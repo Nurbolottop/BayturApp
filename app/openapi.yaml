@@ -5942,6 +5942,17 @@ components:
       - villa
       - events
       - gift
+      - wifi
+      - coffee
+      - gym
+      - bike
+      - breakfast
+      - yoga
+      - kids
+      - laundry
+      - pool
+      - excursion
+      - photo
       type: string
       description: |-
         * `cashback` - cashback
@@ -5959,6 +5970,17 @@ components:
         * `villa` - villa
         * `events` - events
         * `gift` - gift
+        * `wifi` - wifi
+        * `coffee` - coffee
+        * `gym` - gym
+        * `bike` - bike
+        * `breakfast` - breakfast
+        * `yoga` - yoga
+        * `kids` - kids
+        * `laundry` - laundry
+        * `pool` - pool
+        * `excursion` - excursion
+        * `photo` - photo
     PhotoUploadRequest:
       type: object
       properties:

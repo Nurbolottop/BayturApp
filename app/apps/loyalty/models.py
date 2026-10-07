@@ -19,6 +19,7 @@ class TierId(models.TextChoices):
 PERK_ICONS = [
     'cashback', 'birthday', 'drink', 'earlyCheckIn', 'beach', 'parking', 'lateCheckOut', 'upgrade', 'spa',
     'transfer', 'concierge', 'chef', 'villa', 'events', 'gift',
+    'wifi', 'coffee', 'gym', 'bike', 'breakfast', 'yoga', 'kids', 'laundry', 'pool', 'excursion', 'photo',
 ]
 
 

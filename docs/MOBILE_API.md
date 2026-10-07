@@ -1161,7 +1161,7 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 | `PricingType` / `PricingUnit` | `unit`, `check` / `night`, `session`, `guest`, `hour`, `visit` |
 | `BonusKind` | `promo`, `birthday` |
 | `FeatureIcon` | `view`, `bed`, `people`, `area`, `wifi`, `breakfast`, `terrace`, `pool`, `time`, `towel`, `tea`, `music`, `fire`, `chef`, `drink`, `sun`, `water`, `gym`, `trainer`, `bath`, `nature`, `cold`, `warm`, `tv`, `flower` |
-| `PerkIcon` | `cashback`, `birthday`, `drink`, `earlyCheckIn`, `beach`, `parking`, `lateCheckOut`, `upgrade`, `spa`, `transfer`, `concierge`, `chef`, `villa`, `events`, `gift` |
+| `PerkIcon` | `cashback`, `birthday`, `drink`, `earlyCheckIn`, `beach`, `parking`, `lateCheckOut`, `upgrade`, `spa`, `transfer`, `concierge`, `chef`, `villa`, `events`, `gift`, `wifi`, `coffee`, `gym`, `bike`, `breakfast`, `yoga`, `kids`, `laundry`, `pool`, `excursion`, `photo` |
 | `Language` | `ru`, `ky`, `en` |
 | `Platform` | `ios`, `android` |
 | `ComplaintStatus` | `new`, `in_progress`, `answered`, `closed` |
