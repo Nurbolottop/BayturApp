@@ -107,5 +107,17 @@ def staff_request_payload(req, lang='ru'):
         'rejectedBy': req.rejected_by_id,
         'adjustedBy': req.adjusted_by_id,
         'isTest': req.is_test,
+        'fiscalReceipt': fiscal_receipt_payload(req),
     })
     return data
+
+
+def fiscal_receipt_payload(req):
+    """Фискальный чек, по которому кассир принял наличную оплату (None — без чека)."""
+    from .models import FiscalReceipt
+    try:
+        r = req.fiscal_receipt
+    except FiscalReceipt.DoesNotExist:
+        return None
+    return {'number': r.key, 'amount': r.amount, 'acceptedAt': iso(r.accepted_at), 'acceptedBy': r.accepted_by_id,
+            'outlet': r.outlet_id}

@@ -202,6 +202,35 @@ def notify_request_credited(req_id):
            push=m.notify_cashback)
 
 
+def notify_staff_paid_online(req_id):
+    """
+    Клиент оплатил онлайн → push кассирам этой точки с суммой: кассир проверяет и принимает оплату
+    (кешбек начисляется после «Принять»). Без записи в ленту — у сотрудников её нет.
+    """
+    from apps.cashback.models import CashbackRequest
+    from apps.staff.models import StaffDevice
+
+    from .push import backend
+    req = CashbackRequest.objects.select_related('member').filter(pk=req_id).first()
+    if req is None or req.outlet_id is None:
+        return 0
+    devices = StaffDevice.objects.filter(staff__is_active=True, staff__outlets=req.outlet_id).distinct()
+    title = f'Оплачено онлайн: {req.money_som:,} сом'.replace(',', ' ')
+    body = f'{tr(req.item_snapshot.get("title"), "ru")} · {req.member.full_name}'.strip(' ·')
+    data = {'type': 'request.paidOnline', 'requestId': req.pk, 'amount': req.money_som, 'outlet': req.outlet_id}
+    sent = 0
+    for d in devices:
+        try:
+            ok, invalid = backend().send(d.token, d.platform, title, body, data)
+        except Exception:
+            log.exception('staff push failed')
+            ok, invalid = False, False
+        sent += int(ok)
+        if invalid:
+            d.delete()
+    return sent
+
+
 def notify_request_rejected(req_id):
     from apps.cashback.models import CashbackRequest
     from apps.cashback.serializers import reject_reason_text

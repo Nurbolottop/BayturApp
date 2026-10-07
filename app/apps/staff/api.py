@@ -88,3 +88,31 @@ class PinChangeView(APIView):
     def post(self, request):
         auth.change_pin(request.user, request.data.get('currentPin'), request.data.get('newPin'))
         return Response(auth.staff_profile(request.user))
+
+
+class DevicesView(APIView):
+    """POST {token, platform, appVersion} — push-токен приложения кассира (после входа и при onTokenRefresh)."""
+
+    authentication_classes = [auth.StaffAuthentication]
+    permission_classes = [auth.IsStaff]
+
+    def post(self, request):
+        from .models import StaffDevice
+        data = request.data if isinstance(request.data, dict) else {}
+        token, platform = str(data.get('token') or '').strip(), data.get('platform')
+        if not token or len(token) > 512 or platform not in ('ios', 'android'):
+            raise ApiError('validation_error', 400, extra={'fields': {'token': ['обязательно'],
+                                                                      'platform': ['ios | android']}})
+        StaffDevice.objects.update_or_create(token=token, defaults={
+            'staff': request.user, 'platform': platform, 'app_version': str(data.get('appVersion') or '')[:20]})
+        return Response(status=204)
+
+
+class DeviceDeleteView(APIView):
+    authentication_classes = [auth.StaffAuthentication]
+    permission_classes = [auth.IsStaff]
+
+    def delete(self, request, token):
+        from .models import StaffDevice
+        StaffDevice.objects.filter(staff=request.user, token=token).delete()
+        return Response(status=204)

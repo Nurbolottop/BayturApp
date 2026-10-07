@@ -88,6 +88,8 @@ staff = [
     path('staff/auth/logout', staff_auth.LogoutView.as_view()),
     path('staff/me', staff_auth.MeView.as_view()),
     path('staff/me/pin', staff_auth.PinChangeView.as_view()),
+    path('staff/me/devices', staff_auth.DevicesView.as_view()),
+    path('staff/me/devices/<path:token>', staff_auth.DeviceDeleteView.as_view()),
     # обращения своих точек: список, карточка, внутренняя заметка
     path('staff/complaints', staff_complaints.ComplaintsView.as_view()),
     path('staff/complaints/<str:pk>', staff_complaints.ComplaintDetailView.as_view()),
@@ -104,6 +106,8 @@ staff = [
     path('staff/points/items', staffdesk.PayItemsView.as_view()),
     path('staff/points/quote', staffdesk.PayQuoteView.as_view()),
     path('staff/points/charge', staffdesk.PayChargeView.as_view()),
+    path('staff/cash/preview', staffdesk.ReceiptPreviewView.as_view()),
+    path('staff/cash/accept', staffdesk.ReceiptAcceptView.as_view()),
 ]
 
 admin_auth = [

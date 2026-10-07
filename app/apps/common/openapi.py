@@ -366,6 +366,14 @@ class StaffMemberBrief(s.Serializer):
     status = s.CharField()
 
 
+class FiscalReceipt(s.Serializer):
+    number = s.CharField(help_text='Реквизиты чека из QR')
+    amount = s.IntegerField()
+    acceptedAt = s.DateTimeField()
+    acceptedBy = s.IntegerField(allow_null=True)
+    outlet = s.CharField(allow_null=True)
+
+
 class StaffRequest(CashbackRequest):
     outlet = s.CharField(allow_null=True)
     member = StaffMemberBrief()
@@ -379,6 +387,7 @@ class StaffRequest(CashbackRequest):
     rejectedBy = s.IntegerField(allow_null=True)
     adjustedBy = s.IntegerField(allow_null=True)
     isTest = s.BooleanField()
+    fiscalReceipt = FiscalReceipt(allow_null=True, help_text='Чек, по которому принята наличная оплата')
 
 
 # ---------------------------------------------------------------- оплата

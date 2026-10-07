@@ -124,3 +124,14 @@ class StaffRefreshToken(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     revoked_at = models.DateTimeField(null=True, blank=True)
+
+
+class StaffDevice(models.Model):
+    """Push-токен (FCM) приложения кассира: уведомления об онлайн-оплатах на его точках."""
+
+    staff = models.ForeignKey(StaffUser, on_delete=models.CASCADE, related_name='devices')
+    token = models.CharField(max_length=512, unique=True)
+    platform = models.CharField(max_length=10, choices=[('ios', 'ios'), ('android', 'android')])
+    app_version = models.CharField(max_length=20, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

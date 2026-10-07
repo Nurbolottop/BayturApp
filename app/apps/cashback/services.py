@@ -151,7 +151,19 @@ def create_request(member, data, idempotency_key=None):
         raise
 
     _after_change(req, 'request.created', wallet)
+    if req.method in ONLINE_METHODS:
+        transaction.on_commit(lambda: _notify_staff_paid_online(req.pk))
     return req, True
+
+
+def _notify_staff_paid_online(req_id):
+    from apps.notifications.tasks import notify_staff_paid_online_task
+    try:
+        notify_staff_paid_online_task.delay(req_id)
+    except Exception:
+        log.warning('broker unavailable, staff push inline')
+        from apps.notifications.services import notify_staff_paid_online
+        notify_staff_paid_online(req_id)
 
 
 # ---------------------------------------------------------------- переходы

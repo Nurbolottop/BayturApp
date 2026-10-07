@@ -202,6 +202,8 @@ def apply():
             choices=['not_provided', 'wrong_amount', 'duplicate', 'other']), 'comment': s.CharField(required=False)}),
         o.StaffRequest, errors=staff_err)
     brief = inline_serializer('StaffMemberCard', {**{k: v for k, v in o.StaffMemberBrief().fields.items()},
+                                                   'points': s.IntegerField(help_text='Доступно баллов'),
+                                                   'pointsSom': s.IntegerField(help_text='Доступно в сомах'),
                                                    'deletedNote': s.DateTimeField(allow_null=True),
                                                    'requests': o.StaffRequest(many=True)})
     doc(staffdesk.MemberSearchView, 'get', STAFF, 'Поиск клиента по memberId / телефону',
@@ -225,6 +227,17 @@ def apply():
                                        'limitPercent': s.IntegerField()}), errors=(400, 401, 403, 404, 422))
     doc(staffdesk.PayChargeView, 'post', STAFF, 'Оплата баллами: списать (payToken из /staff/scan, 10 мин)', pay_in,
         o.StaffRequest, status=201, errors=(400, 401, 403, 404, 422))
+    receipt_in = inline_serializer('ReceiptInput', {
+        'payToken': s.CharField(), 'itemId': s.CharField(), 'receiptQr': s.CharField(help_text='Текст QR чека'),
+        'requestId': s.CharField(required=False, help_text='Заявка клиента «наличными», к которой привязать чек')})
+    doc(staffdesk.ReceiptPreviewView, 'post', STAFF, 'Наличные: скан QR чека → сумма и кешбек (ничего не сохраняет)',
+        receipt_in, inline_serializer('ReceiptPreview', {
+            'itemId': s.CharField(), 'amount': s.IntegerField(), 'total': s.IntegerField(),
+            'quantity': s.IntegerField(), 'cashback': s.IntegerField(), 'rate': s.CharField(),
+            'receiptNumber': s.CharField(), 'requestId': s.CharField(allow_null=True)}),
+        errors=(400, 401, 403, 404, 409, 422))
+    doc(staffdesk.ReceiptAcceptView, 'post', STAFF, 'Наличные: «Принять оплату» по чеку — проводится сразу',
+        receipt_in, o.StaffRequest, status=201, errors=(400, 401, 403, 404, 409, 422))
     doc(staffdesk.ShiftView, 'get', STAFF, 'Итог смены',
         response=inline_serializer('Shift', {'date': s.DateField(), 'confirmed': o.StaffRequest(many=True),
                                              'rejected': o.StaffRequest(many=True), 'adjustedCount': s.IntegerField(),
@@ -236,6 +249,10 @@ def apply():
     doc(staff_auth.PinLoginView, 'post', STAFF, 'Вход администратора кассы: телефон + 6-значный PIN',
         inline_serializer('StaffPinLogin', {'phone': s.CharField(), 'pin': s.CharField()}), tokens, auth=False,
         errors=(400, 401, 429))
+    doc(staff_auth.DevicesView, 'post', STAFF, 'Push-токен приложения кассира (онлайн-оплаты своих точек)',
+        inline_serializer('StaffDeviceInput', {'token': s.CharField(), 'platform': s.ChoiceField(
+            choices=['ios', 'android']), 'appVersion': s.CharField(required=False)}), status=204)
+    doc(staff_auth.DeviceDeleteView, 'delete', STAFF, 'Отвязать push-токен', status=204)
     doc(staff_auth.PinChangeView, 'post', STAFF, 'Сменить свой PIN',
         inline_serializer('StaffPinChange', {'currentPin': s.CharField(), 'newPin': s.CharField()}),
         s.DictField(), errors=(400, 401))

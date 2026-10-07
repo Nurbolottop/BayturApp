@@ -339,3 +339,97 @@ def charge_points(request, pay_token, item_id, quantity=None, check_amount=None)
     audit(request, 'request.points_payment', req,
           after={'member': member.member_id, 'total': req.total, 'points': req.points})
     return req
+
+
+# ---------------------------------------------------------------- наличные по QR фискального чека
+
+def _receipt_used(key):
+    from .models import FiscalReceipt
+    used = FiscalReceipt.objects.select_related('accepted_by', 'outlet').filter(key=key).first()
+    if used is not None:
+        raise ApiError('receipt_used', 409, extra={
+            'acceptedAt': used.accepted_at.isoformat(), 'requestId': used.request_id,
+            'acceptedBy': getattr(used.accepted_by, 'full_name', '') or None,
+            'outlet': used.outlet_id})
+
+
+def _cash_input(item, amount):
+    """Сумма чека → ввод заявки: «по сумме чека» — сумма; фиксированная цена — количество, сумма должна делиться."""
+    if item.pricing_type == 'check':
+        return {'checkAmount': amount, 'quantity': None}
+    if not item.price or amount % item.price:
+        raise ApiError('receipt_amount_mismatch', 422, extra={'price': item.price, 'amount': amount})
+    return {'checkAmount': None, 'quantity': amount // item.price}
+
+
+def _client_cash_request(user, member, request_id, item_id):
+    """Заявка «наличными», которую клиент заранее создал в приложении, — чек привязывается к ней."""
+    req = get_scoped(user, request_id)
+    if req.member_id != member.pk or req.status != RequestStatus.PENDING or req.points:
+        raise ApiError('invalid_status', 409, extra={'status': req.status})
+    if str(req.item_id) != str(item_id):
+        raise ApiError('validation_error', 400, extra={'fields': {'itemId': ['не совпадает с заявкой клиента']}})
+    return req
+
+
+def receipt_preview(user, pay_token, item_id, receipt_qr, request_id=None):
+    """Что увидит сотрудник после скана чека: сумма, кешбек клиенту; чек ещё не принят."""
+    from django.utils import timezone as tz
+
+    from .calc import compute_split, compute_total, resolve_rules
+    from .receipts import parse_receipt
+    member = read_pay_token(user, pay_token)
+    receipt = parse_receipt(receipt_qr)
+    _receipt_used(receipt['key'])
+    item = _pay_item(user, item_id)
+    if request_id:
+        _client_cash_request(user, member, request_id, item_id)
+    rules = resolve_rules(item, member, ProgramSettings.get(), tz.now())
+    if 'cash' not in rules.methods:
+        raise ApiError('method_not_allowed', 422)
+    data = _cash_input(item, receipt['amount'])
+    total, quantity = compute_total(item, data['quantity'], data['checkAmount'])
+    split = compute_split(total, rules, 0, 0)
+    return {'itemId': item.pk, 'amount': receipt['amount'], 'total': total, 'quantity': quantity,
+            'cashback': split.cashback, 'rate': str(split.rate), 'receiptNumber': receipt['key'],
+            'requestId': request_id or None}
+
+
+def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None):
+    """
+    «Принять оплату» по чеку: операция проводится сразу (без очереди подтверждения), кешбек начисляется
+    клиенту. Чек запоминается — повторный скан даёт receipt_used.
+    """
+    from django.db import IntegrityError
+
+    from apps.catalog.models import PaymentMethod
+
+    from .models import FiscalReceipt
+    from .receipts import parse_receipt
+    user = request.user
+    member = read_pay_token(user, pay_token)
+    receipt = parse_receipt(receipt_qr)
+    _receipt_used(receipt['key'])
+    item = _pay_item(user, item_id)
+    check_not_own_member(user, member)
+    data = _cash_input(item, receipt['amount'])
+    try:
+        with transaction.atomic():
+            if request_id:
+                req = _client_cash_request(user, member, request_id, item_id)
+                if req.total != receipt['amount'] or req.method != PaymentMethod.CASH:
+                    req = services.adjust_request(req.pk, receipt['amount'], staff=user, reason='По фискальному чеку',
+                                                  expected_outlets=outlet_scope(user))
+            else:
+                req, _ = services.create_request(member, {
+                    'itemId': item.pk, 'quantity': data['quantity'], 'checkAmount': data['checkAmount'],
+                    'pointsSom': 0, 'method': PaymentMethod.CASH})
+            FiscalReceipt.objects.create(key=receipt['key'], raw=receipt['raw'], amount=receipt['amount'],
+                                         fields=receipt['fields'], request=req, outlet=req.outlet, accepted_by=user)
+            req = services.confirm_request(req.pk, staff=user, cash_received=True)
+    except IntegrityError:
+        _receipt_used(receipt['key'])  # параллельный приём того же чека
+        raise
+    audit(request, 'request.receipt_accepted', req,
+          after={'member': member.member_id, 'total': req.total, 'receipt': receipt['key'], 'cashback': req.cashback})
+    return req

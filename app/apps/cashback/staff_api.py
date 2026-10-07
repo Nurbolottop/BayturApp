@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 
 from apps.common.audit import audit
 from apps.common.i18n import iso
+from apps.common.models import ProgramSettings
 from apps.members.auth import read_member_qr
 from apps.members.models import MemberStatus
 from apps.staff.auth import HasPerm, StaffAuthentication
@@ -86,16 +87,20 @@ class RejectView(StaffAPIView):
 
 
 def member_brief(member, user):
-    """Клиент для сотрудника: без баланса и истории — только уровень и заявки в его точках."""
+    """Клиент для сотрудника: уровень, баланс баллов и заявки в его точках (без истории операций)."""
     from apps.loyalty.services import get_wallet
     reqs = scoped_requests(user).filter(member=member).order_by('-created_at')[:20]
+    wallet = get_wallet(member)
     return {
         'id': member.pk,
         'memberId': member.member_id,
         'name': member.full_name,
         'phone': mask_phone(member.phone),
-        'tier': get_wallet(member).tier_id,
+        'tier': wallet.tier_id,
         'status': member.status,
+        # сколько баллов клиент может потратить сейчас (без зарезервированных под заявки); 1 балл = 1 тыйын
+        'points': wallet.available,
+        'pointsSom': max(0, wallet.available) // ProgramSettings.get().points_per_som,
         'deletedNote': iso(member.purge_at) if member.status == MemberStatus.DEACTIVATED else None,
         'requests': [staff_request_payload(r) for r in reqs],
     }
@@ -176,4 +181,35 @@ class PayChargeView(StaffAPIView):
     def post(self, request):
         d = _pay_input(request)
         req = desk.charge_points(request, d['payToken'], d['itemId'], d.get('quantity'), d.get('checkAmount'))
+        return Response(payload(req), status=201)
+
+
+class ReceiptInput(serializers.Serializer):
+    payToken = serializers.CharField()
+    itemId = serializers.CharField()
+    receiptQr = serializers.CharField(max_length=2000)
+    requestId = serializers.CharField(required=False, allow_blank=True)
+
+
+def _receipt_input(request):
+    s = ReceiptInput(data=request.data)
+    s.is_valid(raise_exception=True)
+    return s.validated_data
+
+
+class ReceiptPreviewView(StaffAPIView):
+    """Скан QR чека: сумма и кешбек клиенту до «Принять оплату»; принятый ранее чек → receipt_used."""
+
+    def post(self, request):
+        d = _receipt_input(request)
+        return Response(desk.receipt_preview(request.user, d['payToken'], d['itemId'], d['receiptQr'],
+                                             d.get('requestId') or None))
+
+
+class ReceiptAcceptView(StaffAPIView):
+    """«Принять оплату» наличными по чеку: операция проведена сразу, кешбек начисляется клиенту."""
+
+    def post(self, request):
+        d = _receipt_input(request)
+        req = desk.receipt_accept(request, d['payToken'], d['itemId'], d['receiptQr'], d.get('requestId') or None)
         return Response(payload(req), status=201)

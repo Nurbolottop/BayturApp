@@ -26,3 +26,9 @@ def deliver_notification(notification_id):
     n = Notification.objects.select_related('member').filter(pk=notification_id, push_status='queued').first()
     if n:
         deliver(n)
+
+
+@shared_task
+def notify_staff_paid_online_task(request_id):
+    from .services import notify_staff_paid_online
+    return notify_staff_paid_online(request_id)

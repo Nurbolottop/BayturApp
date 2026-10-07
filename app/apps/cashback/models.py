@@ -113,3 +113,28 @@ class CashbackRequest(models.Model):
     @property
     def is_active(self):
         return self.status in ACTIVE_STATUSES
+
+
+class FiscalReceipt(models.Model):
+    """
+    Фискальный чек ГНС, принятый на кассе по QR: один чек — одна операция. Повторный скан того же чека
+    отклоняется (receipt_used) — защита от двойного начисления кешбека.
+    """
+
+    key = models.CharField('Номер чека', max_length=200, unique=True,
+                           help_text='Фискальные реквизиты из QR или хеш содержимого QR')
+    raw = models.TextField('Содержимое QR')
+    amount = models.PositiveIntegerField('Сумма, сом')
+    fields = models.JSONField('Распознанные поля', default=dict, blank=True)
+    request = models.OneToOneField(CashbackRequest, on_delete=models.PROTECT, related_name='fiscal_receipt')
+    outlet = models.ForeignKey('catalog.Outlet', null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    accepted_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT, related_name='+')
+    accepted_at = models.DateTimeField('Принят', default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ['-accepted_at']
+        verbose_name = 'Фискальный чек'
+        verbose_name_plural = 'Фискальные чеки'
+
+    def __str__(self):
+        return f'{self.key} · {self.amount} сом'

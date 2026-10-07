@@ -3284,6 +3284,160 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/staff/cash/accept:
+    post:
+      operationId: staff_cash_accept_create
+      description: '«Принять оплату» наличными по чеку: операция проведена сразу,
+        кешбек начисляется клиенту.'
+      summary: 'Наличные: «Принять оплату» по чеку — проводится сразу'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiptInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReceiptInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffRequest'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/cash/preview:
+    post:
+      operationId: staff_cash_preview_create
+      description: 'Скан QR чека: сумма и кешбек клиенту до «Принять оплату»; принятый
+        ранее чек → receipt_used.'
+      summary: 'Наличные: скан QR чека → сумма и кешбек (ничего не сохраняет)'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiptInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReceiptInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptPreview'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/staff/complaints:
     get:
       operationId: staff_complaints_list
@@ -3569,6 +3723,98 @@ paths:
               schema:
                 $ref: '#/components/schemas/StaffProfile'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/me/devices:
+    post:
+      operationId: staff_me_devices_create
+      description: POST {token, platform, appVersion} — push-токен приложения кассира
+        (после входа и при onTokenRefresh).
+      summary: Push-токен приложения кассира (онлайн-оплаты своих точек)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffDeviceInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffDeviceInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '204':
+          description: Без тела
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/me/devices/{token}:
+    delete:
+      operationId: staff_me_devices_destroy
+      summary: Отвязать push-токен
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - Сотрудник
+      security:
+      - staffBearer: []
+      responses:
+        '204':
+          description: Без тела
         '400':
           content:
             application/json:
@@ -5281,6 +5527,29 @@ components:
         * `warm` - warm
         * `tv` - tv
         * `flower` - flower
+    FiscalReceipt:
+      type: object
+      properties:
+        number:
+          type: string
+          description: Реквизиты чека из QR
+        amount:
+          type: integer
+        acceptedAt:
+          type: string
+          format: date-time
+        acceptedBy:
+          type: integer
+          nullable: true
+        outlet:
+          type: string
+          nullable: true
+      required:
+      - acceptedAt
+      - acceptedBy
+      - amount
+      - number
+      - outlet
     GoogleLoginRequest:
       type: object
       properties:
@@ -6297,6 +6566,56 @@ components:
       - at
       - id
       - method
+    ReceiptInputRequest:
+      type: object
+      properties:
+        payToken:
+          type: string
+          minLength: 1
+        itemId:
+          type: string
+          minLength: 1
+        receiptQr:
+          type: string
+          minLength: 1
+          description: Текст QR чека
+        requestId:
+          type: string
+          minLength: 1
+          description: Заявка клиента «наличными», к которой привязать чек
+      required:
+      - itemId
+      - payToken
+      - receiptQr
+    ReceiptPreview:
+      type: object
+      properties:
+        itemId:
+          type: string
+        amount:
+          type: integer
+        total:
+          type: integer
+        quantity:
+          type: integer
+        cashback:
+          type: integer
+        rate:
+          type: string
+        receiptNumber:
+          type: string
+        requestId:
+          type: string
+          nullable: true
+      required:
+      - amount
+      - cashback
+      - itemId
+      - quantity
+      - rate
+      - receiptNumber
+      - requestId
+      - total
     RefreshInputRequest:
       type: object
       properties:
@@ -6543,6 +6862,12 @@ components:
             админке)
         status:
           type: string
+        points:
+          type: integer
+          description: Доступно баллов
+        pointsSom:
+          type: integer
+          description: Доступно в сомах
         deletedNote:
           type: string
           format: date-time
@@ -6560,6 +6885,8 @@ components:
       - name
       - payToken
       - phone
+      - points
+      - pointsSom
       - requests
       - status
       - tier
@@ -6775,6 +7102,20 @@ components:
           minLength: 1
       required:
       - text
+    StaffDeviceInputRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+        platform:
+          $ref: '#/components/schemas/Platform'
+        appVersion:
+          type: string
+          minLength: 1
+      required:
+      - platform
+      - token
     StaffLoginRequest:
       type: object
       properties:
@@ -6847,6 +7188,12 @@ components:
             админке)
         status:
           type: string
+        points:
+          type: integer
+          description: Доступно баллов
+        pointsSom:
+          type: integer
+          description: Доступно в сомах
         deletedNote:
           type: string
           format: date-time
@@ -6861,6 +7208,8 @@ components:
       - memberId
       - name
       - phone
+      - points
+      - pointsSom
       - requests
       - status
       - tier
@@ -7042,6 +7391,11 @@ components:
           nullable: true
         isTest:
           type: boolean
+        fiscalReceipt:
+          allOf:
+          - $ref: '#/components/schemas/FiscalReceipt'
+          nullable: true
+          description: Чек, по которому принята наличная оплата
       required:
       - adjustReason
       - adjustedBy
@@ -7053,6 +7407,7 @@ components:
       - createdAt
       - escalated
       - escalationReason
+      - fiscalReceipt
       - id
       - isTest
       - item

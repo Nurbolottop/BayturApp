@@ -18,6 +18,12 @@
         <dt>Истекает</dt><dd class="tabular">{{ req.expires_at|local }}</dd>
       </dl>
     </div>
+    {% with fr=req.fiscal_receipt %}{% if fr %}
+    <div class="card appear"><div class="h3" style="margin-bottom:12px">Фискальный чек</div>
+      <dl class="kv"><dt>Номер</dt><dd class="tabular" style="overflow-wrap:anywhere">{{ fr.key }}</dd>
+        <dt>Сумма</dt><dd>{{ fr.amount|som }}</dd><dt>Принял</dt><dd>{{ fr.accepted_by.full_name|default:"—" }}</dd>
+        <dt>Когда</dt><dd class="tabular">{{ fr.accepted_at|local }}</dd></dl></div>
+    {% endif %}{% endwith %}
     {% if payment %}
     <div class="card appear"><div class="row-between"><div class="h3">Платёж</div>{% pill 'payment' payment.status %}</div>
       <dl class="kv" style="margin-top:12px"><dt>ID</dt><dd><a href="{% url 'panel:payment' payment.pk %}" class="tabular">{{ payment.pk }}</a></dd><dt>Сумма</dt><dd>{{ payment.amount|som }}</dd><dt>Возвращено</dt><dd>{{ payment.refunded_amount|som }}</dd></dl></div>
