@@ -8,14 +8,26 @@ from apps.common.testing import BaseAPITestCase
 from apps.members.auth import make_member_qr
 
 S = '/api/v1/staff'
-GNS_QR = 'https://tax.salyk.kg/tax-web-control/client/api/v1/ticket?date=20261008T1215&fn=0000123&fd=4567&fm=998877&sum=2500.00'
+GNS_QR = ('https://tax.salyk.kg/tax-web-control/client/ticket?tin=21804199500937&fn_number=0000000002300267'
+          '&fd_number=99340&type=1&date=20261008T030337&sum=250000')  # 2500,00 сом в тыйынах
 
 
 class ParseReceiptTests(BaseAPITestCase):
-    def test_url_with_fiscal_ids(self):
+    def test_salyk_receipt_sum_in_tyiyn(self):
         r = parse_receipt(GNS_QR)
         self.assertEqual(r['amount'], 2500)
-        self.assertEqual(r['key'], 'date=20261008T1215|fd=4567|fm=998877|fn=0000123')
+        self.assertEqual(r['key'], 'salyk:21804199500937:0000000002300267:99340')
+        # реальный чек с фото: ИТОГО 240,00 → sum=24000
+        r = parse_receipt('https://tax.salyk.kg/x?tin=21804199500937&fn_number=0000000002300267&fd_number=99340'
+                          '&type=1&sum=24000')
+        self.assertEqual(r['amount'], 240)
+        self.assertEqual(parse_receipt('https://tax.salyk.kg/x?tin=1&fn_number=2&fd_number=3&sum=24050')['amount'], 241)
+
+    def test_salyk_needs_ids_and_integer_sum(self):
+        for raw in ('https://tax.salyk.kg/x?tin=1&fn_number=2&sum=24000',      # нет ФД
+                    'https://tax.salyk.kg/x?tin=1&fn_number=2&fd_number=3&sum=abc'):
+            with self.assertRaises(ApiError, msg=raw):
+                parse_receipt(raw)
 
     def test_plain_pairs_and_rounding(self):
         r = parse_receipt('t=20261008T1215&s=1499,50&fn=111&i=22&fp=333&n=1')

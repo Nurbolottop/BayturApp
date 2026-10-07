@@ -1,9 +1,12 @@
 """
 Разбор QR фискального чека ГНС КР: сумма оплаты и реквизиты чека (для защиты от повторного приёма).
 
-Точный формат QR будет уточнён по образцу реального чека. Пока разбор гибкий: QR — ссылка на проверку
-чека или строка вида key=value&key=value; сумма ищется по типичным именам параметров, номер чека — по
-фискальным реквизитам (ФН/ФМ/ФД/ФП), а если их нет — берётся хеш всего содержимого QR.
+QR чека ККМ — ссылка на проверку чека в налоговой: https://tax.salyk.kg/...?tin=…&fn_number=…&fd_number=…
+&type=…&date=…&sum=… . sum — ЦЕЛОЕ число в тыйынах (API налоговой принимает только Long): 24000 = 240,00 сом.
+Чек однозначно определяют ИНН продавца + номер фискального модуля + номер фискального документа.
+
+Для других форматов (строка key=value, другие имена полей) разбор гибкий: сумма — по типичным именам,
+номер — по фискальным реквизитам, иначе — хеш всего содержимого QR.
 """
 import hashlib
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -36,12 +39,31 @@ def _amount(value):
     return int(amount.quantize(Decimal('1'), rounding=ROUND_HALF_UP))  # тыйыны округляются до сома
 
 
+def _salyk(raw, fields):
+    """Чек ГНС КР (tax.salyk.kg): сумма в тыйынах, номер — ИНН + ФМ + ФД."""
+    host = (urlsplit(raw).hostname or '').lower() if '://' in raw else ''
+    if not (host == 'salyk.kg' or host.endswith('.salyk.kg')) or 'sum' not in fields:
+        return None
+    value = fields['sum'].strip()
+    amount = _amount(value) if any(ch in value for ch in '.,') else (_amount(Decimal(value) / 100)
+                                                                       if value.isdigit() else None)
+    if amount is None:
+        raise ApiError('receipt_unreadable', 422)
+    ids = [fields.get(k, '').strip() for k in ('tin', 'fn_number', 'fd_number')]
+    if not all(ids):
+        raise ApiError('receipt_unreadable', 422)
+    return {'key': 'salyk:' + ':'.join(ids), 'amount': amount, 'fields': fields, 'raw': raw}
+
+
 def parse_receipt(raw):
     """→ {'key', 'amount', 'fields', 'raw'}; ApiError('receipt_unreadable') — если суммы в QR нет."""
     raw = (raw or '').strip()
     if not raw or len(raw) > MAX_QR_LENGTH:
         raise ApiError('receipt_unreadable', 422)
     fields = {k.strip().lower(): v.strip() for k, v in _pairs(raw) if k.strip()}
+    salyk = _salyk(raw, fields)
+    if salyk is not None:
+        return salyk
     amount = next((a for a in (_amount(fields[k]) for k in AMOUNT_KEYS if k in fields) if a), None)
     if amount is None:
         raise ApiError('receipt_unreadable', 422)
