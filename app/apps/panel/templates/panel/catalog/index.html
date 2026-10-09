@@ -15,7 +15,7 @@
       <div class="row" style="gap:14px">
         <div class="thumb" style="width:56px;height:56px;border-radius:16px;background:var(--fill) url('{{ g.cat.cover|media }}') center/cover"></div>
         <div><div class="h3">{{ g.cat.title|tr }} {% if not g.cat.is_active %}<span class="pill pill-muted">скрыт</span>{% endif %}</div>
-          <div class="row wrap small muted tabular" style="margin-top:4px"><span class="tag accent">кешбек {{ g.cat.rate|pct }}</span><span>{{ g.cat.methods|join:" · " }}</span></div></div>
+          <div class="row wrap small muted tabular" style="margin-top:4px"><span>{{ g.cat.methods|join:" · " }}</span></div></div>
       </div>
       <div class="row">{% if can_edit %}<a class="btn btn-s" href="{% url 'panel:item-new' %}?category={{ g.cat.pk }}">{% icon 'plus' 16 %}</a>{% endif %}<a class="btn btn-s" href="{% url 'panel:category' g.cat.pk %}">{% icon 'edit' 16 %} Правила</a></div>
     </div>

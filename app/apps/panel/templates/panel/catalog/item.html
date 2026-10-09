@@ -102,7 +102,9 @@
 window.PREVIEW = {
   render: function (screen, h) {
     var rates = JSON.parse(document.getElementById('category-rates').textContent);
-    var price = parseInt(h.val('price') || 0, 10), rate = parseFloat('{{ promo_rate }}' || rates[h.val('category')] || 0);
+    // как в приложении: базовая ставка (Бронза) или ставка акции, если она выше; надбавка уровня — у клиента
+    var price = parseInt(h.val('price') || 0, 10),
+        rate = Math.max(parseFloat('{{ promo_rate }}' || 0), parseFloat(rates[h.val('category')] || 0));
     var cb = screen.querySelector('[data-p-cashback]');
     cb.textContent = '+' + h.fmt(Math.round(price * rate * {{ points_per_som }})) + ' баллов';
     var units = { night: 'за ночь', session: 'за сеанс', guest: 'за гостя', hour: 'за час', visit: 'за посещение' };
