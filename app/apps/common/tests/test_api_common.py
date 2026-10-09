@@ -44,6 +44,12 @@ class CommonApiTests(BaseAPITestCase):
         self.assertEqual(len(program['privileges']), 21)
         late = next(p for p in program['privileges'] if p['group'] == 'late-checkout')
         self.assertEqual(late['groupTitle'], 'Поздний выезд')
+        from apps.loyalty.models import Privilege
+        Privilege.objects.filter(pk='bai-club-platinum').update(group_title={})
+        from django.core.cache import cache
+        cache.clear()  # программа кешируется
+        club = next(p for p in self.api.get('/api/v1/loyalty/program').json()['privileges'] if p['id'] == 'bai-club-platinum')
+        self.assertEqual(club['groupTitle'], 'Доступ в Bai Club')   # без названия группы — название привилегии
         self.assertEqual(len(self.api.get('/api/v1/content/promos').json()), 5)
 
     def test_bad_token_on_public_endpoint_is_ignored(self):
