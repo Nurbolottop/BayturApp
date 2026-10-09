@@ -18,7 +18,7 @@ class LegalPagesTests(BaseAPITestCase):
             self.assertContains(r, 'Freedom Pay')
             self.assertNotContains(r, '{phone}')
         r = self.client.get('/legal/terms?lang=ru')
-        self.assertContains(r, '1 балл = 1 сом')
+        self.assertContains(r, '10 баллов = 1 сом')
         self.assertContains(r, '<h2>Уровни</h2>', html=True)
         self.assertEqual(self.client.get('/legal/deletion').status_code, 404)
 

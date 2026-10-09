@@ -54,7 +54,7 @@ class DeskReceiptTests(BaseAPITestCase):
             cats.save()
         self.cashier = self.make_staff('staff', outlets=[self.item.outlet])
         self.client_ = self.staff_client(self.cashier)
-        self.member = self.make_member('+996555101010', points=5_000)
+        self.member = self.make_member('+996555101010', points=50_000)
 
     def scan(self):
         token, _ = make_member_qr(self.member)
@@ -64,8 +64,8 @@ class DeskReceiptTests(BaseAPITestCase):
 
     def test_scan_shows_points(self):
         d = self.scan()
-        self.assertEqual(d['points'], 5_000)
-        self.assertEqual(d['pointsSom'], 5_000)       # 1 балл = 1 сом
+        self.assertEqual(d['points'], 50_000)
+        self.assertEqual(d['pointsSom'], 5_000)       # 10 баллов = 1 сом
         self.assertIn('payToken', d)
 
     def test_preview_accept_and_duplicate(self):

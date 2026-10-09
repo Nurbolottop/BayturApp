@@ -477,4 +477,4 @@ class WalletApiTests(LoyaltyCase):
         program = self.api.get('/api/v1/loyalty/program').json()
         self.assertEqual([a['id'] for a in program['achievements']], ['rich'])
         self.assertEqual(program['settings'], {'periodType': 'calendar_year', 'floorDepth': 1,
-                                               'baseCashbackRate': 0.05, 'pointsPerSom': 1})
+                                               'baseCashbackRate': 0.05, 'pointsPerSom': 10})

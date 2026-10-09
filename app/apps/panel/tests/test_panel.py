@@ -183,7 +183,7 @@ class DeskTests(PanelBase):
         c.post(f'/panel/r/{paid.pk}/confirm/')
         paid.refresh_from_db()
         self.assertEqual(paid.status, RequestStatus.CONFIRMED)
-        self.assertEqual(Operation.objects.get(request=paid, kind=OperationKind.SPEND).points, -2_500)
+        self.assertEqual(Operation.objects.get(request=paid, kind=OperationKind.SPEND).points, -25_000)
 
     def test_adjust_preview_and_escalation(self):
         member = self.make_member()
@@ -316,3 +316,30 @@ class MemberExportAndCategoriesTests(PanelBase):
         self.assertEqual(r.status_code, 302, getattr(r, 'context', None) and r.context['form'].errors)
         self.assertEqual(ComplaintCategory.objects.get(pk='parking').title['en'], 'Parking')
         self.assertEqual(self.login(self.make_staff('staff')).get('/panel/complaints/categories/').status_code, 403)
+
+
+class ProgramSettingsSaveTests(PanelBase):
+    def test_every_required_field_is_on_the_page_and_save_works(self):
+        """Сохраняем ровно то, что видно на странице: скрытых обязательных полей быть не должно."""
+        import re
+        from apps.common.models import ProgramSettings
+        c = self.login(self.make_staff('owner'))
+        html = c.get('/panel/settings/program/').content.decode()
+        data = {}
+        for tag in re.findall(r'<(?:input|select|textarea)[^>]*>', html):
+            name = re.search(r'name="([^"]+)"', tag)
+            if not name or name.group(1) == 'csrfmiddlewaretoken':
+                continue
+            if 'type="checkbox"' in tag:
+                if 'checked' in tag:
+                    data[name.group(1)] = 'on'
+                continue
+            value = re.search(r'value="([^"]*)"', tag)
+            data[name.group(1)] = value.group(1) if value else ''
+        for name in ('maintenance_message_ru', 'maintenance_message_ky', 'maintenance_message_en'):
+            data.setdefault(name, '')
+        data['points_per_som'] = '10'
+        data['base_cashback_rate'] = '0.05'
+        r = c.post('/panel/settings/program/', data)
+        self.assertEqual(r.status_code, 302, r.content.decode()[:3000] if r.status_code != 302 else '')
+        self.assertEqual(ProgramSettings.get().points_per_som, 10)

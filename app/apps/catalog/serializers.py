@@ -10,7 +10,7 @@ def cashback_preview(item, now=None, ps=None):
     ps = ps or ProgramSettings.get()
     promo = item.promo_rate(now)
     rate = max(Decimal(ps.base_cashback_rate), Decimal(promo) if promo is not None else Decimal(0))
-    return round_half_up(Decimal(item.price) * rate * ps.points_per_som)
+    return round_half_up(Decimal(item.price) * rate)  # баллы за деньги; курс оплаты баллами не участвует
 
 
 def pricing_payload(item):

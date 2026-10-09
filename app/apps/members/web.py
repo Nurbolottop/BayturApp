@@ -95,6 +95,6 @@ def legal_page(request, kind):
         raise Http404
     ps = ProgramSettings.get()
     title, html = render_legal_text(text, {'phone': ps.resort_phone, 'whatsapp': ps.resort_whatsapp.lstrip('+'),
-                                           'purge_days': ps.purge_days})
+                                           'purge_days': ps.purge_days, 'points_per_som': ps.points_per_som})
     return render(request, 'members/legal.html', {
         'lang': lang, 'kind': kind, 'title': title, 'html': mark_safe(html), 'doc': doc})

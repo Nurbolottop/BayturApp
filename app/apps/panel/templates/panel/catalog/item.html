@@ -106,7 +106,7 @@ window.PREVIEW = {
     var price = parseInt(h.val('price') || 0, 10),
         rate = Math.max(parseFloat('{{ promo_rate }}' || 0), parseFloat(rates[h.val('category')] || 0));
     var cb = screen.querySelector('[data-p-cashback]');
-    cb.textContent = '+' + h.fmt(Math.round(price * rate * {{ points_per_som }})) + ' баллов';
+    cb.textContent = '+' + h.fmt(Math.round(price * rate)) + ' баллов';
     var units = { night: 'за ночь', session: 'за сеанс', guest: 'за гостя', hour: 'за час', visit: 'за посещение' };
     screen.querySelector('[data-p-unit]').textContent = h.val('pricing_type') === 'check' ? 'по чеку' : (units[h.val('pricing_unit')] || '');
     var feats = []; try { feats = JSON.parse(h.val('features') || '[]'); } catch (e) {}

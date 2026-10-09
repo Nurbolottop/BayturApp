@@ -1,7 +1,7 @@
 """
 Черновики документов мобильного приложения (07.10.2026) — составлены по фактической работе бэкенда.
 Перед публикацией в сторах текст должен проверить юрист курорта; правится в панели (Настройки → Документы).
-Разметка: «## Заголовок», «- пункт», пустая строка — новый абзац. Подстановки: {phone}, {whatsapp}, {purge_days}.
+Разметка: «## Заголовок», «- пункт», пустая строка — новый абзац. Подстановки: {phone}, {whatsapp}, {purge_days}, {points_per_som}.
 """
 
 PRIVACY = {
@@ -139,7 +139,7 @@ TERMS = {
 - Один номер телефона — один аккаунт. Передавать аккаунт другим лицам нельзя.
 
 ## Баллы
-- Курс: 1 балл = 1 сом.
+- При оплате баллами: {points_per_som} баллов = 1 сом (курс задаёт курорт).
 - Баллы начисляются за услуги курорта (кешбек) только с части, оплаченной деньгами: базовая ставка — 5 % от суммы, на более высоких уровнях к ней добавляется надбавка. Ставка вашего уровня показывается в приложении до отправки заявки.
 - В день рождения и в дни акций кешбек может быть выше — условия показываются в приложении.
 - Баллы начисляются после того, как сотрудник курорта подтвердит заявку.
@@ -180,7 +180,7 @@ These terms set out the rules of the BAYTUR resort loyalty programme in the mobi
 - One phone number — one account. Accounts may not be transferred to others.
 
 ## Points
-- Rate: 1 point = 1 KGS.
+- When paying with points: {points_per_som} points = 1 KGS (the rate is set by the resort).
 - Points (cashback) are earned for resort services only on the part paid with money: the base rate is 5% of the amount, and higher tiers add a bonus on top. Your tier's rate is shown in the app before you send a request.
 - On your birthday and during promotions cashback may be higher — the conditions are shown in the app.
 - Points are credited after a resort employee confirms the request.
@@ -221,7 +221,7 @@ Phone {phone}, WhatsApp +{whatsapp}, or the Support section in the app.""",
 - Бир телефон номери — бир аккаунт. Аккаунтту башка адамдарга өткөрүүгө болбойт.
 
 ## Упайлар
-- Курс: 1 упай = 1 сом.
+- Упай менен төлөгөндө: {points_per_som} упай = 1 сом (курсту курорт белгилейт).
 - Упайлар (кешбек) курорттун кызматтары үчүн акча менен төлөнгөн бөлүгүнөн гана чегерилет: негизги чен — сумманын 5 %, жогорку деңгээлдерде ага кошумча кошулат. Деңгээлиңиздин чени өтүнмө жөнөтүлгөнгө чейин тиркемеде көрсөтүлөт.
 - Туулган күнүңүздө жана акция күндөрүндө кешбек жогору болушу мүмкүн — шарттары тиркемеде көрсөтүлөт.
 - Упайлар курорттун кызматкери өтүнмөнү ырастагандан кийин чегерилет.

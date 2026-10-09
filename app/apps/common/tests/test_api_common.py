@@ -19,7 +19,7 @@ class CommonApiTests(BaseAPITestCase):
         self.assertEqual(cats[3]['rules']['methods'], ['cash', 'finik', 'elqr'])
         item = next(i for i in cats[1]['items'] if i['id'] == 'spa-bochka')
         self.assertEqual(item['promoRate'], 0.14)
-        self.assertEqual(item['cashbackPreview'], 350)   # 2 500 × 14 % (акция), 1 балл = 1 сом
+        self.assertEqual(item['cashbackPreview'], 350)   # 2 500 × 14 % (акция)
         self.assertTrue(item['image'].startswith('https://api.test/'))
         self.assertEqual(r['Cache-Control'], 'public, max-age=300')
         r2 = self.api.get('/api/v1/catalog', HTTP_ACCEPT_LANGUAGE='en', HTTP_IF_NONE_MATCH=r['ETag'])

@@ -18,9 +18,12 @@ class ProgramSettings(models.Model):
     CACHE_KEY = 'program_settings'
 
     # Курс и кешбек
-    points_per_som = models.PositiveIntegerField('Баллов за 1 сом', default=1)
-    base_cashback_rate = models.DecimalField('Базовая ставка кешбека (0.05 = 5 % = 10/200)', max_digits=6,
-                                             decimal_places=4, default=Decimal('0.05'))
+    points_per_som = models.PositiveIntegerField('Оплата баллами: баллов за 1 сом', default=10,
+                                                 help_text='Курс списания при оплате баллами. На начисление не влияет')
+    base_cashback_rate = models.DecimalField('Начисление: баллов за 1 сом оплаты деньгами (Бронза)', max_digits=6,
+                                             decimal_places=4, default=Decimal('0.05'),
+                                             help_text='0.05 = 10/200: за 100 000 сом — 5 000 баллов; надбавка '
+                                                       'уровня умножает (Уровни → «Надбавка к кешбеку»)')
     birthday_multiplier = models.DecimalField('Множитель дня рождения', max_digits=4, decimal_places=2, default=2)
     birthday_days_before = models.PositiveSmallIntegerField('Окно ДР: дней до', default=3)
     birthday_days_after = models.PositiveSmallIntegerField('Окно ДР: дней после', default=3)

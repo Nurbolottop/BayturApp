@@ -152,9 +152,9 @@ def _rate(tier):
             'icon': 'cashback',
             'title': L('Начисление {rate}% баллами', '{rate}% упай кешбеги', '{rate}% back in points'),
             'short': L('{rate}%', '{rate}%', '{rate}%'),
-            'description': L('С каждой оплаты деньгами возвращается {rate}% баллами (1 балл = 1 сом).',
-                             'Акча менен ар бир төлөмдөн {rate}% упай кайтат (1 упай = 1 сом).',
-                             '{rate}% of every money payment comes back in points (1 point = 1 KGS).'),
+            'description': L('С каждой оплаты деньгами возвращается {rate}% баллами.',
+                             'Акча менен ар бир төлөмдөн {rate}% упай кайтат.',
+                             '{rate}% of every money payment comes back in points.'),
             'footnote': _NO_NOTE}
 
 

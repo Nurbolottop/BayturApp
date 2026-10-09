@@ -563,7 +563,8 @@ class ProgramSettingsForm(forms.ModelForm):
                    'quiet_hours_end': forms.TimeInput(attrs={'type': 'time'}, format='%H:%M')}
 
     GROUPS = [
-        ('Курс и кешбек', ['points_per_som', 'birthday_multiplier', 'birthday_days_before', 'birthday_days_after']),
+        ('Курс и кешбек', ['points_per_som', 'base_cashback_rate', 'birthday_multiplier', 'birthday_days_before',
+                           'birthday_days_after']),
         ('Жизненный цикл заявки', ['auto_confirm', 'auto_confirm_cash', 'confirm_delay_ms', 'credit_delay_ms',
                                    'pending_ttl_hours', 'staff_adjust_threshold_percent',
                                    'staff_cashback_limit_points']),
