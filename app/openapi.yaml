@@ -5768,12 +5768,10 @@ components:
       - null
     OnlinePaymentMethod:
       enum:
-      - finik
       - freedomPay
       - elqr
       type: string
       description: |-
-        * `finik` - finik
         * `freedomPay` - freedomPay
         * `elqr` - elqr
     Operation:

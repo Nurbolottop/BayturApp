@@ -22,7 +22,10 @@ class PaymentMethod(models.TextChoices):
     ELQR = 'elqr', 'ЭлQR'
 
 
-ONLINE_METHODS = {PaymentMethod.FINIK, PaymentMethod.FREEDOM_PAY, PaymentMethod.ELQR}
+# Finik отключён (10.10.2026): остаётся только в старых заявках и отчётах, новых платежей и заявок с ним нет
+DISABLED_METHODS = {PaymentMethod.FINIK}
+ONLINE_METHODS = {PaymentMethod.FREEDOM_PAY, PaymentMethod.ELQR}
+ACTIVE_METHOD_CHOICES = [(v, label) for v, label in PaymentMethod.choices if v not in DISABLED_METHODS]
 
 
 class PricingUnit(models.TextChoices):

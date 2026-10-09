@@ -59,7 +59,7 @@ class FreedomPayTests(BaseAPITestCase):
         self.assertTrue(sent['pg_description'].startswith('BAYTUR: ') and sent['pg_description'].endswith(' × 2'))
 
     def test_other_methods_stay_on_backend(self):
-        self.assertTrue(self.pay(method='finik').json()['redirectUrl'].endswith('/checkout'))
+        self.assertTrue(self.pay(method='elqr').json()['qrPayload'])
         self.post.assert_not_called()
 
     def test_init_error_returns_503(self):

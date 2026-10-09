@@ -8,7 +8,7 @@ from decimal import Decimal
 from django import forms
 from django.core.exceptions import ValidationError
 
-from apps.catalog.models import FEATURE_ICONS, Category, Item, ItemPromo, Outlet, PaymentMethod
+from apps.catalog.models import ACTIVE_METHOD_CHOICES, FEATURE_ICONS, Category, Item, ItemPromo, Outlet, PaymentMethod
 from apps.common.i18n import LANGS
 from apps.common.models import ProgramSettings
 from apps.complaints.models import ComplaintCategory, ReplyTemplate
@@ -180,7 +180,7 @@ class PanelForm:
 
 class CategoryForm(PanelForm, forms.ModelForm):
     title = L10nField(label='Название')
-    methods = forms.MultipleChoiceField(label='Способы доплаты', choices=PaymentMethod.choices,
+    methods = forms.MultipleChoiceField(label='Способы доплаты', choices=ACTIVE_METHOD_CHOICES,
                                         widget=forms.CheckboxSelectMultiple, required=False)
 
     class Meta:

@@ -19,7 +19,7 @@ from .models import Payment, PaymentStatus
 
 
 class PaymentInput(serializers.Serializer):
-    method = serializers.ChoiceField(choices=[PaymentMethod.FINIK, PaymentMethod.FREEDOM_PAY, PaymentMethod.ELQR])
+    method = serializers.ChoiceField(choices=[PaymentMethod.FREEDOM_PAY, PaymentMethod.ELQR])  # Finik отключён
     amountSom = serializers.IntegerField(min_value=1)
     itemId = serializers.CharField(max_length=60)
     quantity = serializers.IntegerField(required=False, allow_null=True, min_value=0)

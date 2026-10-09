@@ -19,8 +19,8 @@ OUTLETS = [
     ('sport', L('Спорт', 'Спорт', 'Sport'), 6),
 ]
 
-ALL_METHODS = ['cash', 'finik', 'freedomPay', 'elqr']
-LIMITED_METHODS = ['cash', 'finik', 'elqr']
+ALL_METHODS = ['cash', 'freedomPay', 'elqr']
+LIMITED_METHODS = ['cash', 'elqr']
 
 # id, title, sort, rate, maxPointsShare, methods — значения из ТЗ §3.1
 CATEGORIES = [

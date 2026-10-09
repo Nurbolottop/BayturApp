@@ -1,4 +1,4 @@
-from apps.cashback.calc import round_half_up
+from apps.cashback.calc import active_methods, round_half_up
 from apps.common.i18n import tr
 from apps.common.media import absolute_media_url
 from apps.common.models import ProgramSettings
@@ -54,7 +54,7 @@ def rules_payload(category):
     return {
         'rate': float(ProgramSettings.get().base_cashback_rate),
         'maxPointsShare': 1.0,  # устарело: лимита доли нет, баллами — только вся сумма
-        'methods': list(category.methods),
+        'methods': active_methods(category.methods),
     }
 
 

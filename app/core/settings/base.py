@@ -280,7 +280,7 @@ SPECTACULAR_SETTINGS = {
         'PerkIcon': 'apps.loyalty.models.PERK_ICONS',
         'RequestStatus': ['pending', 'confirmed', 'credited', 'rejected', 'cancelled'],
         'PaymentStatus': ['created', 'pending', 'paid', 'failed', 'expired', 'refunded'],
-        'OnlinePaymentMethod': ['finik', 'freedomPay', 'elqr'],
+        'OnlinePaymentMethod': ['freedomPay', 'elqr'],
         'ComplaintStatus': ['new', 'in_progress', 'answered', 'closed'],
         'ComplaintSubtype': ['not_credited', 'credited_less', 'overcharged', 'other'],
         'Language': ['ru', 'ky', 'en'],

@@ -26,7 +26,7 @@ class QuoteTests(BaseAPITestCase):
         self.assertEqual(r.json()['error']['code'], 'auth_required')
 
     def test_quote_spec_example(self):
-        r = self.api.post(f'{URL}/quote', {'itemId': 'spa-bochka', 'quantity': 2, 'method': 'finik'}, format='json')
+        r = self.api.post(f'{URL}/quote', {'itemId': 'spa-bochka', 'quantity': 2, 'method': 'freedomPay'}, format='json')
         self.assertEqual(r.status_code, 200, r.content)
         d = r.json()
         self.assertEqual((d['total'], d['pointsSom'], d['points'], d['moneySom'], d['cashback']),
@@ -121,7 +121,8 @@ class CreateRequestTests(BaseAPITestCase):
             (dict(itemId='pools-thermal', quantity=1, method='freedomPay'), 422, 'method_not_allowed'),
             (dict(itemId='spa-stone', quantity=11, method='cash'), 422, 'amount_out_of_range'),
             (dict(itemId='nope', quantity=1, method='cash'), 404, 'item_not_found'),
-            (dict(itemId='spa-stone', quantity=1, method='finik'), 422, 'payment_invalid'),
+            (dict(itemId='spa-stone', quantity=1, method='freedomPay'), 422, 'payment_invalid'),
+            (dict(itemId='spa-stone', quantity=1, method='finik'), 422, 'method_not_allowed'),  # Finik отключён
             (dict(itemId='spa-stone', quantity=1), 422, 'method_not_allowed'),
         ]
         for data, status, code in cases:

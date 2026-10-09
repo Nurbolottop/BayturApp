@@ -411,7 +411,7 @@ class StaffRequest(CashbackRequest):
 # ---------------------------------------------------------------- оплата
 
 class PaymentInput(s.Serializer):
-    method = s.ChoiceField(choices=['finik', 'freedomPay', 'elqr'])
+    method = s.ChoiceField(choices=['freedomPay', 'elqr'])
     amountSom = s.IntegerField()
     itemId = s.CharField()
     quantity = s.IntegerField(required=False, allow_null=True)

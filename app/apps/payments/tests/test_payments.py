@@ -17,7 +17,7 @@ class PaymentFlowTests(BaseAPITestCase):
         self.member = self.make_member(points=500_000)
         self.auth(self.member)
 
-    def pay(self, amount=7000, method='finik', **extra):
+    def pay(self, amount=7000, method='freedomPay', **extra):
         data = {'method': method, 'amountSom': amount, 'itemId': 'spa-stone', 'quantity': 2, **extra}
         return self.api.post('/api/v1/payments', data, format='json')
 
@@ -31,6 +31,9 @@ class PaymentFlowTests(BaseAPITestCase):
         r = self.pay(amount=5000)
         self.assertEqual(r.json()['error']['code'], 'payment_invalid')
         self.assertEqual(r.json()['error']['moneySom'], 7000)
+
+    def test_finik_disabled(self):
+        self.assertEqual(self.pay(method='finik').status_code, 400)
 
     def test_partial_points_rejected(self):
         r = self.pay(amount=5500, pointsSom=1500)
@@ -50,13 +53,13 @@ class PaymentFlowTests(BaseAPITestCase):
         self.assertEqual(WebhookEvent.objects.count(), 1)
         self.assertEqual(self.api.get(f'/api/v1/payments/{p["id"]}').json()['status'], 'paid')
         r = self.api.post('/api/v1/cashback-requests', {'itemId': 'spa-stone', 'quantity': 2, 
-                                                       'method': 'finik', 'paymentId': p['id']}, format='json')
+                                                       'method': 'freedomPay', 'paymentId': p['id']}, format='json')
         self.assertEqual(r.status_code, 201, r.content)
         req = r.json()
         self.assertEqual(req['receipt']['amount'], 7000)
         # платёж нельзя привязать ко второй заявке
         r2 = self.api.post('/api/v1/cashback-requests', {'itemId': 'spa-stone', 'quantity': 2, 
-                                                        'method': 'finik', 'paymentId': p['id']}, format='json')
+                                                        'method': 'freedomPay', 'paymentId': p['id']}, format='json')
         self.assertEqual(r2.json()['error']['code'], 'payment_invalid')
         with self.captureOnCommitCallbacks(execute=True):
             cs.reject_request(req['id'], code='not_provided')
@@ -72,7 +75,7 @@ class PaymentFlowTests(BaseAPITestCase):
         p = self.pay().json()
         self.webhook(p)
         req, _ = cs.create_request(self.member, {'itemId': 'spa-stone', 'quantity': 2, 
-                                                 'method': 'finik', 'paymentId': p['id']})
+                                                 'method': 'freedomPay', 'paymentId': p['id']})
         with self.captureOnCommitCallbacks(execute=True):
             cs.adjust_request(req.pk, 6000)          # деньгами 6 000 вместо 7 000
         self.assertEqual(Payment.objects.get(pk=p['id']).refunded_amount, 1000)

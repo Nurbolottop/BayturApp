@@ -93,6 +93,12 @@ def tier_bonus_for(member):
     return tier, Decimal(tier.cashback_bonus if tier is not None else 0)
 
 
+def active_methods(methods):
+    """Способы оплаты раздела без отключённых (Finik)."""
+    from apps.catalog.models import DISABLED_METHODS
+    return [m for m in methods if m not in DISABLED_METHODS]
+
+
 def resolve_rules(item, member, settings, at):
     """
     Ставка кешбека: база (единая для всех услуг, по умолчанию 10/200 = 5 %); акция услуги или ×N в день рождения
@@ -123,7 +129,7 @@ def resolve_rules(item, member, settings, at):
     rate = min(rate, Decimal('1'))
     # Лимита доли по категориям больше нет: баллами можно оплатить любую услугу целиком
     return Rules(rate=rate, base_rate=base, max_points_share=Decimal('1'),
-                 methods=list(category.methods), points_per_som=settings.points_per_som, bonuses=bonuses)
+                 methods=active_methods(category.methods), points_per_som=settings.points_per_som, bonuses=bonuses)
 
 
 def compute_total(item, quantity, check_amount):

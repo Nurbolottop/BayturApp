@@ -16,7 +16,7 @@ class CommonApiTests(BaseAPITestCase):
         cats = r.json()
         self.assertEqual([c['id'] for c in cats], ['rooms', 'spa', 'food', 'pools', 'sport'])
         self.assertEqual(cats[0]['title'], 'Rooms')
-        self.assertEqual(cats[3]['rules']['methods'], ['cash', 'finik', 'elqr'])
+        self.assertEqual(cats[3]['rules']['methods'], ['cash', 'elqr'])
         item = next(i for i in cats[1]['items'] if i['id'] == 'spa-bochka')
         self.assertEqual(item['promoRate'], 0.14)
         self.assertEqual(item['cashbackPreview'], 350)   # 2 500 × 14 % (акция)

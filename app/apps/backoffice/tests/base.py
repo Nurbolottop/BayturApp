@@ -23,7 +23,7 @@ class AdminTestCase(APITestCase):
         cls.reception = Outlet.objects.create(id='reception', name=l10n('Ресепшен', 'Ресепшн', 'Reception'))
         cls.spa_outlet = Outlet.objects.create(id='spa', name=l10n('SPA', 'SPA', 'SPA'))
         cls.category = Category.objects.create(id='spa', title=l10n('SPA', 'SPA', 'SPA'), rate=Decimal('0.05'),
-                                               max_points_share=Decimal('0.5'), methods=['cash', 'finik'])
+                                               max_points_share=Decimal('0.5'), methods=['cash', 'freedomPay'])
         cls.item = Item.objects.create(id='massage', category=cls.category, outlet=cls.reception,
                                        title=l10n('Массаж', 'Массаж', 'Massage'), price=1000,
                                        pricing={'type': 'unit', 'unit': 'session', 'min': 1, 'max': 5})

@@ -94,7 +94,7 @@ cashback     = round(moneySom × rate × 100) (только с денежной 
 | `FakeLoyaltyServer` — история | операции | `GET /wallet/operations` |
 | `FakeLoyaltyServer` — заявки | создание, отмена, статусы | `/cashback-requests…` + realtime `request.updated` |
 | `PaymentCalculator` | расчёт на экране оплаты | `POST /cashback-requests/quote` |
-| `FakePaymentGateway` | Finik / Freedom Pay / ЭлQR | `POST /payments`, `GET /payments/{id}` |
+| `FakePaymentGateway` | Freedom Pay / ЭлQR | `POST /payments`, `GET /payments/{id}` |
 | `PrefsProfileRepository` | профиль, номер участника, контакты | `GET/PATCH /me`, `GET /resort/contacts`, `GET /me/summary` |
 | `PrefsSettingsRepository` | язык, пуши (тема/звуки — локально) | `PATCH /me/settings` |
 | Демо-пульт `AdminConsole` в карточке заявки | — | **удалить**: заявки подтверждает сотрудник в админке |
@@ -497,7 +497,7 @@ DELETE /me/devices/{token}   → 204
   "title": "SPA",
   "cover": "https://app.baytur.kg/media/.../spa.jpg",
   "sortOrder": 2,
-  "rules": {"rate": 0.07, "maxPointsShare": 1.0, "methods": ["cash", "finik", "freedomPay", "elqr"]},
+  "rules": {"rate": 0.07, "maxPointsShare": 1.0, "methods": ["cash", "freedomPay", "elqr"]},
   "items": [{
     "id": "spa-bochka",
     "category": "spa",
@@ -759,7 +759,7 @@ pending ──(сотрудник подтвердил)──▶ confirmed ─�
   "cashback": 70000,
   "maxPointsSom": 5000,       // = total — баллов хватает на всю сумму; 0 — оплата баллами недоступна
   "availablePoints": 845000,
-  "methods": ["cash", "finik", "freedomPay", "elqr"],   // пусто, если moneySom = 0
+  "methods": ["cash", "freedomPay", "elqr"],   // пусто, если moneySom = 0
   "bonuses": [{"kind": "promo", "title": "×2 баллы"}]   // или [{"kind": "birthday", "multiplier": 2.0}]
 }
 ```
@@ -778,12 +778,12 @@ Idempotency-Key: 7f3c1b2e-...           ← новый UUID на каждую п
 Content-Type: application/json
 
 {"itemId": "spa-bochka", "quantity": 2, "checkAmount": null, "pointsSom": 0,
- "method": "finik", "paymentId": "pay_123"}
+ "method": "freedomPay", "paymentId": "pay_123"}
 ```
 
 - **Отправляется только ввод.** Сервер пересчитывает всё заново и не доверяет прошлому quote.
 - `pointsSom`: `0` — деньгами, или **вся сумма** — баллами (тогда `method: null`). Другое значение → `422 points_partial`.
-- `method`: `cash` | `finik` | `freedomPay` | `elqr`, или `null`, если всё оплачено баллами (`moneySom = 0`).
+- `method`: `cash` | `freedomPay` | `elqr`, или `null`, если всё оплачено баллами (`moneySom = 0`).
 - `paymentId` — **обязателен** для онлайн-методов (сначала оплата, §9). Для `cash` не передаётся:
   клиент платит на ресепшене, сотрудник подтверждает после приёма денег.
 - `201` — создана; `200` с той же заявкой — повтор с тем же `Idempotency-Key` (вторая заявка и второй резерв не создаются).
@@ -799,10 +799,10 @@ Content-Type: application/json
   "item": {"id": "spa-bochka", "category": "spa", "title": "Кедровая бочка", "image": "https://..."},
   "quantity": 2,
   "checkAmount": null,
-  "rules": {"rate": 0.14, "maxPointsShare": 1.0, "methods": ["cash", "finik", "freedomPay", "elqr"]},
+  "rules": {"rate": 0.14, "maxPointsShare": 1.0, "methods": ["cash", "freedomPay", "elqr"]},
   "split": {"total": 5000, "pointsSom": 0, "points": 0, "moneySom": 5000, "rate": 0.14, "cashback": 70000},
-  "method": "finik",
-  "receipt": {"id": "pay_123", "method": "finik", "amount": 5000, "at": "2026-09-29T22:40:10+06:00"},
+  "method": "freedomPay",
+  "receipt": {"id": "pay_123", "method": "freedomPay", "amount": 5000, "at": "2026-09-29T22:40:10+06:00"},
   "originalTotal": null,
   "rejectReason": null,
   "adjustReason": null,
@@ -854,7 +854,7 @@ POST /cashback-requests/{id}/cancel             → CashbackRequest (status: can
 1. quote → moneySom
 2. POST /payments {method, amountSom: moneySom, itemId, quantity, checkAmount, pointsSom}
      ← 201 Payment {id, status: "created", redirectUrl | qrPayload, expiresAt}
-3. Finik / Freedom Pay → открыть redirectUrl (диплинк в приложение провайдера / браузер);
+3. Freedom Pay → открыть redirectUrl (диплинк в приложение провайдера / браузер);
    возврат в приложение по диплинку baytur://payment/{id}
    ЭлQR → нарисовать QR из qrPayload, таймер «Код действует mm:ss» до expiresAt;
    кнопка «Я оплатил» → POST /payments/{id}/check
@@ -879,7 +879,8 @@ POST /cashback-requests/{id}/cancel             → CashbackRequest (status: can
   После оплаты или отказа она возвращает на `{API}/payments/{id}/return`, а та — на `baytur://payment/{id}`.
   Результат приходит серверу напрямую от Freedom Pay → `payment.updated`; «Я оплатил» (`/check`) тоже спрашивает
   статус у Freedom Pay. Если провайдер недоступен — `503 payment_unavailable`, можно повторить позже.
-- ⚠️ Finik и ЭлQR ещё не подключены (и Freedom Pay, пока на сервере не заданы ключи). `redirectUrl` ведёт на тестовую страницу
+- **Finik отключён** (10.10.2026): в `methods` его нет, `POST /payments` и заявки с `finik` отклоняются. Старые заявки с `method: "finik"` остаются как есть.
+- ⚠️ ЭлQR ещё не подключён. `redirectUrl` ведёт на тестовую страницу
   «Оплатить / Отказ» — после нажатия она переходит на `baytur://payment/{id}`. Для ЭлQR в тестовом режиме
   `/check` ничего не делает — оплату можно провести только через страницу (§15).
 
@@ -1093,7 +1094,7 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 | Тестовый номер (для сторов и разработки) | `+996700000000`, код **`1234`** (SMS не отправляется). У аккаунта есть баллы, история и заявки во всех статусах; новые заявки подтверждаются автоматически через ~5 с |
 | Демо-профиль из ТЗ | `BT-048219`, `+996555123456` (код `1234`), баланс 845 000, «Золото» |
 | SMS на любые номера | **временно не отправляются** — для любого номера подходит код **`1234`** (пока не подключён SMS-провайдер; в production будет настоящая SMS) |
-| Онлайн-оплата | тестовая страница вместо Finik / Freedom Pay / ЭлQR, деньги не списываются |
+| Онлайн-оплата | Freedom Pay — настоящий (тестовый или боевой режим на сервере); ЭлQR — тестовая страница |
 | Push | **работают** через FCM, Firebase-проект `baytur-2add6`. В приложении должен быть `google-services.json` / `GoogleService-Info.plist` **этого же проекта**, а FCM-токен — зарегистрирован через `POST /me/devices` |
 | Фото каталога | пока заглушки (URL есть, файлов нет) — используйте плейсхолдер при ошибке загрузки |
 | Тексты каталога/контента | заготовка; реальные данные из мобилки ещё переносятся |
@@ -1151,7 +1152,7 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 | Enum | Значения |
 |---|---|
 | `CategoryId` | `rooms`, `spa`, `food`, `pools`, `sport` |
-| `PaymentMethod` | `cash`, `finik`, `freedomPay`, `elqr` |
+| `PaymentMethod` | `cash`, `freedomPay`, `elqr` (`finik` — только в старых заявках) |
 | Уровень (`tier.id`) | **не enum** — строка-id из `GET /loyalty/program`; по умолчанию `bronze`, `silver`, `gold`, `platinum`, `titanium`, `ambassador`, но курорт может добавлять и удалять уровни (`diamond` больше не приходит — это `titanium`) |
 | `retention.reason` | `check`, `floor`, `new_this_period`, `not_required` |
 | `PeriodResult` | `retained`, `dropped`, `promoted_in_period`, `floor`, `not_required` |

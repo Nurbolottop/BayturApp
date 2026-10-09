@@ -8,7 +8,8 @@ from decimal import Decimal
 from django.db import transaction
 from rest_framework import serializers
 
-from apps.catalog.models import (FEATURE_ICONS, Category, CategoryId, Item, ItemPromo, Outlet, PaymentMethod,
+from apps.catalog.models import (ACTIVE_METHOD_CHOICES, FEATURE_ICONS, Category, CategoryId, Item, ItemPromo, Outlet,
+                                 PaymentMethod,
                                  PricingUnit)
 from apps.catalog.serializers import cashback_preview
 from apps.common.i18n import LANGS, iso, validate_l10n
@@ -114,8 +115,9 @@ class RulesField(serializers.Field):
                     errors[key] = e.detail
         if 'methods' in data:
             methods = data['methods']
-            if not isinstance(methods, list) or any(m not in PaymentMethod.values for m in methods):
-                errors['methods'] = [f'допустимо: {", ".join(PaymentMethod.values)}']
+            allowed = [v for v, _ in ACTIVE_METHOD_CHOICES]
+            if not isinstance(methods, list) or any(m not in allowed for m in methods):
+                errors['methods'] = [f'допустимо: {", ".join(allowed)}']
             else:
                 out['methods'] = list(dict.fromkeys(methods))
         if errors:
