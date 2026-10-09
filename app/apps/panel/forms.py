@@ -345,10 +345,12 @@ class PrivilegeForm(PanelForm, forms.ModelForm):
     short = L10nField(label='Коротко (1–2 слова)', max_length=30)
     description = L10nField(label='Описание', textarea=True, rows=3)
     footnote = L10nField(label='Сноска мелким шрифтом', required=False, max_length=200)
+    group_title = L10nField(label='Название группы (заголовок в «Апгрейдере», напр. «Поздний выезд»)',
+                            required=False, max_length=40)
 
     class Meta:
         model = Privilege
-        fields = ['id', 'tier', 'group', 'icon', 'title', 'short', 'description', 'footnote', 'sort_order']
+        fields = ['id', 'tier', 'group', 'group_title', 'icon', 'title', 'short', 'description', 'footnote', 'sort_order']
         labels = {'tier': 'Уровень', 'sort_order': 'Порядок',
                   'group': 'Группа «Апгрейдер» (одна привилегия на разных уровнях, напр. late-checkout)'}
         help_texts = {'group': '{rate} в текстах подставляет ставку кешбека уровня, %'}

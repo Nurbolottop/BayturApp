@@ -297,7 +297,7 @@ class TierSerializer(serializers.ModelSerializer):
 
 
 class PrivilegeSerializer(ImmutableIdMixin, serializers.ModelSerializer):
-    TEXT_FIELDS = {'title', 'short', 'description', 'footnote'}
+    TEXT_FIELDS = {'title', 'short', 'description', 'footnote', 'group_title'}
 
     id = serializers.SlugField(max_length=40)
     tier = serializers.PrimaryKeyRelatedField(queryset=Tier.objects.all())
@@ -307,11 +307,12 @@ class PrivilegeSerializer(ImmutableIdMixin, serializers.ModelSerializer):
     short = L10nField()
     description = L10nField()
     footnote = L10nField(required=False, required_ru=False)
+    groupTitle = L10nField(source='group_title', required=False, required_ru=False)
     sortOrder = serializers.IntegerField(source='sort_order', required=False)
 
     class Meta:
         model = Privilege
-        fields = ['id', 'tier', 'group', 'icon', 'title', 'short', 'description', 'footnote', 'sortOrder']
+        fields = ['id', 'tier', 'group', 'groupTitle', 'icon', 'title', 'short', 'description', 'footnote', 'sortOrder']
 
 
 # ---------------------------------------------------------------- контент

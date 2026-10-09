@@ -70,7 +70,7 @@ class DeskReceiptTests(BaseAPITestCase):
 
     def test_preview_accept_and_duplicate(self):
         pay = self.scan()['payToken']
-        body = {'payToken': pay, 'itemId': self.item.pk, 'receiptQr': GNS_QR}
+        body = {'payToken': pay, 'itemId': self.item.pk, 'receiptQr': GNS_QR, 'requestId': None}  # null = без заявки
         r = self.client_.post(f'{S}/cash/preview', body, format='json')
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual((r.json()['amount'], r.json()['total']), (2500, 2500))
@@ -83,6 +83,7 @@ class DeskReceiptTests(BaseAPITestCase):
         d = r.json()
         self.assertEqual(d['fiscalReceipt']['amount'], 2500)
         self.assertEqual(d['fiscalReceipt']['acceptedBy'], self.cashier.pk)
+        self.assertIn('acceptedByName', d['fiscalReceipt'])
         req = CashbackRequest.objects.get(pk=d['id'])
         self.assertIn(req.status, (RequestStatus.CONFIRMED, RequestStatus.CREDITED))
         self.assertEqual((req.method, req.money_som, req.confirmed_by_id), ('cash', 2500, self.cashier.pk))
@@ -92,6 +93,8 @@ class DeskReceiptTests(BaseAPITestCase):
             r = self.client_.post(f'{S}/cash/{url}', body, format='json')
             self.assertEqual((r.status_code, r.json()['error']['code']), (409, 'receipt_used'), url)
             self.assertEqual(r.json()['error']['requestId'], req.pk)
+            self.assertEqual((r.json()['error']['acceptedBy'], r.json()['error']['acceptedByName']),
+                             (self.cashier.pk, self.cashier.full_name or None))
         self.assertEqual(FiscalReceipt.objects.count(), 1)
 
     def test_attaches_to_client_cash_request(self):

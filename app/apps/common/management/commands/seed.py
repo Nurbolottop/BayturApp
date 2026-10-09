@@ -72,7 +72,7 @@ class Command(BaseCommand):
                 'permanent_years': permanent[1] if permanent else 0})
         for i, p in enumerate(D.PRIVILEGES):
             upsert(Privilege, {'id': p['id']}, {
-                'tier_id': p['tier'], 'group': p['group'], 'icon': p['icon'], 'title': p['title'], 'short': p['short'],
+                'tier_id': p['tier'], 'group': p['group'], 'group_title': p.get('group_title', {}), 'icon': p['icon'], 'title': p['title'], 'short': p['short'],
                 'description': p['description'], 'footnote': p['footnote'], 'sort_order': i})
 
         today = timezone.localdate()

@@ -172,6 +172,7 @@ class Privilege(models.Model):
 
     id = models.SlugField(primary_key=True, max_length=40)
     group = models.SlugField('Группа (апгрейдер)', max_length=40, blank=True)
+    group_title = models.JSONField('Название группы', default=dict, blank=True)  # «Поздний выезд» — заголовок апгрейдера
     footnote = models.JSONField('Сноска мелким шрифтом', default=dict, blank=True)
     tier = models.ForeignKey(Tier, on_delete=models.PROTECT, related_name='privileges')
     icon = models.CharField(max_length=30)

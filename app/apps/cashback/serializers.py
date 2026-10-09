@@ -120,4 +120,4 @@ def fiscal_receipt_payload(req):
     except FiscalReceipt.DoesNotExist:
         return None
     return {'number': r.key, 'amount': r.amount, 'acceptedAt': iso(r.accepted_at), 'acceptedBy': r.accepted_by_id,
-            'outlet': r.outlet_id}
+            'acceptedByName': getattr(r.accepted_by, 'full_name', '') or None, 'outlet': r.outlet_id}

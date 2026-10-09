@@ -349,7 +349,7 @@ def _receipt_used(key):
     if used is not None:
         raise ApiError('receipt_used', 409, extra={
             'acceptedAt': used.accepted_at.isoformat(), 'requestId': used.request_id,
-            'acceptedBy': getattr(used.accepted_by, 'full_name', '') or None,
+            'acceptedBy': used.accepted_by_id, 'acceptedByName': getattr(used.accepted_by, 'full_name', '') or None,
             'outlet': used.outlet_id})
 
 

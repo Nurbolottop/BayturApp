@@ -5557,12 +5557,18 @@ components:
         acceptedBy:
           type: integer
           nullable: true
+          description: id кассира
+        acceptedByName:
+          type: string
+          nullable: true
+          description: Имя кассира
         outlet:
           type: string
           nullable: true
       required:
       - acceptedAt
       - acceptedBy
+      - acceptedByName
       - amount
       - number
       - outlet
@@ -6390,6 +6396,11 @@ components:
           nullable: true
           description: '«Апгрейдер»: одна привилегия на разных уровнях (points-rate,
             late-checkout, room-upgrade, bai-club, welcome-gift)'
+        groupTitle:
+          type: string
+          nullable: true
+          description: Название группы для «Апгрейдера» («Поздний выезд»); null, если
+            group не задан
         footnote:
           type: string
           nullable: true
@@ -6406,6 +6417,7 @@ components:
       - description
       - footnote
       - group
+      - groupTitle
       - icon
       - id
       - short

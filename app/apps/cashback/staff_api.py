@@ -188,7 +188,7 @@ class ReceiptInput(serializers.Serializer):
     payToken = serializers.CharField()
     itemId = serializers.CharField()
     receiptQr = serializers.CharField(max_length=2000)
-    requestId = serializers.CharField(required=False, allow_blank=True)
+    requestId = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 
 def _receipt_input(request):

@@ -159,6 +159,8 @@ class Privilege(s.Serializer):
     tier = s.CharField(help_text=TIER_HELP)
     group = s.CharField(allow_null=True, help_text='«Апгрейдер»: одна привилегия на разных уровнях '
                                                    '(points-rate, late-checkout, room-upgrade, bai-club, welcome-gift)')
+    groupTitle = s.CharField(allow_null=True, help_text='Название группы для «Апгрейдера» («Поздний выезд»); '
+                                                        'null, если group не задан')
     footnote = s.CharField(allow_null=True, help_text='сноска мелким шрифтом')
     icon = s.ChoiceField(choices=PERK_ICONS)
     title = s.CharField()
@@ -385,7 +387,8 @@ class FiscalReceipt(s.Serializer):
     number = s.CharField(help_text='Реквизиты чека из QR')
     amount = s.IntegerField()
     acceptedAt = s.DateTimeField()
-    acceptedBy = s.IntegerField(allow_null=True)
+    acceptedBy = s.IntegerField(allow_null=True, help_text='id кассира')
+    acceptedByName = s.CharField(allow_null=True, help_text='Имя кассира')
     outlet = s.CharField(allow_null=True)
 
 

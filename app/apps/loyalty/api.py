@@ -67,7 +67,8 @@ def build_program():
     return {
         'tiers': [tier_program_payload(t, cumulative, ps.base_cashback_rate) for t in tiers],
         'privileges': [{
-            'id': p.id, 'tier': p.tier_id, 'group': p.group or None, 'icon': p.icon, 'title': text(p.title, p.tier_id),
+            'id': p.id, 'tier': p.tier_id, 'group': p.group or None,
+            'groupTitle': (text(p.group_title, p.tier_id) or None) if p.group else None, 'icon': p.icon, 'title': text(p.title, p.tier_id),
             'short': text(p.short, p.tier_id), 'description': text(p.description, p.tier_id),
             'footnote': text(p.footnote, p.tier_id),
         } for p in Privilege.objects.select_related('tier').filter(tier__deleted_at__isnull=True)],

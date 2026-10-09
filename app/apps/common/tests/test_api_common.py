@@ -42,6 +42,8 @@ class CommonApiTests(BaseAPITestCase):
         # from — для старых версий: накопленная сумма порогов
         self.assertEqual([t['from'] for t in program['tiers']], [0, 200_000, 500_000, 1_400_000, 3_400_000, 6_400_000])
         self.assertEqual(len(program['privileges']), 21)
+        late = next(p for p in program['privileges'] if p['group'] == 'late-checkout')
+        self.assertEqual(late['groupTitle'], 'Поздний выезд')
         self.assertEqual(len(self.api.get('/api/v1/content/promos').json()), 5)
 
     def test_bad_token_on_public_endpoint_is_ignored(self):

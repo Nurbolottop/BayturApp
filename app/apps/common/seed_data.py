@@ -148,7 +148,8 @@ _NO_NOTE = {}
 
 
 def _rate(tier):
-    return {'id': f'points-rate-{tier}', 'tier': tier, 'group': 'points-rate', 'icon': 'cashback',
+    return {'id': f'points-rate-{tier}', 'tier': tier, 'group': 'points-rate', 'group_title': L('Кешбек баллами', 'Упай кешбеги', 'Cashback in points'),
+            'icon': 'cashback',
             'title': L('Начисление {rate}% баллами', '{rate}% упай кешбеги', '{rate}% back in points'),
             'short': L('{rate}%', '{rate}%', '{rate}%'),
             'description': L('С каждой оплаты деньгами возвращается {rate}% баллами (1 балл = 1 сом).',
@@ -158,7 +159,8 @@ def _rate(tier):
 
 
 def _late(tier, time):
-    return {'id': f'late-checkout-{tier}', 'tier': tier, 'group': 'late-checkout', 'icon': 'lateCheckOut',
+    return {'id': f'late-checkout-{tier}', 'tier': tier, 'group': 'late-checkout', 'group_title': L('Поздний выезд', 'Кеч чыгуу', 'Late check-out'),
+            'icon': 'lateCheckOut',
             'title': L(f'Поздний выезд до {time}', f'{time} чейин кеч чыгуу', f'Late check-out until {time}'),
             'short': L(f'Выезд до {time}', f'{time} чейин', f'Until {time}'),
             'description': L(f'Номер можно освободить до {time}.', f'Бөлмөнү {time} чейин бошотсо болот.',
@@ -167,7 +169,8 @@ def _late(tier, time):
 
 
 def _upgrade(tier, ru, ky, en, short_ru, short_ky, short_en):
-    return {'id': f'room-upgrade-{tier}', 'tier': tier, 'group': 'room-upgrade', 'icon': 'upgrade',
+    return {'id': f'room-upgrade-{tier}', 'tier': tier, 'group': 'room-upgrade', 'group_title': L('Апгрейд номера', 'Бөлмөнү жакшыртуу', 'Room upgrade'),
+            'icon': 'upgrade',
             'title': L(f'Апгрейд номера: {ru}', f'Бөлмөнү жакшыртуу: {ky}', f'Room upgrade: {en}'),
             'short': L(short_ru, short_ky, short_en),
             'description': L(f'При заселении — номер выше забронированного: {ru}.',
@@ -177,7 +180,8 @@ def _upgrade(tier, ru, ky, en, short_ru, short_ky, short_en):
 
 
 def _club(tier):
-    return {'id': f'bai-club-{tier}', 'tier': tier, 'group': 'bai-club', 'icon': 'concierge',
+    return {'id': f'bai-club-{tier}', 'tier': tier, 'group': 'bai-club', 'group_title': L('Bai Club', 'Bai Club', 'Bai Club'),
+            'icon': 'concierge',
             'title': L('Доступ в Bai Club', 'Bai Club\'ка кирүү', 'Bai Club access'),
             'short': L('Bai Club', 'Bai Club', 'Bai Club'),
             'description': L('Закрытый клуб для гостей высоких уровней.', 'Жогорку деңгээлдеги коноктор үчүн жабык клуб.',
@@ -186,7 +190,8 @@ def _club(tier):
 
 
 def _gift(tier):
-    return {'id': f'welcome-gift-{tier}', 'tier': tier, 'group': 'welcome-gift', 'icon': 'gift',
+    return {'id': f'welcome-gift-{tier}', 'tier': tier, 'group': 'welcome-gift', 'group_title': L('Приветственный подарок', 'Тосуу белеги', 'Welcome gift'),
+            'icon': 'gift',
             'title': L('Приветственный подарок', 'Тосуу белеги', 'Welcome gift'),
             'short': L('Подарок', 'Белек', 'Gift'),
             'description': L('Подарок от курорта при заселении.', 'Жайгашканда курорттон белек.',
