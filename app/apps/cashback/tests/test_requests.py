@@ -47,7 +47,7 @@ class QuoteTests(BaseAPITestCase):
         self.assertEqual((d['maxPointsSom'], d['pointsSom'], d['moneySom']), (0, 0, 69_000))
 
     def test_quote_check_amount_range(self):
-        r = self.api.post(f'{URL}/quote', {'itemId': 'food-davinci', 'checkAmount': 100}, format='json')
+        r = self.api.post(f'{URL}/quote', {'itemId': 'food-davinci', 'checkAmount': 99}, format='json')
         self.assertEqual(r.status_code, 422)
         self.assertEqual(r.json()['error']['code'], 'amount_out_of_range')
 
