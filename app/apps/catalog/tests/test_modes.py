@@ -77,6 +77,10 @@ class ModesApiTests(BaseAPITestCase):
         self.assertEqual(resort['mode'], 'resort')
         ids = {s['id'] for sec in resort['sections'] for g in sec['groups'] for s in g['items']}
         self.assertFalse(any(i.startswith(('ski-', 'kymyz-')) for i in ids))
+        # курорт — старый каталог: разделы программы как разделы услуг, все позиции курорта на месте
+        rooms = next(s for s in resort['sections'] if s['id'] == 'rooms')
+        self.assertEqual(rooms['kind'], 'stay')
+        self.assertEqual(ids, set(Item.objects.active().filter(venue_id='resort').values_list('id', flat=True)))
 
     def test_showcase_and_eternal(self):
         Promotion.objects.filter(title__ru='Трансфер по суперцене').update(show_on_home=True)

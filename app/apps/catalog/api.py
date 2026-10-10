@@ -231,6 +231,20 @@ class EternalView(PublicAPIView):
         return cached_public('eternal', lambda: _eternal_payload(eternal), request, mode=mode)
 
 
+RESORT_SECTION_PREFIX = 'resort-'
+RESORT_KINDS = {'rooms': 'stay', 'spa': 'procedure'}
+
+
+def _resort_sections():
+    """Курорт на Иссык-Куле — старый каталог (ТЗ §7.2): разделы программы как разделы услуг, без записи в базу."""
+    out = []
+    for c in Category.objects.filter(is_active=True):
+        out.append(Section(id=f'{RESORT_SECTION_PREFIX}{c.id}', venue_id=DEFAULT_VENUE, category=c, key=c.id,
+                           kind=RESORT_KINDS.get(c.id, 'extra'), icon=c.id, title=c.title, cover=c.cover,
+                           cashback_rate=c.rate, sort_order=c.sort_order))
+    return out
+
+
 def build_services(mode, venue):
     from apps.common.i18n import tr
 
@@ -239,14 +253,16 @@ def build_services(mode, venue):
     ps = ProgramSettings.get()
     sections = list(Section.objects.filter(venue=venue, is_active=True, category__is_active=True)
                     .select_related('category', 'parent').prefetch_related('info_blocks').order_by('sort_order', 'id'))
+    if not sections and venue.pk == DEFAULT_VENUE:
+        sections = _resort_sections()
     children_of, roots = {}, []
     for s in sections:
         (children_of.setdefault(s.parent_id, []) if s.parent_id else roots).append(s)
     items_of = {}
-    for item in Item.objects.active().filter(venue=venue, section__isnull=False) \
+    for item in Item.objects.active().filter(venue=venue) \
             .select_related('category', 'section__parent', 'section__category').prefetch_related('promos') \
             .order_by('sort_order', 'id'):
-        items_of.setdefault(item.section_id, []).append(item)
+        items_of.setdefault(item.section_id or f'{RESORT_SECTION_PREFIX}{item.category_id}', []).append(item)
     promotions = active_promotions(now)
     out = []
     for s in roots:
