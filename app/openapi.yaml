@@ -1229,7 +1229,7 @@ paths:
       operationId: catalog_list
       description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
         limit по IP и X-Device-Id.
-      summary: 'Каталог: категории с услугами и правилами'
+      summary: 'Каталог курорта на Иссык-Куле (старое приложение): категории с услугами'
       parameters:
       - in: header
         name: Accept-Language
@@ -4633,6 +4633,132 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/venues:
+    get:
+      operationId: venues_list
+      description: 'Объекты экосистемы BAYTUR: у каждого своё приложение, аккаунт
+        и баллы общие.'
+      summary: Объекты экосистемы BAYTUR (у каждого своё приложение)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Каталог
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Venue'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/venues/{venue_id}:
+    get:
+      operationId: venues_retrieve
+      description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
+        limit по IP и X-Device-Id.
+      summary: 'Объект: контакты, адрес, инфоблоки'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: venue_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Каталог
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venue'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/venues/{venue_id}/catalog:
+    get:
+      operationId: venues_catalog_retrieve
+      description: 'Прайс объекта: подразделы (с вложенными) и услуги; правила оплаты
+        — по разделу программы подраздела.'
+      summary: 'Прайс объекта: подразделы и услуги'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: venue_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Каталог
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VenueCatalog'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/wallet:
     get:
       operationId: wallet_retrieve
@@ -6963,6 +7089,20 @@ components:
       description: |-
         * `lifetime` - lifetime
         * `period` - period
+    SeasonRange:
+      type: object
+      properties:
+        to:
+          type: string
+          format: date
+          nullable: true
+        from:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - from
+      - to
     ServiceCategory:
       type: object
       properties:
@@ -7029,6 +7169,22 @@ components:
         outlet:
           type: string
           nullable: true
+        venue:
+          type: string
+          description: 'Объект: baytur, too-ashuu, suusamyr…'
+        section:
+          type: string
+          nullable: true
+          description: Подраздел прайса объекта
+        priceNote:
+          type: string
+          nullable: true
+          description: «за сутки», «в час», «от 10 000 до 22 000», «бесплатно»
+        season:
+          allOf:
+          - $ref: '#/components/schemas/SeasonRange'
+          nullable: true
+          description: Услуга доступна только в эти даты
         isActive:
           type: boolean
         cashbackPreview:
@@ -7046,10 +7202,14 @@ components:
       - meta
       - outlet
       - price
+      - priceNote
       - pricing
       - promoRate
+      - season
+      - section
       - tag
       - title
+      - venue
     Settings:
       type: object
       properties:
@@ -7871,6 +8031,138 @@ components:
         * `entry` - entry
         * `retention` - retention
         * `both` - both
+    Venue:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        short:
+          type: string
+        description:
+          type: string
+        address:
+          type: string
+        cover:
+          type: string
+          format: uri
+          nullable: true
+        contacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/VenueContact'
+        info:
+          type: array
+          items:
+            $ref: '#/components/schemas/VenueInfo'
+        sortOrder:
+          type: integer
+      required:
+      - address
+      - contacts
+      - cover
+      - description
+      - id
+      - info
+      - name
+      - short
+      - sortOrder
+    VenueCatalog:
+      type: object
+      properties:
+        venue:
+          $ref: '#/components/schemas/Venue'
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/VenueSection'
+      required:
+      - sections
+      - venue
+    VenueContact:
+      type: object
+      properties:
+        label:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        whatsapp:
+          type: boolean
+        email:
+          type: string
+          nullable: true
+      required:
+      - email
+      - label
+      - phone
+      - whatsapp
+    VenueInfo:
+      type: object
+      properties:
+        title:
+          type: string
+        text:
+          type: string
+          description: Либо text, либо rows
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/VenueInfoRow'
+      required:
+      - title
+    VenueInfoRow:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+      required:
+      - label
+      - value
+    VenueSection:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        note:
+          type: string
+          nullable: true
+        category:
+          allOf:
+          - $ref: '#/components/schemas/CategoryId'
+          description: |-
+            Раздел программы: способы оплаты
+
+            * `rooms` - Номера
+            * `spa` - SPA
+            * `food` - Рестораны
+            * `pools` - Бассейны
+            * `sport` - Спорт
+        rules:
+          $ref: '#/components/schemas/CashbackRules'
+        sections:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Вложенные подразделы (та же структура)
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceItem'
+      required:
+      - category
+      - id
+      - items
+      - note
+      - rules
+      - sections
+      - title
     Wallet:
       type: object
       properties:

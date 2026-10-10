@@ -24,6 +24,8 @@
           {% include 'panel/components/field.html' with f=form.title full=1 %}
           {% include 'panel/components/field.html' with f=form.meta full=1 %}
           {% include 'panel/components/field.html' with f=form.id %}
+          {% include 'panel/components/field.html' with f=form.venue %}
+          {% include 'panel/components/field.html' with f=form.section %}
           {% include 'panel/components/field.html' with f=form.category %}
           {% include 'panel/components/field.html' with f=form.outlet %}
           {% include 'panel/components/field.html' with f=form.tag %}
@@ -43,6 +45,9 @@
         <div class="card-head"><div class="h3">{% bubble 'cash' 18 %} Цена</div></div>
         <div class="form-grid">
           {% include 'panel/components/field.html' with f=form.price %}
+          {% include 'panel/components/field.html' with f=form.price_note %}
+          {% include 'panel/components/field.html' with f=form.season_from %}
+          {% include 'panel/components/field.html' with f=form.season_to %}
           <div class="field"><span class="label">{{ form.pricing_type.label }}</span><div class="checks">{% for r in form.pricing_type %}<label>{{ r.tag }} {{ r.choice_label }}</label>{% endfor %}</div></div>
           <div class="field" data-toggle-by="pricing_type" data-toggle-value="unit"><label for="id_pricing_unit">{{ form.pricing_unit.label }}</label>{{ form.pricing_unit }}</div>
           <div class="field"><label>Диапазон <span class="muted" data-toggle-by="pricing_type" data-toggle-value="unit">(количество)</span><span class="muted" data-toggle-by="pricing_type" data-toggle-value="check">(сумма чека, сом)</span></label><div class="row">{{ form.pricing_min }}<span class="muted">—</span>{{ form.pricing_max }}</div>{{ form.pricing_max.errors }}</div>

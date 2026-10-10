@@ -8,7 +8,8 @@ from decimal import Decimal
 from django import forms
 from django.core.exceptions import ValidationError
 
-from apps.catalog.models import ACTIVE_METHOD_CHOICES, FEATURE_ICONS, Category, Item, ItemPromo, Outlet, PaymentMethod
+from apps.catalog.models import (ACTIVE_METHOD_CHOICES, FEATURE_ICONS, Category, Item, ItemPromo, Outlet,
+                                 PaymentMethod, Section, Venue)
 from apps.common.i18n import LANGS
 from apps.common.models import ProgramSettings
 from apps.complaints.models import ComplaintCategory, ReplyTemplate
@@ -192,6 +193,77 @@ class CategoryForm(PanelForm, forms.ModelForm):
     RULE_FIELDS = ['sort_order', 'is_active', 'methods']
 
 
+class VenueForm(PanelForm, forms.ModelForm):
+    """Объект экосистемы: тексты, контакты и инфоблоки (трассы, как добраться, сезон…)."""
+
+    name = L10nField(label='Название', max_length=80)
+    short = L10nField(label='Подзаголовок', required=False, max_length=160)
+    description = L10nField(label='Описание', required=False, textarea=True, rows=4)
+    address = L10nField(label='Адрес', required=False, max_length=300)
+    contacts = forms.JSONField(label='Контакты (JSON)', required=False, widget=forms.Textarea(attrs={'rows': 8}),
+                               help_text='[{"label": {"ru": "Ресепшен"}, "phone": "+996 …", "whatsapp": true, "email": ""}]')
+    info = forms.JSONField(label='Инфоблоки (JSON)', required=False, widget=forms.Textarea(attrs={'rows': 12}),
+                           help_text='[{"title": {"ru": "Как добраться"}, "text": {"ru": "…"}}] или '
+                                     '{"title": …, "rows": [{"label": {"ru": …}, "value": {"ru": …}}]}')
+
+    class Meta:
+        model = Venue
+        fields = ['name', 'short', 'description', 'address', 'cover', 'contacts', 'info', 'sort_order', 'is_active']
+        widgets = {'cover': forms.HiddenInput}
+        labels = {'sort_order': 'Порядок', 'is_active': 'Показывать'}
+
+    def clean_contacts(self):
+        v = self.cleaned_data.get('contacts') or []
+        if not isinstance(v, list) or not all(isinstance(c, dict) for c in v):
+            raise ValidationError('Нужен список объектов')
+        return v
+
+    def clean_info(self):
+        v = self.cleaned_data.get('info') or []
+        if not isinstance(v, list) or not all(isinstance(b, dict) and b.get('title') for b in v):
+            raise ValidationError('Нужен список блоков с title')
+        return v
+
+
+class SectionForm(PanelForm, forms.ModelForm):
+    id = forms.SlugField(label='Slug (id)', max_length=60)
+    title = L10nField(label='Название', max_length=80)
+    note = L10nField(label='Пояснение', required=False, max_length=300)
+
+    class Meta:
+        model = Section
+        fields = ['id', 'venue', 'parent', 'category', 'title', 'note', 'sort_order', 'is_active']
+        labels = {'venue': 'Объект', 'parent': 'Внутри раздела', 'category': 'Раздел программы (способы оплаты)',
+                  'sort_order': 'Порядок', 'is_active': 'Показывать'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['id'].disabled = True
+            self.fields['venue'].disabled = True
+        self.fields['parent'].required = False
+        venue = self.instance.venue_id if self.instance and self.instance.pk else self.initial.get('venue')
+        qs = Section.objects.filter(parent__isnull=True)
+        if venue:
+            qs = qs.filter(venue_id=venue)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        self.fields['parent'].queryset = qs
+
+    def clean_id(self):
+        v = self.cleaned_data['id']
+        if not (self.instance and self.instance.pk) and Section.objects.filter(pk=v).exists():
+            raise ValidationError('Такой slug уже есть')
+        return v
+
+    def clean(self):
+        data = super().clean()
+        parent = data.get('parent')
+        if parent and data.get('venue') and parent.venue_id != data['venue'].pk:
+            self.add_error('parent', 'Раздел другого объекта')
+        return data
+
+
 class ItemForm(PanelForm, forms.ModelForm):
     id = forms.SlugField(label='Slug (id)', max_length=60,
                          help_text='Стабильный: на него ссылаются заявки, история и сторис')
@@ -208,17 +280,21 @@ class ItemForm(PanelForm, forms.ModelForm):
         required=False)
     pricing_min = forms.IntegerField(label='Мин.', min_value=1, initial=1)
     pricing_max = forms.IntegerField(label='Макс.', min_value=1, initial=10)
+    price_note = L10nField(label='Подпись к цене', required=False, max_length=80)
 
     class Meta:
         model = Item
-        fields = ['id', 'category', 'outlet', 'title', 'meta', 'image', 'gallery', 'price', 'tag', 'description',
-                  'features', 'sort_order', 'is_active']
-        widgets = {'image': forms.HiddenInput}
-        labels = {'category': 'Раздел', 'outlet': 'Точка обслуживания', 'price': 'Цена, сом',
+        fields = ['id', 'venue', 'section', 'category', 'outlet', 'title', 'meta', 'image', 'gallery', 'price',
+                  'price_note', 'season_from', 'season_to', 'tag', 'description', 'features', 'sort_order',
+                  'is_active']
+        widgets = {'image': forms.HiddenInput, 'season_from': forms.DateInput(attrs={'type': 'date'}),
+                   'season_to': forms.DateInput(attrs={'type': 'date'})}
+        labels = {'venue': 'Объект', 'section': 'Подраздел', 'category': 'Раздел', 'outlet': 'Точка обслуживания',
+                  'price': 'Цена, сом', 'season_from': 'Доступна с', 'season_to': 'Доступна по',
                   'sort_order': 'Порядок', 'is_active': 'Показывать в приложении'}
 
-    RULE_FIELDS = ['id', 'category', 'outlet', 'price', 'pricing_type', 'pricing_unit', 'pricing_min', 'pricing_max',
-                   'sort_order', 'is_active']
+    RULE_FIELDS = ['id', 'venue', 'section', 'category', 'outlet', 'price', 'pricing_type', 'pricing_unit',
+                   'pricing_min', 'pricing_max', 'season_from', 'season_to', 'sort_order', 'is_active']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -234,6 +310,9 @@ class ItemForm(PanelForm, forms.ModelForm):
         else:
             self.initial.setdefault('pricing_type', 'unit')
         self.fields['outlet'].required = False
+        self.fields['section'].required = False
+        self.fields['section'].queryset = Section.objects.filter(children__isnull=True).select_related('venue')
+        self.fields['section'].label_from_instance = lambda s: f'{s.venue} · {s}'
 
     def clean_id(self):
         v = self.cleaned_data['id']
@@ -261,6 +340,14 @@ class ItemForm(PanelForm, forms.ModelForm):
         lo, hi = data.get('pricing_min'), data.get('pricing_max')
         if lo and hi and lo > hi:
             self.add_error('pricing_max', 'Максимум меньше минимума')
+        section, venue = data.get('section'), data.get('venue')
+        if section and venue and section.venue_id != venue.pk:
+            self.add_error('section', 'Подраздел другого объекта')
+        if venue and venue.pk != 'baytur' and not section:
+            self.add_error('section', 'Для этого объекта выберите подраздел — без него услуга не видна в приложении')
+        sf, st = data.get('season_from'), data.get('season_to')
+        if sf and st and sf > st:
+            self.add_error('season_to', 'Конец раньше начала')
         return data
 
     def save(self, commit=True):

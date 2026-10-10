@@ -44,10 +44,51 @@ FEATURE_ICONS = [
 rate_validators = [MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('1'))]
 
 
+DEFAULT_VENUE = 'baytur'
+DEFAULT_VENUE_NAME = {'ru': 'BAYTUR Иссык-Куль', 'ky': 'BAYTUR Ысык-Көл', 'en': 'BAYTUR Issyk-Kul'}
+
+
+def default_venue():
+    """Объект по умолчанию — курорт на Иссык-Куле; создаётся, если его ещё нет (чистая база, тесты)."""
+    Venue.objects.get_or_create(id=DEFAULT_VENUE, defaults={'name': DEFAULT_VENUE_NAME})
+    return DEFAULT_VENUE
+
+
+class Venue(models.Model):
+    """
+    Объект экосистемы BAYTUR: курорт на Иссык-Куле, «Тоо-Ашуу», кымызолечение в Суусамыре… У каждого объекта
+    своё приложение, бэкенд один: аккаунт, баллы и уровни — общие.
+    contacts — [{label: l10n, phone, whatsapp: bool, email}];
+    info — инфоблоки: [{title: l10n, text: l10n}] или [{title: l10n, rows: [{label: l10n, value: l10n}]}].
+    """
+
+    id = models.SlugField(primary_key=True, max_length=40)
+    name = models.JSONField('Название', default=dict)
+    short = models.JSONField('Подзаголовок', default=dict, blank=True)
+    description = models.JSONField('Описание', default=dict, blank=True)
+    address = models.JSONField('Адрес', default=dict, blank=True)
+    cover = models.CharField('Обложка', max_length=500, blank=True)
+    contacts = models.JSONField('Контакты', default=list, blank=True)
+    info = models.JSONField('Инфоблоки', default=list, blank=True)
+    sort_order = models.IntegerField(default=0)
+    is_active = models.BooleanField('Показывать', default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+        verbose_name = 'Объект'
+        verbose_name_plural = 'Объекты'
+
+    def __str__(self):
+        return self.name.get('ru') or self.id
+
+
 class Outlet(models.Model):
     """Точка обслуживания: «Ресепшен», «Da Vinci», «SPA»… Сотрудник видит заявки только своих точек."""
 
     id = models.SlugField(primary_key=True, max_length=40)
+    venue = models.ForeignKey(Venue, on_delete=models.PROTECT, related_name='outlets', default=default_venue,
+                              verbose_name='Объект')
     name = models.JSONField('Название', default=dict)
     sort_order = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
@@ -83,6 +124,33 @@ class Category(models.Model):
         return self.title.get('ru') or self.id
 
 
+class Section(models.Model):
+    """
+    Подраздел прайса объекта: «Прокат», «Кафе» → «Супы»… category — раздел программы, чьи правила (способы
+    оплаты) действуют на услуги подраздела; в старом приложении курорта услуги видны по category.
+    """
+
+    id = models.SlugField(primary_key=True, max_length=60)
+    venue = models.ForeignKey(Venue, on_delete=models.PROTECT, related_name='sections', verbose_name='Объект')
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='children',
+                               verbose_name='Внутри раздела')
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='sections',
+                                 verbose_name='Раздел программы (правила)')
+    title = models.JSONField('Название', default=dict)
+    note = models.JSONField('Пояснение', default=dict, blank=True, help_text='Мелким шрифтом под названием')
+    sort_order = models.IntegerField(default=0)
+    is_active = models.BooleanField('Показывать', default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['venue__sort_order', 'sort_order', 'id']
+        verbose_name = 'Подраздел'
+        verbose_name_plural = 'Подразделы'
+
+    def __str__(self):
+        return self.title.get('ru') or self.id
+
+
 class ItemQuerySet(models.QuerySet):
     def active(self):
         return self.filter(is_active=True, category__is_active=True)
@@ -92,6 +160,10 @@ class Item(models.Model):
     id = models.SlugField('Slug', primary_key=True, max_length=60,
                           help_text='Стабильный: на него ссылаются заявки, история, сторис')
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='items')
+    venue = models.ForeignKey(Venue, on_delete=models.PROTECT, related_name='items', default=default_venue,
+                              verbose_name='Объект')
+    section = models.ForeignKey(Section, on_delete=models.PROTECT, related_name='items', null=True, blank=True,
+                                verbose_name='Подраздел')
     outlet = models.ForeignKey(Outlet, on_delete=models.PROTECT, related_name='items', null=True, blank=True)
     title = models.JSONField('Название', default=dict)
     meta = models.JSONField('Короткая строка', default=dict, blank=True)
@@ -102,6 +174,10 @@ class Item(models.Model):
     tag = models.JSONField('Бейдж', default=dict, blank=True)
     description = models.JSONField('Описание', default=dict, blank=True)
     features = models.JSONField('Что входит', default=list, blank=True)
+    price_note = models.JSONField('Подпись к цене', default=dict, blank=True,
+                                  help_text='«за сутки», «500 сом в час», «от 10 000 до 22 000», «бесплатно»')
+    season_from = models.DateField('Доступна с', null=True, blank=True)
+    season_to = models.DateField('Доступна по', null=True, blank=True)
     sort_order = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)

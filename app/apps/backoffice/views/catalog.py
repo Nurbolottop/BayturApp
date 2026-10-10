@@ -1,12 +1,13 @@
 """Каталог: точки обслуживания, категории с правилами кешбека, услуги и их акции (ТЗ §7.2)."""
 from rest_framework.response import Response
 
-from apps.catalog.models import Category, Item, ItemPromo, Outlet
+from apps.catalog.models import Category, Item, ItemPromo, Outlet, Section, Venue
 from apps.common.audit import audit
 from apps.common.errors import ApiError
 
 from ..base import ANY_STAFF, CollectionView, DetailView, ObjectView, SortView, not_found
-from ..serializers import CategorySerializer, ItemPromoSerializer, ItemSerializer, OutletSerializer
+from ..serializers import (CategorySerializer, ItemPromoSerializer, ItemSerializer, OutletSerializer, SectionSerializer,
+                           VenueSerializer)
 
 CATALOG_READ = ['catalog.texts', 'catalog.edit']
 CATALOG_WRITE = {'GET': CATALOG_READ, 'PATCH': CATALOG_READ, 'PUT': CATALOG_READ,
@@ -36,6 +37,57 @@ class OutletsSortView(SortView):
     model = Outlet
     audit_name = 'outlet'
     required_perms = 'settings.edit'
+
+
+# ---------------------------------------------------------------- объекты и подразделы
+
+class VenuesView(CollectionView):
+    """Объекты экосистемы (у каждого своё приложение). Создаёт — владелец."""
+
+    model = Venue
+    serializer_class = VenueSerializer
+    audit_name = 'venue'
+    required_perms = {'GET': ANY_STAFF, 'POST': 'settings.edit'}
+
+
+class VenueDetailView(DetailView):
+    model = Venue
+    serializer_class = VenueSerializer
+    audit_name = 'venue'
+    required_perms = CATALOG_WRITE
+    full_perm = 'catalog.edit'
+    texts_perm = 'catalog.texts'
+
+
+class SectionsView(CollectionView):
+    """GET ?venue=&parent= (parent=root — только верхние)."""
+
+    model = Section
+    serializer_class = SectionSerializer
+    audit_name = 'section'
+    required_perms = {'GET': CATALOG_READ, 'POST': 'catalog.edit'}
+
+    def get_queryset(self):
+        return Section.objects.select_related('venue', 'parent', 'category')
+
+    def filter_queryset(self, qs):
+        p = self.request.query_params
+        if p.get('venue'):
+            qs = qs.filter(venue_id=p['venue'])
+        if p.get('parent') == 'root':
+            qs = qs.filter(parent__isnull=True)
+        elif p.get('parent'):
+            qs = qs.filter(parent_id=p['parent'])
+        return qs
+
+
+class SectionDetailView(DetailView):
+    model = Section
+    serializer_class = SectionSerializer
+    audit_name = 'section'
+    required_perms = CATALOG_WRITE
+    full_perm = 'catalog.edit'
+    texts_perm = 'catalog.texts'
 
 
 # ---------------------------------------------------------------- категории
@@ -68,7 +120,7 @@ class CategoriesSortView(SortView):
 # ---------------------------------------------------------------- услуги
 
 class ItemsView(CollectionView):
-    """GET ?category=&outlet=&active=1|0&q="""
+    """GET ?venue=&section=&category=&outlet=&active=1|0&q="""
 
     model = Item
     serializer_class = ItemSerializer
@@ -80,6 +132,10 @@ class ItemsView(CollectionView):
 
     def filter_queryset(self, qs):
         p = self.request.query_params
+        if p.get('venue'):
+            qs = qs.filter(venue_id=p['venue'])
+        if p.get('section'):
+            qs = qs.filter(section_id=p['section'])
         if p.get('category'):
             qs = qs.filter(category_id=p['category'])
         if p.get('outlet'):

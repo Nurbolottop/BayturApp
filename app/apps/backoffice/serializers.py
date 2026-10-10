@@ -9,8 +9,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from apps.catalog.models import (ACTIVE_METHOD_CHOICES, FEATURE_ICONS, Category, CategoryId, Item, ItemPromo, Outlet,
-                                 PaymentMethod,
-                                 PricingUnit)
+                                 PaymentMethod, PricingUnit, Section, Venue)
 from apps.catalog.serializers import cashback_preview
 from apps.common.i18n import LANGS, iso, validate_l10n
 from apps.common.models import ProgramSettings
@@ -84,13 +83,67 @@ class OutletSerializer(ImmutableIdMixin, serializers.ModelSerializer):
     TEXT_FIELDS = {'name'}
 
     id = serializers.SlugField(max_length=40)
+    venue = serializers.PrimaryKeyRelatedField(queryset=Venue.objects.all(), required=False)
     name = L10nField()
     sortOrder = serializers.IntegerField(source='sort_order', required=False)
     isActive = serializers.BooleanField(source='is_active', required=False)
 
     class Meta:
         model = Outlet
-        fields = ['id', 'name', 'sortOrder', 'isActive']
+        fields = ['id', 'venue', 'name', 'sortOrder', 'isActive']
+
+
+class VenueSerializer(ImmutableIdMixin, serializers.ModelSerializer):
+    """Объект экосистемы: contacts — [{label, phone, whatsapp, email}], info — [{title, text} | {title, rows}]."""
+
+    TEXT_FIELDS = {'name', 'short', 'description', 'address', 'cover', 'contacts', 'info'}
+
+    id = serializers.SlugField(max_length=40)
+    name = L10nField()
+    short = optional_l10n()
+    description = optional_l10n()
+    address = optional_l10n()
+    cover = MediaUrlField()
+    contacts = serializers.ListField(child=serializers.DictField(), required=False)
+    info = serializers.ListField(child=serializers.DictField(), required=False)
+    sortOrder = serializers.IntegerField(source='sort_order', required=False)
+    isActive = serializers.BooleanField(source='is_active', required=False)
+    updatedAt = IsoDateTimeField(source='updated_at', read_only=True)
+
+    class Meta:
+        model = Venue
+        fields = ['id', 'name', 'short', 'description', 'address', 'cover', 'contacts', 'info', 'sortOrder',
+                  'isActive', 'updatedAt']
+
+
+class SectionSerializer(ImmutableIdMixin, serializers.ModelSerializer):
+    TEXT_FIELDS = {'title', 'note'}
+
+    id = serializers.SlugField(max_length=60)
+    venue = serializers.PrimaryKeyRelatedField(queryset=Venue.objects.all())
+    parent = serializers.PrimaryKeyRelatedField(queryset=Section.objects.all(), required=False, allow_null=True)
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+    title = L10nField()
+    note = optional_l10n()
+    sortOrder = serializers.IntegerField(source='sort_order', required=False)
+    isActive = serializers.BooleanField(source='is_active', required=False)
+    itemsCount = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Section
+        fields = ['id', 'venue', 'parent', 'category', 'title', 'note', 'sortOrder', 'isActive', 'itemsCount']
+
+    def get_itemsCount(self, obj):
+        return obj.items.count()
+
+    def validate(self, attrs):
+        venue = attrs.get('venue', getattr(self.instance, 'venue', None))
+        parent = attrs.get('parent', getattr(self.instance, 'parent', None))
+        if parent is not None and venue is not None and parent.venue_id != venue.pk:
+            raise serializers.ValidationError({'parent': ['раздел другого объекта']})
+        if parent is not None and self.instance is not None and parent.pk == self.instance.pk:
+            raise serializers.ValidationError({'parent': ['раздел не может быть внутри себя']})
+        return attrs
 
 
 class RulesField(serializers.Field):
@@ -228,6 +281,11 @@ class ItemSerializer(ImmutableIdMixin, serializers.ModelSerializer):
     id = serializers.SlugField(max_length=60)
     category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
     outlet = serializers.PrimaryKeyRelatedField(queryset=Outlet.objects.all(), required=False, allow_null=True)
+    venue = serializers.PrimaryKeyRelatedField(queryset=Venue.objects.all(), required=False)
+    section = serializers.PrimaryKeyRelatedField(queryset=Section.objects.all(), required=False, allow_null=True)
+    priceNote = optional_l10n(source='price_note')
+    seasonFrom = serializers.DateField(source='season_from', required=False, allow_null=True)
+    seasonTo = serializers.DateField(source='season_to', required=False, allow_null=True)
     title = L10nField()
     meta = optional_l10n()
     image = MediaUrlField()
@@ -246,9 +304,9 @@ class ItemSerializer(ImmutableIdMixin, serializers.ModelSerializer):
 
     class Meta:
         model = Item
-        fields = ['id', 'category', 'outlet', 'title', 'meta', 'image', 'gallery', 'price', 'pricing', 'tag',
-                  'description', 'features', 'sortOrder', 'isActive', 'promos', 'requestsCount', 'cashbackPreview',
-                  'updatedAt']
+        fields = ['id', 'category', 'venue', 'section', 'outlet', 'title', 'meta', 'image', 'gallery', 'price',
+                  'priceNote', 'seasonFrom', 'seasonTo', 'pricing', 'tag', 'description', 'features', 'sortOrder',
+                  'isActive', 'promos', 'requestsCount', 'cashbackPreview', 'updatedAt']
 
     def get_promos(self, obj):
         return ItemPromoSerializer(obj.promos.all(), many=True, context=self.context).data

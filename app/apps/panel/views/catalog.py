@@ -6,31 +6,88 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.catalog.models import FEATURE_ICONS, Category, Item, ItemPromo, Outlet
+from apps.catalog.models import DEFAULT_VENUE, FEATURE_ICONS, Category, Item, ItemPromo, Outlet, Section, Venue
 from apps.common.audit import audit, model_snapshot
 from apps.common.caching import bump_content_version
 from apps.common.media import process_upload
 from apps.common.models import ProgramSettings, Upload
 
 from ..access import is_staff_user, panel_view
-from ..forms import CategoryForm, ItemForm, PromoRateForm
+from ..forms import CategoryForm, ItemForm, PromoRateForm, SectionForm, VenueForm
 
 
 def _editor_only(user):
     return not user.can('catalog.edit')
 
 
+def _match(item, q):
+    return not q or q in (item.title.get('ru') or '').lower() or q in item.id
+
+
 @panel_view('catalog')
 def catalog(request):
-    cats = Category.objects.all().prefetch_related('items__promos', 'items__outlet')
+    """Вкладки объектов: курорт на Иссык-Куле — по разделам программы, остальные объекты — по подразделам."""
+    venues = list(Venue.objects.all())
+    venue = next((v for v in venues if v.pk == request.GET.get('venue')), None) \
+        or next((v for v in venues if v.pk == DEFAULT_VENUE), venues[0] if venues else None)
     now = timezone.now()
     q = (request.GET.get('q') or '').strip().lower()
-    groups = []
-    for c in cats:
-        items = [i for i in c.items.all() if not q or q in (i.title.get('ru') or '').lower() or q in i.id]
-        groups.append({'cat': c, 'items': [{'obj': i, 'promo': i.active_promo(now)} for i in items]})
-    return render(request, 'panel/catalog/index.html', {'groups': groups, 'q': q,
-                                                        'can_edit': request.user.can('catalog.edit')})
+    groups, sections = [], []
+    if venue is None or venue.pk == DEFAULT_VENUE:
+        cats = Category.objects.all().prefetch_related('items__promos', 'items__outlet')
+        for c in cats:
+            items = [i for i in c.items.all() if i.venue_id == DEFAULT_VENUE and _match(i, q)]
+            groups.append({'cat': c, 'items': [{'obj': i, 'promo': i.active_promo(now)} for i in items]})
+    else:
+        all_sections = list(Section.objects.filter(venue=venue).select_related('parent', 'category')
+                            .prefetch_related('items__promos', 'items__outlet').order_by('sort_order', 'id'))
+        parents = {s.parent_id for s in all_sections if s.parent_id}
+        order = {s.pk: (s.parent.sort_order if s.parent else s.sort_order, 0 if not s.parent else 1, s.sort_order)
+                 for s in all_sections}
+        for s in sorted(all_sections, key=lambda s: order[s.pk]):
+            items = [i for i in s.items.all() if _match(i, q)] if s.pk not in parents else []
+            if q and not items:
+                continue
+            sections.append({'section': s, 'is_parent': s.pk in parents,
+                             'items': [{'obj': i, 'promo': i.active_promo(now)} for i in items]})
+    return render(request, 'panel/catalog/index.html', {
+        'groups': groups, 'sections': sections, 'venues': venues, 'venue': venue, 'q': q,
+        'can_edit': request.user.can('catalog.edit')})
+
+
+@panel_view('catalog')
+def venue_edit(request, venue_id):
+    venue = get_object_or_404(Venue, pk=venue_id)
+    form = VenueForm(request.POST or None, instance=venue)
+    if _editor_only(request.user):
+        form.lock(['sort_order', 'is_active'])
+    if request.method == 'POST' and form.is_valid():
+        before = model_snapshot(venue)
+        obj = form.save()
+        audit(request, 'venue.update', obj, before=before, after=model_snapshot(obj))
+        messages.success(request, 'Объект сохранён')
+        return redirect(f"{redirect('panel:catalog').url}?venue={obj.pk}")
+    return render(request, 'panel/catalog/venue.html', {'form': form, 'venue': venue})
+
+
+@panel_view('catalog')
+def section_edit(request, section_id=None):
+    section = get_object_or_404(Section, pk=section_id) if section_id else None
+    if section is None and not request.user.can('catalog.edit'):
+        from ..access import forbidden
+        return forbidden(request, 'Создавать подразделы может директор')
+    initial = {'venue': request.GET.get('venue')} if section is None and request.GET.get('venue') else {}
+    form = SectionForm(request.POST or None, instance=section, initial=initial)
+    if _editor_only(request.user):
+        form.lock(['id', 'venue', 'parent', 'category', 'sort_order', 'is_active'])
+    if request.method == 'POST' and form.is_valid():
+        before = model_snapshot(section) if section else None
+        obj = form.save()
+        audit(request, 'section.update' if section else 'section.create', obj, before=before,
+              after=model_snapshot(obj))
+        messages.success(request, 'Подраздел сохранён')
+        return redirect(f"{redirect('panel:catalog').url}?venue={obj.venue_id}")
+    return render(request, 'panel/catalog/section.html', {'form': form, 'section': section})
 
 
 @panel_view('catalog')
@@ -58,6 +115,10 @@ def item_edit(request, item_id=None):
     initial = {}
     if item is None and request.GET.get('category'):
         initial['category'] = request.GET['category']
+    if item is None and request.GET.get('section'):
+        sec = Section.objects.filter(pk=request.GET['section']).first()
+        if sec:
+            initial.update(section=sec.pk, venue=sec.venue_id, category=sec.category_id)
     form = ItemForm(request.POST or None, instance=item, initial=initial)
     if _editor_only(user):
         form.lock(ItemForm.RULE_FIELDS)

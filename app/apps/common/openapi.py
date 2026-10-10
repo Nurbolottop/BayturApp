@@ -80,6 +80,19 @@ class CashbackRules(s.Serializer):
     methods = s.ListField(child=s.ChoiceField(choices=PaymentMethod.choices))
 
 
+class SeasonRange(s.Serializer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    from_ = s.DateField(allow_null=True)
+    to = s.DateField(allow_null=True)
+
+    def get_fields(self):
+        fields = super().get_fields()
+        fields['from'] = fields.pop('from_')
+        return fields
+
+
 class ServiceItem(s.Serializer):
     id = s.CharField()
     category = s.ChoiceField(choices=CategoryId.choices)
@@ -94,6 +107,10 @@ class ServiceItem(s.Serializer):
     description = s.CharField()
     features = Feature(many=True)
     outlet = s.CharField(allow_null=True)
+    venue = s.CharField(help_text='Объект: baytur, too-ashuu, suusamyr…')
+    section = s.CharField(allow_null=True, help_text='Подраздел прайса объекта')
+    priceNote = s.CharField(allow_null=True, help_text='«за сутки», «в час», «от 10 000 до 22 000», «бесплатно»')
+    season = SeasonRange(allow_null=True, help_text='Услуга доступна только в эти даты')
     isActive = s.BooleanField()
     cashbackPreview = s.IntegerField(help_text='Баллы за оплату деньгами по цене по умолчанию')
 
@@ -105,6 +122,51 @@ class ServiceCategory(s.Serializer):
     sortOrder = s.IntegerField()
     rules = CashbackRules()
     items = ServiceItem(many=True)
+
+
+class VenueContact(s.Serializer):
+    label = s.CharField()
+    phone = s.CharField(allow_null=True)
+    whatsapp = s.BooleanField()
+    email = s.CharField(allow_null=True)
+
+
+class VenueInfoRow(s.Serializer):
+    label = s.CharField()
+    value = s.CharField()
+
+
+class VenueInfo(s.Serializer):
+    title = s.CharField()
+    text = s.CharField(required=False, help_text='Либо text, либо rows')
+    rows = VenueInfoRow(many=True, required=False)
+
+
+class Venue(s.Serializer):
+    id = s.CharField()
+    name = s.CharField()
+    short = s.CharField()
+    description = s.CharField()
+    address = s.CharField()
+    cover = s.URLField(allow_null=True)
+    contacts = VenueContact(many=True)
+    info = VenueInfo(many=True)
+    sortOrder = s.IntegerField()
+
+
+class VenueSection(s.Serializer):
+    id = s.CharField()
+    title = s.CharField()
+    note = s.CharField(allow_null=True)
+    category = s.ChoiceField(choices=CategoryId.choices, help_text='Раздел программы: способы оплаты')
+    rules = CashbackRules()
+    sections = s.ListField(child=s.DictField(), help_text='Вложенные подразделы (та же структура)')
+    items = ServiceItem(many=True)
+
+
+class VenueCatalog(s.Serializer):
+    venue = Venue()
+    sections = VenueSection(many=True)
 
 
 # ---------------------------------------------------------------- лояльность

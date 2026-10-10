@@ -46,6 +46,9 @@ urlpatterns = [
     # каталог
     path('catalog/', catalog.catalog, name='catalog'),
     path('catalog/category/<str:category_id>/', catalog.category_edit, name='category'),
+    path('catalog/venues/<slug:venue_id>/', catalog.venue_edit, name='venue'),
+    path('catalog/sections/new/', catalog.section_edit, name='section-new'),
+    path('catalog/sections/<slug:section_id>/', catalog.section_edit, name='section'),
     path('catalog/items/new/', catalog.item_edit, name='item-new'),
     path('catalog/items/<slug:item_id>/', catalog.item_edit, name='item'),
     path('catalog/items/<slug:item_id>/<slug:action>/', catalog.item_action, name='item-action'),

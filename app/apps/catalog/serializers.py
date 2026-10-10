@@ -44,6 +44,12 @@ def item_payload(item, now=None, ps=None):
         'description': tr(item.description) or '',
         'features': [{'icon': f.get('icon'), 'text': tr(f.get('text'))} for f in (item.features or [])],
         'outlet': item.outlet_id,
+        'venue': item.venue_id,
+        'section': item.section_id,
+        'priceNote': tr(item.price_note) or None,
+        'season': {'from': item.season_from.isoformat() if item.season_from else None,
+                   'to': item.season_to.isoformat() if item.season_to else None}
+        if (item.season_from or item.season_to) else None,
         'isActive': item.is_active,
         'cashbackPreview': cashback_preview(item, now, ps),
     }
@@ -66,4 +72,47 @@ def category_payload(category, items, now=None, ps=None):
         'sortOrder': category.sort_order,
         'rules': rules_payload(category),
         'items': [item_payload(i, now, ps) for i in items],
+    }
+
+
+def _l10n_rows(rows):
+    return [{'label': tr(r.get('label')), 'value': tr(r.get('value'))} for r in rows or []]
+
+
+def venue_payload(venue):
+    info = []
+    for block in venue.info or []:
+        entry = {'title': tr(block.get('title'))}
+        if block.get('rows'):
+            entry['rows'] = _l10n_rows(block['rows'])
+        else:
+            entry['text'] = tr(block.get('text'))
+        info.append(entry)
+    return {
+        'id': venue.id,
+        'name': tr(venue.name),
+        'short': tr(venue.short) or '',
+        'description': tr(venue.description) or '',
+        'address': tr(venue.address) or '',
+        'cover': absolute_media_url(venue.cover),
+        'contacts': [{'label': tr(c.get('label')), 'phone': c.get('phone') or None,
+                      'whatsapp': bool(c.get('whatsapp')), 'email': c.get('email') or None}
+                     for c in venue.contacts or []],
+        'info': info,
+        'sortOrder': venue.sort_order,
+    }
+
+
+def section_payload(section, children_of, items_of, now=None, ps=None):
+    """Подраздел с вложенными подразделами и услугами; пустые ветки не отдаются."""
+    children = [section_payload(c, children_of, items_of, now, ps) for c in children_of.get(section.id, [])]
+    children = [c for c in children if c['items'] or c['sections']]
+    return {
+        'id': section.id,
+        'title': tr(section.title),
+        'note': tr(section.note) or None,
+        'category': section.category_id,
+        'rules': rules_payload(section.category),
+        'sections': children,
+        'items': [item_payload(i, now, ps) for i in items_of.get(section.id, [])],
     }

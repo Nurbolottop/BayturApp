@@ -123,9 +123,15 @@ def apply():
         auth=False, params=[OpenApiParameter('X-Platform', str, OpenApiParameter.HEADER, enum=['ios', 'android']),
                             OpenApiParameter('X-App-Version', str, OpenApiParameter.HEADER)])
     doc(members.ResortContactsView, 'get', SYS, 'Контакты курорта', response=o.ResortContacts, auth=False)
-    doc(catalog.CatalogView, 'get', CAT, 'Каталог: категории с услугами и правилами',
+    doc(catalog.CatalogView, 'get', CAT, 'Каталог курорта на Иссык-Куле (старое приложение): категории с услугами',
         response=o.ServiceCategory(many=True), auth=False)
     doc(catalog.CatalogItemView, 'get', CAT, 'Услуга (в т.ч. неактивная — для истории)', response=o.ServiceItem,
+        auth=False, errors=(404,))
+    doc(catalog.VenuesView, 'get', CAT, 'Объекты экосистемы BAYTUR (у каждого своё приложение)',
+        response=o.Venue(many=True), auth=False)
+    doc(catalog.VenueDetailView, 'get', CAT, 'Объект: контакты, адрес, инфоблоки', response=o.Venue, auth=False,
+        errors=(404,))
+    doc(catalog.VenueCatalogView, 'get', CAT, 'Прайс объекта: подразделы и услуги', response=o.VenueCatalog,
         auth=False, errors=(404,))
     doc(loyalty.ProgramView, 'get', LOY, 'Уровни и привилегии', response=o.Program, auth=False)
     doc(content.PromosView, 'get', CNT, 'Акции-баннеры (активные сегодня)', response=o.Promo(many=True), auth=False)

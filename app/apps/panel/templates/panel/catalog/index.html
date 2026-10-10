@@ -2,13 +2,37 @@
 {% block title %}Каталог{% endblock %}
 {% block content %}
 <div class="topbar">
-  <div><h1 class="page-title">Каталог</h1><div class="muted" style="margin-top:6px">Разделы, правила кешбека и услуги</div></div>
+  <div><h1 class="page-title">Каталог</h1><div class="muted" style="margin-top:6px">Объекты, разделы, правила кешбека и услуги</div></div>
   <div class="actions">
-    <form method="get" class="search field" style="width:260px">{% icon 'search' 18 %}<input type="search" name="q" value="{{ q }}" placeholder="Найти услугу"></form>
+    <form method="get" class="search field" style="width:260px">{% if venue %}<input type="hidden" name="venue" value="{{ venue.pk }}">{% endif %}{% icon 'search' 18 %}<input type="search" name="q" value="{{ q }}" placeholder="Найти услугу"></form>
+    {% if venue %}<a class="btn" href="{% url 'panel:venue' venue.pk %}">{% icon 'edit' 18 %} Объект</a>{% endif %}
+    {% if can_edit and venue and venue.pk != 'baytur' %}<a class="btn" href="{% url 'panel:section-new' %}?venue={{ venue.pk }}">{% icon 'plus' 18 %} Подраздел</a>{% endif %}
     {% if can_edit %}<a class="btn btn-accent" href="{% url 'panel:item-new' %}">{% icon 'plus' 18 %} Услуга</a>{% endif %}
   </div>
 </div>
+{% if venues|length > 1 %}<div class="seg" style="margin-bottom:18px">{% for v in venues %}<a href="?venue={{ v.pk }}" class="{% if venue.pk == v.pk %}on{% endif %}">{{ v.name|tr }}{% if not v.is_active %} · скрыт{% endif %}</a>{% endfor %}</div>{% endif %}
 <div class="stack">
+{% for g in sections %}
+  <section class="card flush appear"{% if g.is_parent %} style="background:transparent;box-shadow:none"{% endif %}>
+    <div class="card-head" style="padding-bottom:{% if g.is_parent %}0{% else %}14px{% endif %}">
+      <div>{% if g.section.parent %}<div class="small muted">{{ g.section.parent.title|tr }}</div>{% endif %}
+        <div class="{% if g.is_parent %}h2{% else %}h3{% endif %}">{{ g.section.title|tr }} {% if not g.section.is_active %}<span class="pill pill-muted">скрыт</span>{% endif %}</div>
+        {% if g.section.note|tr %}<div class="small muted" style="margin-top:4px">{{ g.section.note|tr }}</div>{% endif %}</div>
+      <div class="row">{% if can_edit and not g.is_parent %}<a class="btn btn-s" href="{% url 'panel:item-new' %}?section={{ g.section.pk }}">{% icon 'plus' 16 %}</a>{% endif %}<a class="btn btn-s" href="{% url 'panel:section' g.section.pk %}">{% icon 'edit' 16 %}</a></div>
+    </div>
+    {% if not g.is_parent %}<div class="table-wrap"><table class="table"><tbody>
+      {% for i in g.items %}
+        <tr class="link" data-href="{% url 'panel:item' i.obj.pk %}">
+          <td><div class="title-cell"><div><b>{{ i.obj.title|tr }}</b><span class="small muted">{{ i.obj.meta|tr }}</span></div></div></td>
+          <td class="hide-s small muted">{{ i.obj.outlet.name|tr|default:"—" }}</td>
+          <td class="n">{{ i.obj.price|som }}{% if i.obj.price_note|tr %}<div class="small muted">{{ i.obj.price_note|tr }}</div>{% endif %}</td>
+          <td>{% if i.obj.season_from or i.obj.season_to %}<span class="tag">сезон {{ i.obj.season_from|date:"d.m"|default:"…" }}–{{ i.obj.season_to|date:"d.m"|default:"…" }}</span>{% endif %}</td>
+          <td>{% if i.obj.is_active %}{% pill 'bool' True 'в каталоге' %}{% else %}{% pill 'bool' False 'скрыта' %}{% endif %}</td>
+        </tr>
+      {% empty %}<tr><td><div class="empty">Нет услуг</div></td></tr>{% endfor %}
+    </tbody></table></div>{% endif %}
+  </section>
+{% endfor %}
 {% for g in groups %}
   <section class="card flush appear">
     <div class="card-head" style="padding-bottom:14px">

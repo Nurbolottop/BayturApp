@@ -1,0 +1,22 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}{{ venue.name|tr }}{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:catalog' %}?venue={{ venue.pk }}">{% icon 'arrow-left' 14 %} Каталог</a></div><h1 class="page-title">{{ venue.name|tr }}</h1><div class="muted" style="margin-top:6px">Объект экосистемы: своё приложение, аккаунт и баллы — общие</div></div></div>
+<form method="post" class="card appear" style="max-width:920px" novalidate>
+  {% csrf_token %}{% include 'panel/components/form_errors.html' %}
+  <div class="form-grid">
+    {% include 'panel/components/field.html' with f=form.name full=1 %}
+    {% include 'panel/components/field.html' with f=form.short full=1 %}
+    {% include 'panel/components/field.html' with f=form.description full=1 %}
+    {% include 'panel/components/field.html' with f=form.address full=1 %}
+    <div class="field full"><span class="label">Обложка</span>
+      <div class="photo-field" data-photo="id_cover"><div class="ph">{% icon 'image' 24 %}</div>
+        <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.cover }}</div>
+    {% include 'panel/components/field.html' with f=form.contacts full=1 %}
+    {% include 'panel/components/field.html' with f=form.info full=1 %}
+    {% include 'panel/components/field.html' with f=form.sort_order %}
+    {% include 'panel/components/field.html' with f=form.is_active %}
+  </div>
+  <div class="form-actions"><a class="btn btn-ghost" href="{% url 'panel:catalog' %}?venue={{ venue.pk }}">Отмена</a><button class="btn btn-accent">Сохранить</button></div>
+</form>
+{% endblock %}
