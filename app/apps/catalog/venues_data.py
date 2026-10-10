@@ -796,6 +796,33 @@ ALLOWED_UNITS = {'night', 'session', 'guest', 'hour', 'visit'}
 ALLOWED_CATEGORIES = {'rooms', 'spa', 'food', 'pools', 'sport'}
 
 
+# Акции, которые уже есть в прайсах (цены в ITEMS их уже учитывают — акции показывают их в приложении).
+# key — для повторной загрузки (load_venues не создаёт акцию с тем же названием повторно).
+PROMOTIONS = [
+    {'title': L('Завтрак и скипасс для каждого гостя бесплатно', 'Ар бир конокко эртең мененки тамак жана скипасс акысыз',
+                'Free breakfast and ski pass for every guest'),
+     'description': L('При проживании в коттедже «Тоо-Ашуу» завтрак и скипасс для каждого гостя уже входят в цену.',
+                      '«Тоо-Ашуу» коттеджинде жашаганда ар бир конокко эртең мененки тамак жана скипасс баага кирет.',
+                      'Breakfast and a ski pass for every guest are included when staying in a Too-Ashuu cottage.'),
+     'tag': L('Скипасс в подарок', 'Скипасс белекке', 'Free ski pass'),
+     'kind': 'gift', 'value': 0, 'scope': 'items',
+     'items': ['ta-cottage-2', 'ta-cottage-3', 'ta-cottage-4', 'ta-cottage-5'], 'gift_item': 'ta-skipass-adult'},
+    {'title': L('Дети до 6 лет включительно живут бесплатно', '6 жашка чейинки балдар акысыз жашашат',
+                'Children up to 6 stay free'),
+     'description': L('Для детей до 6 лет включительно проживание бесплатно (без питания и кобыльего молока).',
+                      '6 жашка чейинки балдар үчүн жашоо акысыз (тамаксыз жана бээ сүтүсүз).',
+                      'Accommodation is free for children up to 6 (without meals and mare milk).'),
+     'tag': L('Бесплатно', 'Акысыз', 'Free'),
+     'kind': 'specialPrice', 'value': 0, 'scope': 'items', 'audience': 'children',
+     'items': ['su-full-kids-under-6', 'su-room-kids-under-6']},
+    {'title': L('Трансфер по суперцене', 'Супер баадагы трансфер', 'Transfer at a super price'),
+     'description': L('Трансфер Бишкек ↔ «Тоо-Ашуу» — 1 000 сом с человека.', 'Бишкек ↔ «Тоо-Ашуу» трансфери — кишиге 1 000 сом.',
+                      'Bishkek ↔ Too-Ashuu transfer — 1,000 KGS per person.'),
+     'tag': L('Суперцена', 'Супер баа', 'Super price'),
+     'kind': 'specialPrice', 'value': 1000, 'scope': 'items', 'items': ['ta-transfer-bishkek']},
+]
+
+
 if __name__ == '__main__':
     import re
     from collections import Counter

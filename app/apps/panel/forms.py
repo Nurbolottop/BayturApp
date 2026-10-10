@@ -9,7 +9,8 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from apps.catalog.models import (ACTIVE_METHOD_CHOICES, FEATURE_ICONS, Category, Item, ItemPromo, Outlet,
-                                 PaymentMethod, Section, Venue)
+                                 PaymentMethod, Promotion, PromotionAudience, PromotionKind, PromotionScope, Section,
+                                 Venue)
 from apps.common.i18n import LANGS
 from apps.common.models import ProgramSettings
 from apps.complaints.models import ComplaintCategory, ReplyTemplate
@@ -223,6 +224,88 @@ class VenueForm(PanelForm, forms.ModelForm):
         if not isinstance(v, list) or not all(isinstance(b, dict) and b.get('title') for b in v):
             raise ValidationError('Нужен список блоков с title')
         return v
+
+
+WEEKDAYS = [(0, 'Пн'), (1, 'Вт'), (2, 'Ср'), (3, 'Чт'), (4, 'Пт'), (5, 'Сб'), (6, 'Вс')]
+
+
+class PromotionForm(PanelForm, forms.ModelForm):
+    """Акция на цену: вид и размер, охват, период, условия, аудитория, совместимость, лимит."""
+
+    title = L10nField(label='Название', max_length=120)
+    description = L10nField(label='Описание', required=False, textarea=True, rows=3)
+    tag = L10nField(label='Бейдж', required=False, max_length=30)
+    weekdays = forms.TypedMultipleChoiceField(label='Дни недели', choices=WEEKDAYS, coerce=int, required=False,
+                                              widget=forms.CheckboxSelectMultiple)
+    tiers = forms.MultipleChoiceField(label='Уровни', required=False, widget=forms.CheckboxSelectMultiple)
+
+    class Meta:
+        model = Promotion
+        fields = ['title', 'description', 'tag', 'kind', 'value', 'scope', 'venues', 'sections', 'items',
+                  'gift_item', 'bundle_items', 'bundle_price', 'starts_at', 'ends_at', 'weekdays', 'time_from',
+                  'time_to', 'min_quantity', 'min_amount', 'audience', 'tiers', 'group_min', 'stackable',
+                  'usage_limit', 'sort_order', 'is_active']
+        widgets = {
+            'starts_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
+            'ends_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
+            'time_from': forms.TimeInput(attrs={'type': 'time'}, format='%H:%M'),
+            'time_to': forms.TimeInput(attrs={'type': 'time'}, format='%H:%M'),
+            'venues': forms.CheckboxSelectMultiple, 'sections': forms.SelectMultiple(attrs={'size': 10}),
+            'items': forms.SelectMultiple(attrs={'size': 12}), 'bundle_items': forms.SelectMultiple(attrs={'size': 8}),
+        }
+        labels = {'kind': 'Вид', 'value': 'Размер', 'scope': 'Охват', 'venues': 'Объекты', 'sections': 'Разделы',
+                  'items': 'Услуги', 'gift_item': 'Услуга в подарок', 'bundle_items': 'Состав пакета',
+                  'bundle_price': 'Цена пакета, сом', 'starts_at': 'Начало', 'ends_at': 'Конец',
+                  'time_from': 'Часы: с', 'time_to': 'Часы: до', 'min_quantity': 'Минимум ночей / гостей / единиц',
+                  'min_amount': 'Минимальная сумма заказа, сом', 'audience': 'Для кого',
+                  'group_min': 'Группа от, человек', 'stackable': 'Суммируется с другими акциями',
+                  'usage_limit': 'Лимит использований', 'sort_order': 'Порядок', 'is_active': 'Включена'}
+        help_texts = {'value': '% — для скидки в процентах; сом — для скидки суммой и спеццены (за единицу); '
+                               'N — для «N+1» (каждая N+1-я бесплатно)'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from apps.loyalty.models import Tier
+        self.fields['tiers'].choices = [(t.pk, t.name.get('ru') or t.pk) for t in Tier.objects.order_by('order')]
+        self.fields['sections'].queryset = Section.objects.select_related('venue', 'parent')
+        self.fields['sections'].label_from_instance = lambda s: f'{s.venue} · {s.parent} → {s}' if s.parent \
+            else f'{s.venue} · {s}'
+        items = Item.objects.select_related('venue').order_by('venue__sort_order', 'sort_order', 'id')
+        for name in ('items', 'bundle_items', 'gift_item'):
+            self.fields[name].queryset = items
+            self.fields[name].label_from_instance = lambda i: f'{i.venue} · {i} — {i.price} сом'
+            self.fields[name].required = False
+        for name in ('venues', 'sections', 'bundle_items'):
+            self.fields[name].required = False
+
+    def clean(self):
+        data = super().clean()
+        kind, value = data.get('kind'), data.get('value') or 0
+        if kind == PromotionKind.PERCENT and not (0 < value <= 100):
+            self.add_error('value', 'Процент — от 1 до 100')
+        if kind in (PromotionKind.AMOUNT, PromotionKind.N_PLUS_ONE) and value <= 0:
+            self.add_error('value', 'Укажите размер больше нуля')
+        if kind == PromotionKind.SPECIAL_PRICE and value < 0:
+            self.add_error('value', 'Цена не может быть отрицательной')
+        if kind == PromotionKind.GIFT and not data.get('gift_item'):
+            self.add_error('gift_item', 'Выберите услугу в подарок')
+        if kind == PromotionKind.BUNDLE:
+            if not data.get('bundle_items'):
+                self.add_error('bundle_items', 'Выберите услуги пакета')
+            if not data.get('bundle_price'):
+                self.add_error('bundle_price', 'Укажите цену пакета')
+        scope = data.get('scope')
+        need = {PromotionScope.VENUES: 'venues', PromotionScope.SECTIONS: 'sections', PromotionScope.ITEMS: 'items'}
+        if kind != PromotionKind.BUNDLE and scope in need and not data.get(need[scope]):
+            self.add_error(need[scope], 'Выберите, на что действует акция')
+        if data.get('audience') == PromotionAudience.TIERS and not data.get('tiers'):
+            self.add_error('tiers', 'Выберите уровни')
+        if data.get('audience') == PromotionAudience.GROUPS and not data.get('group_min'):
+            self.add_error('group_min', 'Укажите, от скольких человек группа')
+        s, e = data.get('starts_at'), data.get('ends_at')
+        if s and e and e <= s:
+            self.add_error('ends_at', 'Конец раньше начала')
+        return data
 
 
 class SectionForm(PanelForm, forms.ModelForm):

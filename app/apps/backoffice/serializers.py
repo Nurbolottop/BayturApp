@@ -9,7 +9,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from apps.catalog.models import (ACTIVE_METHOD_CHOICES, FEATURE_ICONS, Category, CategoryId, Item, ItemPromo, Outlet,
-                                 PaymentMethod, PricingUnit, Section, Venue)
+                                 PaymentMethod, PricingUnit, Promotion, Section, Venue)
 from apps.catalog.serializers import cashback_preview
 from apps.common.i18n import LANGS, iso, validate_l10n
 from apps.common.models import ProgramSettings
@@ -726,3 +726,60 @@ class ReplyTemplateSerializer(serializers.ModelSerializer):
         model = ReplyTemplate
         fields = ['id', 'title', 'text', 'category', 'sortOrder']
         read_only_fields = ['id']
+
+
+class PromotionSerializer(serializers.ModelSerializer):
+    """Акция на цену (то же, что форма в панели). value: %, сом или N — по виду."""
+
+    title = L10nField()
+    description = optional_l10n()
+    tag = optional_l10n()
+    venues = serializers.PrimaryKeyRelatedField(queryset=Venue.objects.all(), many=True, required=False)
+    sections = serializers.PrimaryKeyRelatedField(queryset=Section.objects.all(), many=True, required=False)
+    items = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all(), many=True, required=False)
+    giftItem = serializers.PrimaryKeyRelatedField(source='gift_item', queryset=Item.objects.all(), required=False,
+                                                  allow_null=True)
+    bundleItems = serializers.PrimaryKeyRelatedField(source='bundle_items', queryset=Item.objects.all(), many=True,
+                                                     required=False)
+    bundlePrice = serializers.IntegerField(source='bundle_price', required=False, allow_null=True, min_value=0)
+    startsAt = IsoDateTimeField(source='starts_at', required=False, allow_null=True)
+    endsAt = IsoDateTimeField(source='ends_at', required=False, allow_null=True)
+    weekdays = serializers.ListField(child=serializers.IntegerField(min_value=0, max_value=6), required=False)
+    timeFrom = serializers.TimeField(source='time_from', required=False, allow_null=True)
+    timeTo = serializers.TimeField(source='time_to', required=False, allow_null=True)
+    minQuantity = serializers.IntegerField(source='min_quantity', required=False, allow_null=True, min_value=1)
+    minAmount = serializers.IntegerField(source='min_amount', required=False, allow_null=True, min_value=1)
+    tiers = serializers.ListField(child=serializers.CharField(), required=False)
+    groupMin = serializers.IntegerField(source='group_min', required=False, allow_null=True, min_value=2)
+    usageLimit = serializers.IntegerField(source='usage_limit', required=False, allow_null=True, min_value=1)
+    sortOrder = serializers.IntegerField(source='sort_order', required=False)
+    isActive = serializers.BooleanField(source='is_active', required=False)
+    used = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Promotion
+        fields = ['id', 'title', 'description', 'tag', 'kind', 'value', 'scope', 'venues', 'sections', 'items',
+                  'giftItem', 'bundleItems', 'bundlePrice', 'startsAt', 'endsAt', 'weekdays', 'timeFrom', 'timeTo',
+                  'minQuantity', 'minAmount', 'audience', 'tiers', 'groupMin', 'stackable', 'usageLimit',
+                  'sortOrder', 'isActive', 'used']
+        read_only_fields = ['id']
+
+    def get_used(self, obj):
+        from apps.catalog.promotions import used
+        return used(obj)
+
+    def validate(self, attrs):
+        get = lambda k: attrs.get(k, getattr(self.instance, k, None))  # noqa: E731
+        kind, value = get('kind'), get('value') or 0
+        if kind == 'percent' and not (0 < value <= 100):
+            raise serializers.ValidationError({'value': ['процент 1–100']})
+        if kind in ('amount', 'nPlusOne') and value <= 0:
+            raise serializers.ValidationError({'value': ['больше нуля']})
+        if kind == 'gift' and not get('gift_item'):
+            raise serializers.ValidationError({'giftItem': ['обязательно для подарка']})
+        if kind == 'bundle' and not get('bundle_price'):
+            raise serializers.ValidationError({'bundlePrice': ['обязательно для пакета']})
+        s, e = get('starts_at'), get('ends_at')
+        if s and e and e <= s:
+            raise serializers.ValidationError({'endsAt': ['позже начала']})
+        return attrs

@@ -4759,6 +4759,51 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/venues/{venue_id}/promotions:
+    get:
+      operationId: venues_promotions_retrieve
+      description: 'Действующие сейчас акции объекта (в т.ч. на все объекты): условия,
+        услуги, подарок, пакет.'
+      summary: 'Акции объекта: условия, услуги, подарок, пакет'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: venue_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Каталог
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+                description: Unspecified response body
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/wallet:
     get:
       operationId: wallet_retrieve
@@ -5030,6 +5075,33 @@ components:
           minLength: 1
       required:
       - identityToken
+    AppliedPromotion:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        kind:
+          type: string
+        basePrice:
+          type: integer
+          description: Сумма без акции
+        discount:
+          type: integer
+          description: Скидка, сом (total уже с ней)
+        gift:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          description: '{itemId, title} — услуга в подарок'
+      required:
+      - basePrice
+      - discount
+      - gift
+      - id
+      - kind
+      - title
     Article:
       type: object
       properties:
@@ -6695,6 +6767,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Bonus'
+        promotion:
+          allOf:
+          - $ref: '#/components/schemas/AppliedPromotion'
+          nullable: true
+          description: Применённая акция; total — уже со скидкой
       required:
       - availablePoints
       - bonuses
@@ -6704,6 +6781,7 @@ components:
       - moneySom
       - points
       - pointsSom
+      - promotion
       - rate
       - total
     RatingInputRequest:
@@ -7169,6 +7247,18 @@ components:
         outlet:
           type: string
           nullable: true
+        promo:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          description: '{basePrice, price, promotionId}: акционная цена за единицу
+            для всех гостей; null — без скидки'
+        promotions:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Действующие акции услуги с условиями
         venue:
           type: string
           description: 'Объект: baytur, too-ashuu, suusamyr…'
@@ -7204,7 +7294,9 @@ components:
       - price
       - priceNote
       - pricing
+      - promo
       - promoRate
+      - promotions
       - season
       - section
       - tag

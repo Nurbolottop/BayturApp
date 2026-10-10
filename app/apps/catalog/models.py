@@ -254,3 +254,84 @@ class ItemPromo(models.Model):
     def active_q(at):
         return Q(is_active=True) & (Q(starts_at__isnull=True) | Q(starts_at__lte=at)) & (
             Q(ends_at__isnull=True) | Q(ends_at__gt=at))
+
+
+class PromotionKind(models.TextChoices):
+    PERCENT = 'percent', 'Скидка в процентах'
+    AMOUNT = 'amount', 'Скидка суммой'
+    SPECIAL_PRICE = 'specialPrice', 'Специальная цена'
+    GIFT = 'gift', 'Бесплатная услуга в подарок'
+    BUNDLE = 'bundle', 'Пакет (комбо)'
+    N_PLUS_ONE = 'nPlusOne', 'N+1'
+
+
+class PromotionScope(models.TextChoices):
+    ITEMS = 'items', 'Услуги'
+    SECTIONS = 'sections', 'Разделы'
+    VENUES = 'venues', 'Объекты'
+    ALL = 'all', 'Все объекты'
+
+
+class PromotionAudience(models.TextChoices):
+    ALL = 'all', 'Все гости'
+    MEMBERS = 'members', 'Участники программы лояльности'
+    TIERS = 'tiers', 'Участники выбранных уровней'
+    GROUPS = 'groups', 'Группы (от N человек)'
+    CHILDREN = 'children', 'Дети'
+
+
+class Promotion(models.Model):
+    """
+    Акция на цену (ТЗ «BAYTUR полный список услуг», раздел «Акции»). Базовая цена услуги сохраняется, акционная
+    считается сервером: в прайсе (promo у услуги), в расчёте и в заявке — клиент платит акционную цену.
+
+    value: percent — %, amount — сом с заказа, specialPrice — цена за единицу, nPlusOne — N (каждая N+1-я бесплатно).
+    gift — услуга gift_item в подарок (цена заказа не меняется), bundle — пакет bundle_items за bundle_price.
+    Совместимость: несовместимая акция не сочетается ни с чем; совместимые применяются вместе.
+    """
+
+    title = models.JSONField('Название', default=dict)
+    description = models.JSONField('Описание', default=dict, blank=True)
+    tag = models.JSONField('Бейдж', default=dict, blank=True, help_text='«−20%», «Суперцена»')
+    kind = models.CharField('Вид', max_length=20, choices=PromotionKind.choices)
+    value = models.DecimalField('Размер', max_digits=12, decimal_places=2, default=0)
+    # охват
+    scope = models.CharField('Охват', max_length=10, choices=PromotionScope.choices, default=PromotionScope.ITEMS)
+    venues = models.ManyToManyField(Venue, blank=True, related_name='promotions', verbose_name='Объекты')
+    sections = models.ManyToManyField(Section, blank=True, related_name='promotions', verbose_name='Разделы')
+    items = models.ManyToManyField(Item, blank=True, related_name='promotions', verbose_name='Услуги')
+    # подарок и пакет
+    gift_item = models.ForeignKey(Item, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+                                  verbose_name='Услуга в подарок')
+    bundle_items = models.ManyToManyField(Item, blank=True, related_name='bundles', verbose_name='Состав пакета')
+    bundle_price = models.PositiveIntegerField('Цена пакета', null=True, blank=True)
+    # период
+    starts_at = models.DateTimeField('Начало', null=True, blank=True)
+    ends_at = models.DateTimeField('Конец', null=True, blank=True)
+    weekdays = models.JSONField('Дни недели', default=list, blank=True, help_text='0 — пн … 6 — вс; пусто — все')
+    time_from = models.TimeField('С', null=True, blank=True)
+    time_to = models.TimeField('До', null=True, blank=True)
+    # условия
+    min_quantity = models.PositiveIntegerField('Минимум (ночей, гостей, единиц)', null=True, blank=True)
+    min_amount = models.PositiveIntegerField('Минимальная сумма заказа, сом', null=True, blank=True)
+    # для кого
+    audience = models.CharField('Для кого', max_length=10, choices=PromotionAudience.choices,
+                                default=PromotionAudience.ALL)
+    tiers = models.JSONField('Уровни', default=list, blank=True, help_text='Для «участники выбранных уровней»')
+    group_min = models.PositiveIntegerField('Группа от, человек', null=True, blank=True)
+    # совместимость и лимит
+    stackable = models.BooleanField('Суммируется с другими акциями', default=False)
+    usage_limit = models.PositiveIntegerField('Лимит использований', null=True, blank=True,
+                                              help_text='Пусто — без лимита')
+    sort_order = models.IntegerField(default=0)
+    is_active = models.BooleanField('Включена', default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['sort_order', '-created_at']
+        verbose_name = 'Акция'
+        verbose_name_plural = 'Акции'
+
+    def __str__(self):
+        return self.title.get('ru') or f'Акция {self.pk}'

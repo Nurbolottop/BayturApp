@@ -42,6 +42,8 @@ class CashbackRequest(models.Model):
     item_snapshot = models.JSONField()
     rules = models.JSONField(help_text='{rate, maxPointsShare, methods, pointsPerSom} с учётом акции/ДР')
     bonuses = models.JSONField(default=list, blank=True)
+    promotion = models.JSONField(null=True, blank=True,
+                                 help_text='Применённая акция: {id, title, kind, basePrice, discount, gift}')
 
     # Ввод клиента
     quantity = models.PositiveIntegerField(default=1)

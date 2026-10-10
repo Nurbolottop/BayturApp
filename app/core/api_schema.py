@@ -133,6 +133,8 @@ def apply():
         errors=(404,))
     doc(catalog.VenueCatalogView, 'get', CAT, 'Прайс объекта: подразделы и услуги', response=o.VenueCatalog,
         auth=False, errors=(404,))
+    doc(catalog.VenuePromotionsView, 'get', CAT, 'Акции объекта: условия, услуги, подарок, пакет',
+        response=s.ListField(child=s.DictField()), auth=False, errors=(404,))
     doc(loyalty.ProgramView, 'get', LOY, 'Уровни и привилегии', response=o.Program, auth=False)
     doc(content.PromosView, 'get', CNT, 'Акции-баннеры (активные сегодня)', response=o.Promo(many=True), auth=False)
     doc(content.EventsView, 'get', CNT, 'События недели', response=o.ResortEvent(many=True), auth=False)

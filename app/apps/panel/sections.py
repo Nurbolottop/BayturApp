@@ -52,6 +52,7 @@ SECTIONS = [
     Section('complaints', 'Обращения', 'panel:complaints', 'chat', ('complaints.view',), group='work', tab=True,
             badge='complaints'),
     Section('catalog', 'Каталог', 'panel:catalog', 'grid', ('catalog.edit', 'catalog.texts'), group='program'),
+    Section('promotions', 'Акции', 'panel:promotions', 'gift', ('catalog.edit', 'catalog.texts'), group='program'),
     Section('tiers', 'Уровни', 'panel:tiers', 'medal', ('tiers.edit', 'tiers.texts'), group='program'),
     Section('content', 'Контент', 'panel:content', 'news', ('content.edit',), group='program', tab=True),
     Section('campaigns', 'Рассылки', 'panel:campaigns', 'megaphone', ('campaigns.draft', 'campaigns.send'),

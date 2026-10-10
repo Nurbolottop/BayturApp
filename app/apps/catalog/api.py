@@ -7,6 +7,7 @@ from apps.common.models import ProgramSettings
 from apps.common.views import PublicAPIView
 
 from .models import DEFAULT_VENUE, Category, Item, Section, Venue
+from .promotions import active_promotions
 from .serializers import category_payload, item_payload, section_payload, venue_payload
 
 
@@ -15,9 +16,10 @@ def build_catalog():
     ps = ProgramSettings.get()
     # старое приложение курорта — только услуги курорта на Иссык-Куле; у других объектов свой /venues/{id}/catalog
     items_qs = Item.objects.filter(is_active=True, venue_id=DEFAULT_VENUE).prefetch_related('promos') \
-        .select_related('category').order_by('sort_order', 'id')
+        .select_related('category', 'section__parent').order_by('sort_order', 'id')
     cats = Category.objects.filter(is_active=True).prefetch_related(Prefetch('items', queryset=items_qs))
-    return [category_payload(c, c.items.all(), now, ps) for c in cats]
+    promotions = active_promotions(now)
+    return [category_payload(c, c.items.all(), now, ps, promotions) for c in cats]
 
 
 class CatalogView(PublicAPIView):
@@ -30,7 +32,8 @@ class CatalogItemView(PublicAPIView):
 
     def get(self, request, item_id):
         def build():
-            item = Item.objects.select_related('category').prefetch_related('promos').filter(pk=item_id).first()
+            item = Item.objects.select_related('category', 'section__parent').prefetch_related('promos') \
+                .filter(pk=item_id).first()
             if item is None:
                 return None
             return item_payload(item)
@@ -65,9 +68,10 @@ def build_venue_catalog(venue):
         (children_of.setdefault(s.parent_id, []) if s.parent_id else roots).append(s)
     items_of = {}
     for item in Item.objects.active().filter(venue=venue, section__isnull=False) \
-            .select_related('category').prefetch_related('promos').order_by('sort_order', 'id'):
+            .select_related('category', 'section__parent').prefetch_related('promos').order_by('sort_order', 'id'):
         items_of.setdefault(item.section_id, []).append(item)
-    tree = [section_payload(s, children_of, items_of, now, ps) for s in roots]
+    promotions = active_promotions(now)
+    tree = [section_payload(s, children_of, items_of, now, ps, promotions) for s in roots]
     return {'venue': venue_payload(venue), 'sections': [t for t in tree if t['items'] or t['sections']]}
 
 
@@ -79,3 +83,29 @@ class VenueCatalogView(PublicAPIView):
         if venue is None:
             raise ApiError('not_found', 404)
         return cached_public('venue-catalog', lambda: build_venue_catalog(venue), request, vary=venue_id)
+
+
+def build_venue_promotions(venue):
+    from .promotions import covers
+    from .serializers import promotion_payload
+    now = timezone.now()
+    items = list(Item.objects.active().filter(venue=venue).select_related('section__parent'))
+    out = []
+    for p in active_promotions(now):
+        if p.kind == 'bundle':
+            in_venue = [i.pk for i in p.bundle_items.all() if i.venue_id == venue.pk]
+        else:
+            in_venue = [i.pk for i in items if covers(p, i)]
+        if in_venue:
+            out.append(promotion_payload(p, in_venue))
+    return out
+
+
+class VenuePromotionsView(PublicAPIView):
+    """Действующие сейчас акции объекта (в т.ч. на все объекты): условия, услуги, подарок, пакет."""
+
+    def get(self, request, venue_id):
+        venue = Venue.objects.filter(pk=venue_id, is_active=True).first()
+        if venue is None:
+            raise ApiError('not_found', 404)
+        return cached_public('venue-promotions', lambda: build_venue_promotions(venue), request, vary=venue_id)

@@ -28,6 +28,8 @@ urlpatterns = [
     path('venues', catalog.VenuesView.as_view()),
     path('venues/<slug:pk>', catalog.VenueDetailView.as_view()),
     path('sections', catalog.SectionsView.as_view()),
+    path('promotions', catalog.PromotionsView.as_view()),
+    path('promotions/<int:pk>', catalog.PromotionDetailView.as_view()),
     path('sections/<slug:pk>', catalog.SectionDetailView.as_view()),
     path('categories', catalog.CategoriesView.as_view()),
     path('categories/sort', catalog.CategoriesSortView.as_view()),

@@ -21,7 +21,11 @@ def pricing_payload(item):
     return {'type': 'unit', 'unit': p.get('unit', 'visit'), 'min': lo, 'max': hi}
 
 
-def item_payload(item, now=None, ps=None):
+def item_payload(item, now=None, ps=None, promotions=None):
+    from .promotions import active_promotions, item_promo_payload
+    if promotions is None:
+        promotions = active_promotions(now)
+    promo_price, offers = item_promo_payload(item, promotions, now)
     promo = item.promo_rate(now)
     gallery = [absolute_media_url(u) for u in ([item.image] if item.image else []) + list(item.gallery or [])
                if u]
@@ -52,6 +56,9 @@ def item_payload(item, now=None, ps=None):
         if (item.season_from or item.season_to) else None,
         'isActive': item.is_active,
         'cashbackPreview': cashback_preview(item, now, ps),
+        # акция на цену: {basePrice, price, promotionId} — цена за единицу для всех гостей; null — без скидки
+        'promo': promo_price,
+        'promotions': offers,
     }
 
 
@@ -64,14 +71,14 @@ def rules_payload(category):
     }
 
 
-def category_payload(category, items, now=None, ps=None):
+def category_payload(category, items, now=None, ps=None, promotions=None):
     return {
         'id': category.id,
         'title': tr(category.title),
         'cover': absolute_media_url(category.cover),
         'sortOrder': category.sort_order,
         'rules': rules_payload(category),
-        'items': [item_payload(i, now, ps) for i in items],
+        'items': [item_payload(i, now, ps, promotions) for i in items],
     }
 
 
@@ -103,9 +110,10 @@ def venue_payload(venue):
     }
 
 
-def section_payload(section, children_of, items_of, now=None, ps=None):
+def section_payload(section, children_of, items_of, now=None, ps=None, promotions=None):
     """Подраздел с вложенными подразделами и услугами; пустые ветки не отдаются."""
-    children = [section_payload(c, children_of, items_of, now, ps) for c in children_of.get(section.id, [])]
+    children = [section_payload(c, children_of, items_of, now, ps, promotions)
+                for c in children_of.get(section.id, [])]
     children = [c for c in children if c['items'] or c['sections']]
     return {
         'id': section.id,
@@ -114,5 +122,26 @@ def section_payload(section, children_of, items_of, now=None, ps=None):
         'category': section.category_id,
         'rules': rules_payload(section.category),
         'sections': children,
-        'items': [item_payload(i, now, ps) for i in items_of.get(section.id, [])],
+        'items': [item_payload(i, now, ps, promotions) for i in items_of.get(section.id, [])],
     }
+
+
+def promotion_payload(p, items_in_venue):
+    """Акция для экрана «Акции» объекта: условия, к каким услугам относится, подарок, состав пакета."""
+    from .promotions import limit_left, promotion_brief
+    data = promotion_brief(p, tr)
+    data.update({
+        'description': tr(p.description) or '',
+        'scope': p.scope,
+        'from': p.starts_at.isoformat() if p.starts_at else None,
+        'weekdays': p.weekdays or [],
+        'timeFrom': p.time_from.strftime('%H:%M') if p.time_from else None,
+        'timeTo': p.time_to.strftime('%H:%M') if p.time_to else None,
+        'itemIds': items_in_venue,
+        'gift': {'itemId': p.gift_item_id, 'title': tr(p.gift_item.title)} if p.gift_item_id else None,
+        'bundle': {'price': p.bundle_price, 'items': [{'itemId': i.pk, 'title': tr(i.title), 'price': i.price}
+                                                      for i in p.bundle_items.all()]}
+        if p.kind == 'bundle' else None,
+        'left': limit_left(p),
+    })
+    return data

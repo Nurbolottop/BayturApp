@@ -1,0 +1,22 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Акции{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div><h1 class="page-title">Акции</h1><div class="muted" style="margin-top:6px">Скидки, спеццены, подарки, пакеты и «N+1» по всем объектам. Базовая цена услуги не меняется — акционная показывается рядом и считается при оплате.</div></div>
+  <div class="actions">{% if can_edit %}<a class="btn btn-accent" href="{% url 'panel:promotion-new' %}">{% icon 'plus' 18 %} Акция</a>{% endif %}</div>
+</div>
+<div class="seg" style="margin-bottom:18px"><a href="?" class="{% if not venue %}on{% endif %}">Все объекты</a>{% for v in venues %}<a href="?venue={{ v.pk }}" class="{% if venue == v.pk %}on{% endif %}">{{ v.name|tr }}</a>{% endfor %}</div>
+<section class="card flush appear"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Акция</th><th>Вид</th><th class="hide-s">Охват</th><th class="hide-s">Период</th><th>Статус</th></tr></thead>
+  <tbody>
+  {% for r in rows %}{% with p=r.obj %}
+    <tr class="link" data-href="{% url 'panel:promotion' p.pk %}">
+      <td><b>{{ p.title|tr }}</b>{% if p.tag|tr %} <span class="tag accent">{{ p.tag|tr }}</span>{% endif %}<div class="small muted">{{ p.get_audience_display }}{% if p.stackable %} · суммируется{% endif %}{% if r.used is not None %} · {{ r.used }}/{{ p.usage_limit }}{% endif %}</div></td>
+      <td class="small">{{ p.get_kind_display }}{% if p.kind == 'percent' %} {{ p.value|floatformat:0 }}%{% elif p.kind == 'amount' or p.kind == 'specialPrice' %} {{ p.value|floatformat:0 }} сом{% elif p.kind == 'nPlusOne' %} ({{ p.value|floatformat:0 }}+1){% endif %}</td>
+      <td class="hide-s small muted">{% if p.scope == 'all' %}все объекты{% elif p.scope == 'venues' %}{% for v in p.venues.all %}{{ v.name|tr }}{% if not forloop.last %}, {% endif %}{% endfor %}{% elif p.scope == 'sections' %}{% for s in p.sections.all %}{{ s.title|tr }}{% if not forloop.last %}, {% endif %}{% endfor %}{% else %}{{ p.items.all|length }} услуг{% endif %}</td>
+      <td class="hide-s small muted tabular">{{ p.starts_at|local:"d.m.Y"|default:"…" }} — {{ p.ends_at|local:"d.m.Y"|default:"…" }}</td>
+      <td><span class="pill {% if r.status == 'active' %}pill-success{% else %}pill-muted{% endif %}">{{ r.status_label }}</span></td>
+    </tr>
+  {% endwith %}{% empty %}<tr><td colspan="5"><div class="empty">Акций пока нет</div></td></tr>{% endfor %}
+  </tbody></table></div></section>
+{% endblock %}

@@ -1,13 +1,13 @@
 """Каталог: точки обслуживания, категории с правилами кешбека, услуги и их акции (ТЗ §7.2)."""
 from rest_framework.response import Response
 
-from apps.catalog.models import Category, Item, ItemPromo, Outlet, Section, Venue
+from apps.catalog.models import Category, Item, ItemPromo, Outlet, Promotion, Section, Venue
 from apps.common.audit import audit
 from apps.common.errors import ApiError
 
 from ..base import ANY_STAFF, CollectionView, DetailView, ObjectView, SortView, not_found
-from ..serializers import (CategorySerializer, ItemPromoSerializer, ItemSerializer, OutletSerializer, SectionSerializer,
-                           VenueSerializer)
+from ..serializers import (CategorySerializer, ItemPromoSerializer, ItemSerializer, OutletSerializer,
+                           PromotionSerializer, SectionSerializer, VenueSerializer)
 
 CATALOG_READ = ['catalog.texts', 'catalog.edit']
 CATALOG_WRITE = {'GET': CATALOG_READ, 'PATCH': CATALOG_READ, 'PUT': CATALOG_READ,
@@ -228,3 +228,36 @@ class ItemPromoDetailView(DetailView):
 
     def get_queryset(self):
         return ItemPromo.objects.filter(item_id=self.kwargs['item_id'])
+
+
+# ---------------------------------------------------------------- акции на цену
+
+class PromotionsView(CollectionView):
+    """GET ?venue=&active=1|0"""
+
+    model = Promotion
+    serializer_class = PromotionSerializer
+    audit_name = 'promotion'
+    required_perms = {'GET': CATALOG_READ, 'POST': 'catalog.edit'}
+
+    def get_queryset(self):
+        return Promotion.objects.prefetch_related('venues', 'sections', 'items', 'bundle_items')
+
+    def filter_queryset(self, qs):
+        p = self.request.query_params
+        if p.get('venue'):
+            v = p['venue']
+            qs = (qs.filter(venues__pk=v) | qs.filter(sections__venue_id=v) | qs.filter(items__venue_id=v)
+                  | qs.filter(scope='all') | qs.filter(bundle_items__venue_id=v)).distinct()
+        if p.get('active') in ('1', 'true'):
+            qs = qs.filter(is_active=True)
+        elif p.get('active') in ('0', 'false'):
+            qs = qs.filter(is_active=False)
+        return qs
+
+
+class PromotionDetailView(DetailView):
+    model = Promotion
+    serializer_class = PromotionSerializer
+    audit_name = 'promotion'
+    required_perms = {'GET': CATALOG_READ, 'PATCH': 'catalog.edit', 'PUT': 'catalog.edit', 'DELETE': 'catalog.edit'}

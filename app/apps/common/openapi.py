@@ -107,6 +107,9 @@ class ServiceItem(s.Serializer):
     description = s.CharField()
     features = Feature(many=True)
     outlet = s.CharField(allow_null=True)
+    promo = s.DictField(allow_null=True, help_text='{basePrice, price, promotionId}: акционная цена за единицу для всех '
+                                                   'гостей; null — без скидки')
+    promotions = s.ListField(child=s.DictField(), help_text='Действующие акции услуги с условиями')
     venue = s.CharField(help_text='Объект: baytur, too-ashuu, suusamyr…')
     section = s.CharField(allow_null=True, help_text='Подраздел прайса объекта')
     priceNote = s.CharField(allow_null=True, help_text='«за сутки», «в час», «от 10 000 до 22 000», «бесплатно»')
@@ -385,11 +388,21 @@ class Bonus(s.Serializer):
     percent = s.FloatField(required=False, help_text='для kind = tier: надбавка, %')
 
 
+class AppliedPromotion(s.Serializer):
+    id = s.IntegerField()
+    title = s.CharField()
+    kind = s.CharField()
+    basePrice = s.IntegerField(help_text='Сумма без акции')
+    discount = s.IntegerField(help_text='Скидка, сом (total уже с ней)')
+    gift = s.DictField(allow_null=True, help_text='{itemId, title} — услуга в подарок')
+
+
 class Quote(PaymentSplit):
     maxPointsSom = s.IntegerField()
     availablePoints = s.IntegerField()
     methods = s.ListField(child=s.ChoiceField(choices=PaymentMethod.choices))
     bonuses = Bonus(many=True)
+    promotion = AppliedPromotion(allow_null=True, help_text='Применённая акция; total — уже со скидкой')
 
 
 class RequestInput(s.Serializer):

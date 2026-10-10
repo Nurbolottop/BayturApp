@@ -1,5 +1,5 @@
 """
-Объекты экосистемы и их прайс (apps.catalog.venues_data): «Тоо-Ашуу», кымызолечение в Суусамыре.
+Объекты экосистемы, их прайс и акции (apps.catalog.venues_data): «Тоо-Ашуу», кымызолечение в Суусамыре.
 Только создаёт отсутствующее — правки из админки не перезаписываются (как seed без --reset).
 """
 from datetime import date
@@ -44,6 +44,19 @@ class Command(BaseCommand):
                     'tag': i.get('tag') or {}, 'sort_order': i.get('sort_order', 0),
                     'season_from': date.fromisoformat(i['season_from']) if i.get('season_from') else None,
                     'season_to': date.fromisoformat(i['season_to']) if i.get('season_to') else None})
+            from apps.catalog.models import Promotion
+            created['promotions'] = 0
+            for pr in getattr(D, 'PROMOTIONS', []):
+                if Promotion.objects.filter(title__ru=pr['title']['ru']).exists():
+                    continue
+                promo = Promotion.objects.create(
+                    title=pr['title'], description=pr.get('description') or {}, tag=pr.get('tag') or {},
+                    kind=pr['kind'], value=pr.get('value', 0), scope=pr.get('scope', 'items'),
+                    audience=pr.get('audience', 'all'), gift_item_id=pr.get('gift_item'))
+                promo.items.set(pr.get('items', []))
+                promo.venues.set(pr.get('venues', []))
+                promo.sections.set(pr.get('sections', []))
+                created['promotions'] += 1
         bump_content_version()
         self.stdout.write(self.style.SUCCESS(
             'Добавлено: ' + ', '.join(f'{k} {v}' for k, v in created.items()) + ' (существующие не тронуты)'))

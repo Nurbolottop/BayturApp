@@ -1,0 +1,49 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}{% if promo %}{{ promo.title|tr }}{% else %}Новая акция{% endif %}{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div><div class="crumbs"><a href="{% url 'panel:promotions' %}">{% icon 'arrow-left' 14 %} Акции</a></div>
+    <h1 class="page-title">{% if promo %}{{ promo.title|tr }}{% else %}Новая акция{% endif %}</h1>
+    {% if promo %}<div class="muted" style="margin-top:6px">{{ status }} · использований: {{ used }}{% if promo.usage_limit %} из {{ promo.usage_limit }}{% endif %}</div>{% endif %}</div>
+  {% if promo %}<div class="actions"><form method="post" action="{% url 'panel:promotion-toggle' promo.pk %}">{% csrf_token %}<button class="btn">{% if promo.is_active %}Выключить{% else %}Включить{% endif %}</button></form></div>{% endif %}
+</div>
+<form method="post" class="stack" style="max-width:960px" novalidate>
+  {% csrf_token %}{% include 'panel/components/form_errors.html' %}
+  <div class="card appear"><div class="form-grid">
+    {% include 'panel/components/field.html' with f=form.title full=1 %}
+    {% include 'panel/components/field.html' with f=form.description full=1 %}
+    {% include 'panel/components/field.html' with f=form.tag %}
+    {% include 'panel/components/field.html' with f=form.kind %}
+    {% include 'panel/components/field.html' with f=form.value %}
+  </div></div>
+  <div class="card appear"><div class="card-head"><div class="h3">На что действует</div></div><div class="form-grid">
+    {% include 'panel/components/field.html' with f=form.scope %}
+    <div class="field full"><span class="label">{{ form.venues.label }}</span><div class="checks">{{ form.venues }}</div>{{ form.venues.errors }}</div>
+    {% include 'panel/components/field.html' with f=form.sections full=1 %}
+    {% include 'panel/components/field.html' with f=form.items full=1 %}
+    {% include 'panel/components/field.html' with f=form.gift_item full=1 %}
+    {% include 'panel/components/field.html' with f=form.bundle_items full=1 %}
+    {% include 'panel/components/field.html' with f=form.bundle_price %}
+  </div><div class="small muted" style="margin-top:10px">Раздел — вместе со всеми вложенными подразделами. Ctrl / ⌘ — выбрать несколько.</div></div>
+  <div class="card appear"><div class="card-head"><div class="h3">Когда</div></div><div class="form-grid">
+    {% include 'panel/components/field.html' with f=form.starts_at %}
+    {% include 'panel/components/field.html' with f=form.ends_at %}
+    <div class="field full"><span class="label">{{ form.weekdays.label }}</span><div class="checks">{{ form.weekdays }}</div><span class="small muted">Пусто — все дни</span></div>
+    {% include 'panel/components/field.html' with f=form.time_from %}
+    {% include 'panel/components/field.html' with f=form.time_to %}
+  </div></div>
+  <div class="card appear"><div class="card-head"><div class="h3">Условия и для кого</div></div><div class="form-grid">
+    {% include 'panel/components/field.html' with f=form.min_quantity %}
+    {% include 'panel/components/field.html' with f=form.min_amount %}
+    {% include 'panel/components/field.html' with f=form.audience %}
+    {% include 'panel/components/field.html' with f=form.group_min %}
+    <div class="field full"><span class="label">{{ form.tiers.label }}</span><div class="checks">{{ form.tiers }}</div>{{ form.tiers.errors }}</div>
+    {% include 'panel/components/field.html' with f=form.stackable %}
+    {% include 'panel/components/field.html' with f=form.usage_limit %}
+    {% include 'panel/components/field.html' with f=form.sort_order %}
+    {% include 'panel/components/field.html' with f=form.is_active %}
+  </div></div>
+  <div class="lock-note">{% icon 'info' 16 %} Клиент платит акционную цену при онлайн-оплате, оплате баллами и в заявке. Наличные по чеку — сумма из чека, акция к ней не применяется. Несовместимая акция не сочетается с другими: выбирается выгоднейший вариант.</div>
+  <div class="form-actions"><a class="btn btn-ghost" href="{% url 'panel:promotions' %}">Отмена</a><button class="btn btn-accent">Сохранить</button></div>
+</form>
+{% endblock %}

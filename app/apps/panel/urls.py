@@ -1,7 +1,8 @@
 from django.urls import path
 
 from . import views
-from .views import admin, auth, campaigns, catalog, complaints, content, desk, members, money, reports, tiers
+from .views import (admin, auth, campaigns, catalog, complaints, content, desk, members, money, promotions, reports,
+                    tiers)
 
 app_name = 'panel'
 
@@ -53,6 +54,10 @@ urlpatterns = [
     path('catalog/items/<slug:item_id>/', catalog.item_edit, name='item'),
     path('catalog/items/<slug:item_id>/<slug:action>/', catalog.item_action, name='item-action'),
     path('uploads/', catalog.upload, name='upload'),
+    path('promotions/', promotions.promotions, name='promotions'),
+    path('promotions/new/', promotions.promotion_edit, name='promotion-new'),
+    path('promotions/<int:promotion_id>/', promotions.promotion_edit, name='promotion'),
+    path('promotions/<int:promotion_id>/toggle/', promotions.promotion_toggle, name='promotion-toggle'),
 
     # уровни
     path('tiers/', tiers.tiers, name='tiers'),

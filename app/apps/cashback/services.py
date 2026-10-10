@@ -17,7 +17,7 @@ from decimal import Decimal
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from apps.common.i18n import iso
+from apps.common.i18n import iso, tr
 from apps.catalog.models import ONLINE_METHODS, Item, PaymentMethod
 from apps.common.errors import ApiError
 from apps.common.models import ProgramSettings
@@ -41,11 +41,30 @@ def quote(member, item_id, quantity=None, check_amount=None, points_som=0, metho
     now = timezone.now()
     rules = resolve_rules(item, member, ps, now)
     total, quantity = compute_total(item, quantity, check_amount)
+    total, rules.promotion = _with_promotions(item, total, quantity, member, now)
     if available is None:
         from apps.loyalty.services import get_wallet
         available = get_wallet(member).available
     split = compute_split(total, rules, available, points_som)
     return item, rules, split, available
+
+
+def _with_promotions(item, total, quantity, member, now):
+    """Цена с лучшей подходящей акцией (базовая цена услуги не меняется). → (сумма, снимок акции или None)."""
+    from apps.catalog.promotions import best_price
+    if item.pricing_type == 'check':
+        return total, None
+    promo_total, snap = best_price(item, quantity, member, now)
+    return (promo_total, snap) if snap else (total, None)
+
+
+def promotion_payload(snap, lang=None):
+    if not snap:
+        return None
+    gift = snap.get('gift')
+    return {'id': snap['id'], 'title': tr(snap['title'], lang), 'kind': snap['kind'], 'basePrice': snap['basePrice'],
+            'discount': snap['discount'],
+            'gift': {'itemId': gift['itemId'], 'title': tr(gift['title'], lang)} if gift else None}
 
 
 def quote_payload(member, data):
@@ -57,6 +76,7 @@ def quote_payload(member, data):
         'availablePoints': available,
         'methods': rules.methods if split.money_som > 0 else [],
         'bonuses': rules.bonuses,
+        'promotion': promotion_payload(getattr(rules, 'promotion', None)),
     }
 
 
@@ -98,6 +118,10 @@ def create_request(member, data, idempotency_key=None):
     now = timezone.now()
     rules = resolve_rules(item, member, ps, now)
     total, quantity = compute_total(item, data.get('quantity'), data.get('checkAmount'))
+    if not data.get('_noPromotions'):
+        total, promotion = _with_promotions(item, total, quantity, member, now)
+    else:
+        promotion = None
     method = data.get('method') or None
     payment_id = data.get('paymentId') or None
 
@@ -128,6 +152,7 @@ def create_request(member, data, idempotency_key=None):
                 requested_points_som=int(data.get('pointsSom') or 0), method=method,
                 total=split.total, points_som=split.points_som, points=split.points, money_som=split.money_som,
                 rate=split.rate, cashback=split.cashback, idempotency_key=idempotency_key or None,
+                promotion=promotion,
                 is_test=member.is_test, created_at=now,
             )
             req.mark(RequestStatus.PENDING, now)

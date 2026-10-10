@@ -309,12 +309,14 @@ def points_quote(user, member, item_id, quantity=None, check_amount=None):
     item = _pay_item(user, item_id)
     rules = resolve_rules(item, member, ProgramSettings.get(), timezone.now())
     total, quantity = compute_total(item, quantity, check_amount)
+    total, promotion = services._with_promotions(item, total, quantity, member, timezone.now())
     available = get_wallet(member).available
     balance = balance_som(available, rules)
     enough = balance >= total
     return {
         'itemId': item.pk, 'total': total, 'quantity': quantity, 'points': total * rules.points_per_som,
         'enough': enough, 'shortSom': max(0, total - balance), 'reason': None if enough else 'balance',
+        'promotion': services.promotion_payload(promotion),
         'limitPercent': 100,  # устарело: лимита доли больше нет, оставлено для совместимости
     }
 
@@ -425,7 +427,7 @@ def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None):
             else:
                 req, _ = services.create_request(member, {
                     'itemId': item.pk, 'quantity': data['quantity'], 'checkAmount': data['checkAmount'],
-                    'pointsSom': 0, 'method': PaymentMethod.CASH})
+                    'pointsSom': 0, 'method': PaymentMethod.CASH, '_noPromotions': True})
             FiscalReceipt.objects.create(key=receipt['key'], raw=receipt['raw'], amount=receipt['amount'],
                                          fields=receipt['fields'], request=req, outlet=req.outlet, accepted_by=user)
             req = services.confirm_request(req.pk, staff=user, cash_received=True)
