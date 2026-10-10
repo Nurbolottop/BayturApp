@@ -21,11 +21,35 @@
     {% include 'panel/components/field.html' with f=form.two_gis_url %}
     {% include 'panel/components/field.html' with f=form.is_open %}
     {% include 'panel/components/field.html' with f=form.early_booking_enabled %}
-    {% include 'panel/components/field.html' with f=form.contacts full=1 %}
-    {% include 'panel/components/field.html' with f=form.info full=1 %}
     {% include 'panel/components/field.html' with f=form.sort_order %}
     {% include 'panel/components/field.html' with f=form.is_active %}
   </div></section>
+  <section class="card appear rows-editor" data-rows="id_contacts">
+    <div class="card-head"><div><div class="h3">Контакты</div><div class="small muted">Телефоны и почта на экране «Контакты» в приложении</div></div>
+      <button type="button" class="btn btn-s" data-add>{% icon 'plus' 16 %} Контакт</button></div>
+    <div class="re-list"></div>{{ form.contacts }}{{ form.contacts.errors }}
+    <template><div class="re-row re-plain"><span class="re-handle" title="Перетащите">⋮⋮</span>
+      <div class="re-fields">
+        <div class="re-langs"><input data-k="label.ru" placeholder="Подпись RU: Ресепшен"><input data-k="label.ky" placeholder="KY"><input data-k="label.en" placeholder="EN"></div>
+        <div class="re-pair"><input data-k="phone" placeholder="Телефон: +996 …"><input data-k="email" placeholder="Почта (необязательно)"></div>
+        <label class="re-check"><input type="checkbox" data-k="whatsapp"> Есть WhatsApp на этом номере</label>
+      </div>
+      <button type="button" class="btn btn-icon btn-s btn-ghost re-rm" title="Удалить">✕</button></div></template>
+  </section>
+  <section class="card appear rows-editor" data-rows="id_info">
+    <div class="card-head"><div><div class="h3">Справка</div><div class="small muted">Блоки «Как добраться», «Трассы», «Трансфер»… Текстом или таблицей</div></div>
+      <button type="button" class="btn btn-s" data-add>{% icon 'plus' 16 %} Блок</button></div>
+    <div class="re-list"></div>{{ form.info }}{{ form.info.errors }}
+    <template><div class="re-row re-plain"><span class="re-handle" title="Перетащите">⋮⋮</span>
+      <div class="re-fields">
+        <div class="re-langs"><input data-k="title.ru" placeholder="Заголовок RU: Как добраться"><input data-k="title.ky" placeholder="KY"><input data-k="title.en" placeholder="EN"></div>
+        <div class="re-pair"><select data-k="kind"><option value="text">Обычный текст</option><option value="rows">Таблица «название — значение»</option></select></div>
+        <div class="re-langs" data-show-when="kind=text"><textarea data-k="text.ru" placeholder="Текст RU"></textarea><textarea data-k="text.ky" placeholder="KY"></textarea><textarea data-k="text.en" placeholder="EN"></textarea></div>
+        <div data-show-when="kind=rows" class="stack-s"><div class="re-cap">Каждая строка — отдельная строка таблицы: «Трасса 1 — 2,6 км · 32°»</div>
+          <div class="re-langs"><textarea data-lines="rows" data-lang="ru" placeholder="RU"></textarea><textarea data-lines="rows" data-lang="ky" placeholder="KY"></textarea><textarea data-lines="rows" data-lang="en" placeholder="EN"></textarea></div></div>
+      </div>
+      <button type="button" class="btn btn-icon btn-s btn-ghost re-rm" title="Удалить">✕</button></div></template>
+  </section>
   {% if seasons %}
   <section class="card appear"><div class="h3">Сезоны</div>
     <div class="small muted" style="margin:4px 0 14px">По датам сервер решает, какой режим сейчас открывает Baytur S&amp;K. Межсезонье — какой режим показывать до начала этого сезона.</div>

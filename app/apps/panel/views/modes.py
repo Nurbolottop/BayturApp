@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from apps.catalog.models import AppRelease, EternalNews, Section, Showcase, Venue
+from apps.catalog.models import SHOWCASE_ICONS, AppRelease, EternalNews, Section, Showcase, Venue
 from apps.common.audit import audit, model_snapshot
 
 from ..access import forbidden, is_staff_user, panel_view
@@ -72,6 +72,11 @@ def venue_edit(request, venue_id):
         'form': form, 'venue': venue, 'seasons': seasons, 'release': release, 'can_edit': can_edit})
 
 
+SHOWCASE_ICON_LABELS = {'skipass': 'скипасс', 'rental': 'прокат', 'stay': 'проживание', 'transfer': 'трансфер',
+                        'cafe': 'кафе', 'trails': 'трассы', 'yurt': 'юрта', 'massage': 'массаж', 'kymyz': 'кымыз',
+                        'banya': 'баня', 'horses': 'лошади'}
+
+
 def _section_choices(venue):
     qs = Section.objects.filter(venue=venue, parent__isnull=True).exclude(key='').order_by('sort_order', 'id')
     return [(s.key, s.title.get('ru') or s.key) for s in qs]
@@ -99,7 +104,8 @@ def showcase_edit(request):
     promos = [p for p in Promotion.objects.filter(show_on_home=True, is_active=True).prefetch_related(
         'items', 'sections', 'venues') if any(covers(p, i) for i in items)]
     return render(request, 'panel/modes/showcase.html', {
-        'form': form, 'news': news, 'venue': venue, 'promos': promos})
+        'form': form, 'news': news, 'venue': venue, 'promos': promos,
+        'showcase_icons': [(k, SHOWCASE_ICON_LABELS.get(k, k)) for k in SHOWCASE_ICONS]})
 
 
 @panel_view('eternal')

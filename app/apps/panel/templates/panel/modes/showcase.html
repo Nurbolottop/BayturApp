@@ -11,11 +11,31 @@
     <div class="field"><span class="label">Шапка (ночь)</span>
       <div class="photo-field" data-photo="id_hero_image_night"><div class="ph">{% icon 'image' 24 %}</div>
         <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.hero_image_night }}</div>
-    {% include 'panel/components/field.html' with f=form.facts full=1 %}
     {% include 'panel/components/field.html' with f=form.cta %}
     {% include 'panel/components/field.html' with f=form.cta_section %}
-    {% include 'panel/components/field.html' with f=form.tiles full=1 %}
   </div></section>
+  <section class="card appear rows-editor" data-rows="id_facts">
+    <div class="card-head"><div><div class="h3">Факты под шапкой</div><div class="small muted">Короткие строки, например «3 000 м» или «120 км от Бишкека». Порядок — перетаскиванием ⋮⋮</div></div>
+      <button type="button" class="btn btn-s" data-add>{% icon 'plus' 16 %} Факт</button></div>
+    <div class="re-list"></div>{{ form.facts }}{{ form.facts.errors }}
+    <template><div class="re-row re-plain"><span class="re-handle" title="Перетащите">⋮⋮</span>
+      <div class="re-langs"><input data-k="ru" placeholder="RU: 3 000 м"><input data-k="ky" placeholder="KY"><input data-k="en" placeholder="EN"></div>
+      <button type="button" class="btn btn-icon btn-s btn-ghost re-rm" title="Удалить">✕</button></div></template>
+  </section>
+  <section class="card appear rows-editor" data-rows="id_tiles">
+    <div class="card-head"><div><div class="h3">Плитки разделов</div><div class="small muted">Кнопки на главной экрана приложения: название, куда ведёт и значок. Порядок — как в приложении</div></div>
+      <button type="button" class="btn btn-s" data-add>{% icon 'plus' 16 %} Плитка</button></div>
+    <div class="re-list"></div>{{ form.tiles }}{{ form.tiles.errors }}
+    <template><div class="re-row re-plain"><span class="re-handle" title="Перетащите">⋮⋮</span>
+      <div class="re-fields">
+        <div class="re-langs"><input data-k="title.ru" placeholder="Название RU: Скипасс"><input data-k="title.ky" placeholder="KY"><input data-k="title.en" placeholder="EN"></div>
+        <div class="re-pair">
+          <select data-k="section"><option value="">Ведёт в раздел…</option>{% for key, label in form.fields.cta_section.choices %}{% if key %}<option value="{{ key }}">{{ label }}</option>{% endif %}{% endfor %}</select>
+          <select data-k="icon"><option value="">Без значка</option>{% for key, label in showcase_icons %}<option value="{{ key }}">Значок: {{ label }}</option>{% endfor %}</select>
+        </div>
+      </div>
+      <button type="button" class="btn btn-icon btn-s btn-ghost re-rm" title="Удалить">✕</button></div></template>
+  </section>
   <section class="card appear"><div class="h3">Акции на главной</div>
     <div class="small muted" style="margin:4px 0 10px">Лента собирается из акций режима с галочкой «Показать на главной».</div>
     {% for p in promos %}<div><a href="{% url 'panel:promotion' p.pk %}">{{ p.title|tr }}</a> {% if p.tag|tr %}<span class="tag">{{ p.tag|tr }}</span>{% endif %}</div>{% empty %}<div class="muted">Нет акций с «Показать на главной»</div>{% endfor %}

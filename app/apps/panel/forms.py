@@ -225,11 +225,8 @@ class VenueForm(PanelForm, forms.ModelForm):
     short = L10nField(label='Подзаголовок', required=False, max_length=160)
     description = L10nField(label='Описание', required=False, textarea=True, rows=4)
     address = L10nField(label='Адрес', required=False, max_length=300)
-    contacts = forms.JSONField(label='Контакты (JSON)', required=False, widget=forms.Textarea(attrs={'rows': 8}),
-                               help_text='[{"label": {"ru": "Ресепшен"}, "phone": "+996 …", "whatsapp": true, "email": ""}]')
-    info = forms.JSONField(label='Инфоблоки (JSON)', required=False, widget=forms.Textarea(attrs={'rows': 12}),
-                           help_text='[{"title": {"ru": "Как добраться"}, "text": {"ru": "…"}}] или '
-                                     '{"title": …, "rows": [{"label": {"ru": …}, "value": {"ru": …}}]}')
+    contacts = JSONListField(required=False)
+    info = JSONListField(required=False)
 
     class Meta:
         model = Venue
@@ -239,17 +236,41 @@ class VenueForm(PanelForm, forms.ModelForm):
         widgets = {'cover': forms.HiddenInput, 'accent': forms.TextInput(attrs={'type': 'color'})}
         labels = {'sort_order': 'Порядок', 'is_active': 'Показывать'}
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # вид блока для редактора: текст или таблица «название — значение»
+        self.initial['info'] = [{**b, 'kind': 'rows' if b.get('rows') else 'text'}
+                                for b in (self.instance.info or [])]
+
     def clean_contacts(self):
-        v = self.cleaned_data.get('contacts') or []
-        if not isinstance(v, list) or not all(isinstance(c, dict) for c in v):
-            raise ValidationError('Нужен список объектов')
-        return v
+        out = []
+        for c in _json_list(self.cleaned_data.get('contacts') or []):
+            c = {'label': _l10n(c.get('label')), 'phone': (c.get('phone') or '').strip(),
+                 'whatsapp': bool(c.get('whatsapp')), 'email': (c.get('email') or '').strip()}
+            if not (c['phone'] or c['email']):
+                continue
+            if not c['label'].get('ru'):
+                raise ValidationError('У контакта нужна подпись (RU), например «Ресепшен»')
+            out.append(c)
+        return out
 
     def clean_info(self):
-        v = self.cleaned_data.get('info') or []
-        if not isinstance(v, list) or not all(isinstance(b, dict) and b.get('title') for b in v):
-            raise ValidationError('Нужен список блоков с title')
-        return v
+        out = []
+        for b in _json_list(self.cleaned_data.get('info') or []):
+            title = _l10n(b.get('title'))
+            if b.get('kind') == 'rows':
+                body = {'rows': [{'label': _l10n(r.get('label')), 'value': _l10n(r.get('value'))}
+                                 for r in b.get('rows') or [] if (r.get('label') or {}).get('ru')]}
+                filled = bool(body['rows'])
+            else:
+                body = {'text': _l10n(b.get('text'))}
+                filled = bool(body['text'].get('ru'))
+            if not title.get('ru') and not filled:
+                continue
+            if not title.get('ru'):
+                raise ValidationError('У каждого блока нужен заголовок (RU)')
+            out.append({'title': title, **body})
+        return out
 
 
 class SeasonForm(forms.ModelForm):
@@ -275,6 +296,11 @@ class SeasonForm(forms.ModelForm):
 SeasonFormSet = forms.inlineformset_factory(Venue, Season, form=SeasonForm, fk_name='venue', extra=1, can_delete=True)
 
 
+def _l10n(value):
+    value = value if isinstance(value, dict) else {}
+    return {lang: str(value.get(lang) or '').strip() for lang in ('ru', 'ky', 'en')}
+
+
 def _json_list(value, need=None):
     if not isinstance(value, list) or not all(isinstance(x, dict) for x in value):
         raise ValidationError('Нужен список объектов')
@@ -289,11 +315,8 @@ class ShowcaseForm(PanelForm, forms.ModelForm):
     """Главная режима (ТЗ §7.2): шапка, факты, кнопка, плитки разделов."""
 
     cta = L10nField(label='Текст кнопки', required=False, max_length=40)
-    facts = forms.JSONField(label='Факты (JSON)', required=False, widget=forms.Textarea(attrs={'rows': 4}),
-                            help_text='[{"ru": "3 000 м", "ky": "…", "en": "…"}, …] — в порядке показа')
-    tiles = forms.JSONField(label='Плитки (JSON)', required=False, widget=forms.Textarea(attrs={'rows': 8}),
-                            help_text='[{"section": "skipass", "icon": "skipass", "title": {"ru": "Скипасс"}}] — '
-                                      'порядок в списке = порядок в приложении')
+    facts = JSONListField(required=False)
+    tiles = JSONListField(required=False)
 
     class Meta:
         model = Showcase
@@ -307,20 +330,22 @@ class ShowcaseForm(PanelForm, forms.ModelForm):
                                                        choices=[('', '—')] + list(sections))
 
     def clean_facts(self):
-        v = self.cleaned_data.get('facts') or []
-        if not isinstance(v, list) or not all(isinstance(f, dict) and f.get('ru') for f in v):
-            raise ValidationError('Нужен список вида [{"ru": "…"}]')
-        return v
+        return [f for f in (_l10n(f) for f in _json_list(self.cleaned_data.get('facts') or [])) if f['ru']]
 
     def clean_tiles(self):
         from apps.catalog.models import SHOWCASE_ICONS
-        v = _json_list(self.cleaned_data.get('tiles') or [], need=('section', 'title'))
-        for t in v:
-            if t['section'] not in self.section_keys:
-                raise ValidationError(f'Нет раздела {t["section"]}')
-            if t.get('icon') and t['icon'] not in SHOWCASE_ICONS:
-                raise ValidationError(f'Иконка {t["icon"]} не из справочника: {", ".join(SHOWCASE_ICONS)}')
-        return v
+        out = []
+        for t in _json_list(self.cleaned_data.get('tiles') or []):
+            title = _l10n(t.get('title'))
+            if not title['ru'] and not t.get('section'):
+                continue
+            if not title['ru']:
+                raise ValidationError('У каждой плитки нужно название (RU)')
+            if t.get('section') not in self.section_keys:
+                raise ValidationError(f'Плитка «{title["ru"]}»: выберите раздел')
+            icon = t.get('icon') if t.get('icon') in SHOWCASE_ICONS else ''
+            out.append({'section': t['section'], 'icon': icon, 'title': title})
+        return out
 
 
 class NewsItemForm(forms.ModelForm):
@@ -350,18 +375,16 @@ class EternalNewsForm(PanelForm, forms.ModelForm):
     title = L10nField(label='Заголовок', max_length=120)
     lead = L10nField(label='Подводка', required=False, textarea=True, rows=3)
     show_in = forms.MultipleChoiceField(label='Показывать в режимах', widget=forms.CheckboxSelectMultiple)
-    slides = forms.JSONField(label='Слайды (JSON)', required=False, widget=forms.Textarea(attrs={'rows': 12}),
-                             help_text='[{"image": "…", "title": {"ru": …}, "text": {"ru": …}, "cta": {"label": '
-                                       '{"ru": "Забронировать"}, "action": "openSection", "mode": "kymyz", '
-                                       '"target": "stay"} или null}] — порядок = порядок слайдов')
-    early_bonus = forms.JSONField(label='Бонус за раннюю бронь (JSON)', required=False,
-                                  widget=forms.Textarea(attrs={'rows': 3}),
-                                  help_text='{"kind": "points", "value": 500, "text": {"ru": "+500 баллов"}} '
-                                            'или пусто')
+    slides = JSONListField(required=False)
+    bonus_kind = forms.ChoiceField(label='Бонус за раннюю бронь', required=False,
+                                   choices=[('', 'Нет бонуса'), ('points', 'Баллы'), ('percent', 'Скидка, %')])
+    bonus_value = forms.IntegerField(label='Размер бонуса', required=False, min_value=1)
+    bonus_text = L10nField(label='Текст бонуса', required=False, max_length=80,
+                           help_text='Как показать клиенту, например «+500 баллов за раннюю бронь»')
 
     class Meta:
         model = EternalNews
-        fields = ['about', 'show_in', 'title', 'lead', 'cover', 'slides', 'early_bonus', 'is_active']
+        fields = ['about', 'show_in', 'title', 'lead', 'cover', 'slides', 'is_active']
         widgets = {'cover': forms.HiddenInput}
 
     def __init__(self, *args, **kwargs):
@@ -369,17 +392,48 @@ class EternalNewsForm(PanelForm, forms.ModelForm):
         sk = Venue.objects.filter(app='sk')
         self.fields['about'].queryset = sk
         self.fields['show_in'].choices = [(v.pk, str(v)) for v in sk]
+        self.cta_targets = [(f'{s.venue_id}:{s.key}', f'{s.venue} · {s.title.get("ru") or s.key}')
+                            for s in Section.objects.filter(venue__app='sk', parent__isnull=True).exclude(key='')
+                            .select_related('venue').order_by('venue__sort_order', 'sort_order', 'id')]
+        # кнопка слайда в редакторе: текст + «режим:раздел» одним списком
+        self.initial['slides'] = [{**s, 'cta_label': (s.get('cta') or {}).get('label') or {},
+                                   'cta_target': f'{s["cta"].get("mode")}:{s["cta"].get("target")}'
+                                   if s.get('cta') else ''} for s in (self.instance.slides or [])]
+        bonus = self.instance.early_bonus or {}
+        self.initial.update({'bonus_kind': bonus.get('kind') or '', 'bonus_value': bonus.get('value'),
+                             'bonus_text': bonus.get('text') or {}})
 
     def clean_slides(self):
-        return _json_list(self.cleaned_data.get('slides') or [])
+        targets = {k for k, _ in self.cta_targets}
+        out = []
+        for s in _json_list(self.cleaned_data.get('slides') or []):
+            slide = {'image': s.get('image') or '', 'title': _l10n(s.get('title')), 'text': _l10n(s.get('text')),
+                     'cta': None}
+            if not (slide['image'] or slide['title']['ru'] or slide['text']['ru']):
+                continue
+            label, target = _l10n(s.get('cta_label')), s.get('cta_target') or ''
+            if target:
+                if target not in targets:
+                    raise ValidationError('Кнопка слайда ведёт в несуществующий раздел')
+                if not label['ru']:
+                    raise ValidationError('У кнопки слайда нужен текст (RU), например «Забронировать»')
+                mode, key = target.split(':', 1)
+                slide['cta'] = {'label': label, 'action': 'openSection', 'mode': mode, 'target': key}
+            out.append(slide)
+        return out
 
-    def clean_early_bonus(self):
-        v = self.cleaned_data.get('early_bonus')
-        if not v:
-            return None
-        if not isinstance(v, dict) or v.get('kind') not in ('points', 'percent') or not v.get('value'):
-            raise ValidationError('Нужно {"kind": "points" | "percent", "value": число, "text": {...}}')
-        return v
+    def clean(self):
+        data = super().clean()
+        kind = data.get('bonus_kind')
+        if kind and not data.get('bonus_value'):
+            self.add_error('bonus_value', 'Укажите размер бонуса')
+        return data
+
+    def save(self, commit=True):
+        d = self.cleaned_data
+        self.instance.early_bonus = ({'kind': d['bonus_kind'], 'value': d['bonus_value'],
+                                      'text': d.get('bonus_text') or {}} if d.get('bonus_kind') else None)
+        return super().save(commit)
 
 
 class AppReleaseForm(forms.ModelForm):

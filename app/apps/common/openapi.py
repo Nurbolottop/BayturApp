@@ -238,7 +238,7 @@ class Privilege(s.Serializer):
     short = s.CharField()
     description = s.CharField()
     modes = s.ListField(child=s.CharField(), help_text='Режимы: [] — везде, иначе только перечисленные (resort, ski, kymyz)')
-    modeTitle = s.CharField(allow_null=True, help_text='«Только Тоо-Ашуу» или null')
+    modeTitle = s.CharField(allow_null=True, help_text='«Только Baytur Ski» или null')
 
 
 class Achievement(s.Serializer):

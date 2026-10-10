@@ -12,9 +12,25 @@
     <div class="field full"><span class="label">Обложка</span>
       <div class="photo-field" data-photo="id_cover"><div class="ph">{% icon 'image' 24 %}</div>
         <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.cover }}</div>
-    {% include 'panel/components/field.html' with f=form.slides full=1 %}
-    {% include 'panel/components/field.html' with f=form.early_bonus full=1 %}
+    {% include 'panel/components/field.html' with f=form.bonus_kind %}
+    {% include 'panel/components/field.html' with f=form.bonus_value %}
+    {% include 'panel/components/field.html' with f=form.bonus_text full=1 %}
     {% include 'panel/components/field.html' with f=form.is_active %}
+  </div>
+  <div class="rows-editor" data-rows="id_slides" style="margin-top:18px">
+    <div class="card-head"><div><div class="h3">Слайды</div><div class="small muted">Картинка, заголовок, текст и, если нужно, кнопка. Порядок — перетаскиванием ⋮⋮</div></div>
+      <button type="button" class="btn btn-s" data-add>{% icon 'plus' 16 %} Слайд</button></div>
+    <div class="re-list"></div>{{ form.slides }}{{ form.slides.errors }}
+    <template><div class="re-row re-plain"><span class="re-handle" title="Перетащите">⋮⋮</span>
+      <div class="re-fields">
+        <input type="hidden" data-k="image" data-k-image><input type="file" accept="image/*" hidden>
+        <button type="button" data-pick-image><span>{% icon 'upload' 18 %} Загрузить картинку</span></button>
+        <div class="re-langs"><input data-k="title.ru" placeholder="Заголовок RU"><input data-k="title.ky" placeholder="KY"><input data-k="title.en" placeholder="EN"></div>
+        <div class="re-langs"><textarea data-k="text.ru" placeholder="Текст RU"></textarea><textarea data-k="text.ky" placeholder="KY"></textarea><textarea data-k="text.en" placeholder="EN"></textarea></div>
+        <div class="re-pair"><select data-k="cta_target"><option value="">Без кнопки</option>{% for key, label in form.cta_targets %}<option value="{{ key }}">Кнопка ведёт: {{ label }}</option>{% endfor %}</select></div>
+        <div class="re-langs" data-show-when="cta_target!="><input data-k="cta_label.ru" placeholder="Текст кнопки RU: Забронировать"><input data-k="cta_label.ky" placeholder="KY"><input data-k="cta_label.en" placeholder="EN"></div>
+      </div>
+      <button type="button" class="btn btn-icon btn-s btn-ghost re-rm" title="Удалить">✕</button></div></template>
   </div>
   <div class="form-actions"><button class="btn btn-accent">Сохранить</button></div>
 </form>

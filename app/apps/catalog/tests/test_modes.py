@@ -1,10 +1,11 @@
+import json
 from datetime import date
 from io import StringIO
 
 from django.core.management import call_command
 from django.test import Client
 
-from apps.catalog.models import AppRelease, EternalNews, Item, Promotion, Season, Showcase, Venue
+from apps.catalog.models import AppRelease, EternalNews, Item, Promotion, Season, Section, Showcase, Venue
 from apps.catalog.modes import active_sk_mode
 from apps.common.testing import BaseAPITestCase
 from apps.content.models import Promo, PublishStatus
@@ -112,7 +113,7 @@ class ModesApiTests(BaseAPITestCase):
         p.modes = ['ski']
         p.save()
         row = next(x for x in self.get('/loyalty/program').json()['privileges'] if x['id'] == p.id)
-        self.assertEqual((row['modes'], row['modeTitle']), (['ski'], 'Только Тоо-Ашуу'))
+        self.assertEqual((row['modes'], row['modeTitle']), (['ski'], 'Только Baytur Ski'))
 
 
 class ModesPanelTests(BaseAPITestCase):
@@ -140,17 +141,60 @@ class ModesPanelTests(BaseAPITestCase):
         self.c.get('/panel/mode/kymyz/')
         r = self.c.get('/panel/eternal/')
         self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'data-rows="id_slides"')
+        self.assertNotContains(r, '(JSON)')
+        target = 'ski:' + Section.objects.filter(venue_id='ski', parent__isnull=True).exclude(key='').first().key
+        slides = json.dumps([{'image': '', 'title': {'ru': 'Снег'}, 'text': {'ru': 'Три трассы'},
+                              'cta_target': target, 'cta_label': {'ru': 'Купить'}},
+                             {'title': {'ru': ''}, 'text': {}}])          # пустая строка редактора отбрасывается
         r = self.c.post('/panel/eternal/', {'about': 'ski', 'show_in': ['kymyz'], 'title_ru': 'Зима на Тоо-Ашуу',
-                                            'slides': '[]', 'early_bonus': '', 'is_active': 'on'})
+                                            'slides': slides, 'bonus_kind': 'points', 'bonus_value': '500',
+                                            'bonus_text_ru': '+500 баллов', 'is_active': 'on'})
         self.assertEqual(r.status_code, 302, r.content.decode()[:3000])
-        self.assertTrue(EternalNews.objects.filter(show_in__contains=['kymyz']).exists())
+        e = EternalNews.objects.get(show_in__contains=['kymyz'])
+        self.assertEqual(len(e.slides), 1)
+        self.assertEqual(e.slides[0]['cta'], {'label': {'ru': 'Купить', 'ky': '', 'en': ''}, 'action': 'openSection',
+                                              'mode': 'ski', 'target': target.split(':')[1]})
+        self.assertEqual((e.early_bonus['kind'], e.early_bonus['value'], e.early_bonus['text']['ru']),
+                         ('points', 500, '+500 баллов'))
+        self.assertContains(self.c.get('/panel/eternal/'), target)   # кнопка слайда возвращается в редактор
+
         sc = Showcase.objects.get(venue_id='kymyz')
+        tiles = json.dumps([{'title': {'ru': 'Жильё'}, 'section': sc.cta_section, 'icon': 'yurt'}])
         r = self.c.post('/panel/showcase/', {
-            'facts': '[{"ru": "2 200 м"}]', 'cta_ru': 'Забронировать', 'cta_section': sc.cta_section,
-            'tiles': '[]', 'news-TOTAL_FORMS': '0', 'news-INITIAL_FORMS': '0'})
+            'facts': '[{"ru": "2 200 м"}, {"ru": ""}]', 'cta_ru': 'Забронировать', 'cta_section': sc.cta_section,
+            'tiles': tiles, 'news-TOTAL_FORMS': '0', 'news-INITIAL_FORMS': '0'})
         self.assertEqual(r.status_code, 302, r.content.decode()[:3000])
         sc.refresh_from_db()
-        self.assertEqual(sc.facts, [{'ru': '2 200 м'}])
+        self.assertEqual(sc.facts, [{'ru': '2 200 м', 'ky': '', 'en': ''}])
+        self.assertEqual(sc.tiles, [{'section': sc.cta_section, 'icon': 'yurt',
+                                     'title': {'ru': 'Жильё', 'ky': '', 'en': ''}}])
+        r = self.c.post('/panel/showcase/', {'facts': '[]', 'tiles': json.dumps([{'title': {'ru': 'X'}}]),
+                                             'news-TOTAL_FORMS': '0', 'news-INITIAL_FORMS': '0'})
+        self.assertContains(r, 'выберите раздел')
+
+        venue = Venue.objects.get(pk='kymyz')
+        r = self.c.get('/panel/catalog/venues/kymyz/')
+        self.assertContains(r, 'data-rows="id_info"')
+        self.assertEqual([b['kind'] for b in r.context['form'].initial['info']],
+                         ['rows' if b.get('rows') else 'text' for b in venue.info])
+        info = [{'kind': 'rows', 'title': {'ru': 'Трассы'}, 'text': {'ru': 'лишнее'},
+                 'rows': [{'label': {'ru': 'Трасса 1'}, 'value': {'ru': '2,6 км'}}]},
+                {'kind': 'text', 'title': {'ru': 'Как добраться'}, 'text': {'ru': '3 часа'}, 'rows': []}]
+        contacts = [{'label': {'ru': 'Ресепшен'}, 'phone': '+996 700 000 000', 'whatsapp': True, 'email': ''},
+                    {'label': {'ru': ''}, 'phone': '', 'email': ''}]
+        data = {'name_ru': 'Baytur Kymyz', 'contacts': json.dumps(contacts), 'info': json.dumps(info),
+                'sort_order': '0', 'is_active': 'on', 'is_open': 'on', 'accent': '#3FA568',
+                'seasons-TOTAL_FORMS': '0', 'seasons-INITIAL_FORMS': '0', 'app-min_version_ios': '1.0.0',
+                'app-min_version_android': '1.0.0'}
+        r = self.c.post('/panel/catalog/venues/kymyz/', data)
+        self.assertEqual(r.status_code, 302, r.content.decode()[:3000])
+        venue.refresh_from_db()
+        self.assertEqual(venue.info[0], {'title': {'ru': 'Трассы', 'ky': '', 'en': ''},
+                                         'rows': [{'label': {'ru': 'Трасса 1', 'ky': '', 'en': ''},
+                                                   'value': {'ru': '2,6 км', 'ky': '', 'en': ''}}]})
+        self.assertEqual(venue.info[1]['text']['ru'], '3 часа')
+        self.assertEqual([(c['phone'], c['whatsapp']) for c in venue.contacts], [('+996 700 000 000', True)])
 
     def test_resort_hides_eternal(self):
         self.c.get('/panel/mode/resort/')

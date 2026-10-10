@@ -44,7 +44,7 @@ SEASON_MILK = ('2026-05-01', '2026-09-01')
 VENUES = [
     {
         'id': 'ski',
-        'name': L('Тоо-Ашуу', 'Тоо-Ашуу', 'Too-Ashuu'),
+        'name': L('Baytur Ski', 'Baytur Ski', 'Baytur Ski'),
         'short': L('Горнолыжная база', 'Тоо лыжа базасы', 'Ski resort'),
         'description': L(
             'Горнолыжная база на перевале Тоо-Ашуу на высоте 3 000 м: три трассы, канатная дорога, '
@@ -105,7 +105,7 @@ VENUES = [
     },
     {
         'id': 'kymyz',
-        'name': L('Кымызолечение Суусамыр', 'Суусамыр кымыз менен дарылоо', 'Suusamyr Kymyz Cure'),
+        'name': L('Baytur Kymyz', 'Baytur Kymyz', 'Baytur Kymyz'),
         'short': L('Центр кымызолечения', 'Кымыз менен дарылоо борбору', 'Kymyz cure center'),
         'description': L(
             'Центр кымызолечения в Суусамырской долине: коттеджи и юрты, трёхразовое питание '
@@ -801,11 +801,11 @@ ALLOWED_CATEGORIES = {'rooms', 'spa', 'food', 'pools', 'sport'}
 # ---------------------------------------------------------------------------
 
 MODES_META = {
-    'ski': {'app': 'sk', 'name': L('Тоо-Ашуу', 'Тоо-Ашуу', 'Too-Ashuu'),
+    'ski': {'app': 'sk', 'name': L('Baytur Ski', 'Baytur Ski', 'Baytur Ski'),
             'short': L('Горнолыжная база', 'Тоо лыжа базасы', 'Ski resort'),
             'phone': '+996701797480', 'whatsapp': '+996701797480', 'email': 'pr@baytur.kg',
             'accent': '#4A90D9', 'early_booking_enabled': False},
-    'kymyz': {'app': 'sk', 'name': L('Суусамыр', 'Суусамыр', 'Suusamyr'),
+    'kymyz': {'app': 'sk', 'name': L('Baytur Kymyz', 'Baytur Kymyz', 'Baytur Kymyz'),
               'short': L('Центр кымызолечения', 'Кымыз менен дарылоо борбору', 'Kymyz cure center'),
               'phone': '+996770797370', 'whatsapp': '+996770797370', 'email': 'pr@baytur.kg',
               'accent': '#3FA568', 'early_booking_enabled': True},

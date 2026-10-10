@@ -431,6 +431,97 @@
     sortable(list, '.re-row', '.re-handle', save);
   });
 
+  // простой список строк вместо JSON: <div class="rows-editor" data-rows="id_tiles"><template>…</template>
+  // в шаблоне строки: [data-k="title.ru"] — поле объекта (checkbox → да/нет, number → число);
+  // [data-lines="rows"][data-lang="ru"] — таблица «название — значение» построчно;
+  // [data-k-image] — скрытое поле картинки, [data-pick-image] — превью-кнопка загрузки;
+  // [data-show-when="kind=rows"] / [data-show-when="cta_target!="] — показ по значению другого поля строки
+  $$('[data-rows]').forEach(function (box) {
+    var input = document.getElementById(box.getAttribute('data-rows'));
+    var list = $('.re-list', box), tpl = $('template', box);
+    var rows = [];
+    try { rows = JSON.parse(input.value || '[]'); } catch (e) { rows = []; }
+    function get(o, path) { return path.split('.').reduce(function (a, k) { return a == null ? a : a[k]; }, o); }
+    function put(o, path, v) {
+      var ks = path.split('.'), last = ks.pop();
+      ks.forEach(function (k) { o = o[k] = (o[k] && typeof o[k] === 'object') ? o[k] : {}; });
+      o[last] = v;
+    }
+    function preview(r) {
+      var hidden = $('[data-k-image]', r), ph = $('[data-pick-image]', r);
+      if (!hidden || !ph) return;
+      if (hidden.value) { ph.style.backgroundImage = 'url("' + mediaUrl(hidden.value) + '")'; ph.classList.add('has-image'); }
+      else { ph.style.backgroundImage = ''; ph.classList.remove('has-image'); }
+    }
+    function toggle(r) {
+      $$('[data-show-when]', r).forEach(function (el) {
+        var m = el.getAttribute('data-show-when').match(/^([\w.]+)(!?=)(.*)$/), f = $('[data-k="' + m[1] + '"]', r);
+        el.hidden = !f || (f.value === m[3]) === (m[2] === '!=');
+      });
+    }
+    function read(r) {
+      var o = {};
+      $$('[data-k]', r).forEach(function (el) {
+        var v = el.type === 'checkbox' ? el.checked : el.value;
+        if (el.type === 'number') v = v === '' ? null : Number(v);
+        put(o, el.getAttribute('data-k'), v);
+      });
+      var tables = {};
+      $$('[data-lines]', r).forEach(function (el) {
+        var key = el.getAttribute('data-lines'), lang = el.getAttribute('data-lang');
+        var t = tables[key] = tables[key] || [];
+        el.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (line, i) {
+          var m = line.match(/^(.*?)\s+[—–-]\s+(.*)$/), label = m ? m[1] : line, value = m ? m[2] : '';
+          t[i] = t[i] || { label: {}, value: {} };
+          t[i].label[lang] = label; t[i].value[lang] = value;
+        });
+      });
+      Object.keys(tables).forEach(function (k) { o[k] = tables[k].filter(Boolean); });
+      return o;
+    }
+    function save() {
+      input.value = JSON.stringify($$('.re-row', list).map(read));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    function row(o) {
+      var d = tpl.content.firstElementChild.cloneNode(true);
+      $$('[data-k]', d).forEach(function (el) {
+        var v = get(o, el.getAttribute('data-k'));
+        if (el.type === 'checkbox') el.checked = !!v;
+        else if (v != null && typeof v !== 'object') el.value = v;
+      });
+      $$('[data-lines]', d).forEach(function (el) {
+        var lang = el.getAttribute('data-lang');
+        el.value = (o[el.getAttribute('data-lines')] || []).map(function (x) {
+          return ((x.label || {})[lang] || '') + ' — ' + ((x.value || {})[lang] || '');
+        }).join('\n');
+      });
+      preview(d); toggle(d);
+      return d;
+    }
+    rows.forEach(function (o) { list.appendChild(row(o)); });
+    $('[data-add]', box).addEventListener('click', function () {
+      var d = row({}); list.appendChild(d); save(); var f = $('input:not([type=hidden]), select, textarea', d); if (f) f.focus();
+    });
+    list.addEventListener('input', save);
+    list.addEventListener('change', function (e) {
+      var r = e.target.closest('.re-row');
+      if (e.target.type === 'file') {
+        if (!e.target.files[0]) return;
+        upload(e.target.files[0]).then(function (j) {
+          $('[data-k-image]', r).value = j.path; preview(r); save();
+        }).catch(function (err) { window.Panel.toast(err.message, 'error'); });
+        return;
+      }
+      toggle(r); save();
+    });
+    list.addEventListener('click', function (e) {
+      var rm = e.target.closest('.re-rm'); if (rm) { rm.closest('.re-row').remove(); save(); return; }
+      var ph = e.target.closest('[data-pick-image]'); if (ph) { $('input[type=file]', ph.closest('.re-row')).click(); }
+    });
+    sortable(list, '.re-row', '.re-handle', save);
+  });
+
   /* ---------------------------------------------------------------- переключатели видимости */
   $$('[data-toggle-by]').forEach(function (el) {
     var name = el.getAttribute('data-toggle-by'), val = el.getAttribute('data-toggle-value');
