@@ -8,8 +8,8 @@ from decimal import Decimal
 from django import forms
 from django.core.exceptions import ValidationError
 
-from apps.catalog.models import (ACTIVE_METHOD_CHOICES, FEATURE_ICONS, Category, Item, ItemPromo, Outlet,
-                                 PaymentMethod, Promotion, PromotionAudience, PromotionKind, PromotionScope, Section,
+from apps.catalog.models import (ACTIVE_METHOD_CHOICES, DEFAULT_VENUE, FEATURE_ICONS, AppRelease, Category, EternalNews,
+                                 Item, ItemPromo, NewsItem, Outlet, PaymentMethod, Season, Showcase, Promotion, PromotionAudience, PromotionKind, PromotionScope, Section,
                                  Venue)
 from apps.common.i18n import LANGS
 from apps.common.models import ProgramSettings
@@ -178,6 +178,30 @@ class PanelForm:
                 self.fields[n].widget.attrs['data-locked'] = '1'
 
 
+def modes_field(label, help_text=''):
+    return forms.MultipleChoiceField(label=label, required=False, help_text=help_text,
+                                     widget=forms.CheckboxSelectMultiple,
+                                     choices=[(v.pk, str(v)) for v in Venue.objects.all()])
+
+
+class ModesFormMixin:
+    """Поле «Режимы» (ТЗ экосистемы): в каких приложениях / режимах показывать запись."""
+
+    modes_label = 'Показывать в режимах'
+    modes_help = ''
+    modes_default = None
+
+    def add_modes_field(self):
+        self.fields['modes'] = modes_field(self.modes_label, self.modes_help)
+        current = getattr(self.instance, 'modes', None)
+        self.initial['modes'] = current if self.instance.pk else (self.modes_default or current or [])
+
+    def apply_modes(self):
+        if 'modes' in self.cleaned_data and not self.fields['modes'].disabled:
+            self.instance.modes = self.cleaned_data['modes'] or list(self.modes_default or [])
+
+
+
 # ---------------------------------------------------------------- каталог
 
 class CategoryForm(PanelForm, forms.ModelForm):
@@ -209,8 +233,10 @@ class VenueForm(PanelForm, forms.ModelForm):
 
     class Meta:
         model = Venue
-        fields = ['name', 'short', 'description', 'address', 'cover', 'contacts', 'info', 'sort_order', 'is_active']
-        widgets = {'cover': forms.HiddenInput}
+        fields = ['name', 'short', 'description', 'address', 'cover', 'phone', 'whatsapp', 'email', 'maps_url',
+                  'two_gis_url', 'is_open', 'early_booking_enabled', 'accent', 'contacts', 'info', 'sort_order',
+                  'is_active']
+        widgets = {'cover': forms.HiddenInput, 'accent': forms.TextInput(attrs={'type': 'color'})}
         labels = {'sort_order': 'Порядок', 'is_active': 'Показывать'}
 
     def clean_contacts(self):
@@ -224,6 +250,145 @@ class VenueForm(PanelForm, forms.ModelForm):
         if not isinstance(v, list) or not all(isinstance(b, dict) and b.get('title') for b in v):
             raise ValidationError('Нужен список блоков с title')
         return v
+
+
+class SeasonForm(forms.ModelForm):
+    """Сезон S&K: по датам сервер переключает приложение между Ski и Kymyz (ТЗ экосистемы §4.1)."""
+
+    class Meta:
+        model = Season
+        fields = ['year', 'starts_at', 'ends_at', 'early_booking_from', 'off_season_mode']
+        widgets = {'starts_at': DateInput(), 'ends_at': DateInput(), 'early_booking_from': DateInput()}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['off_season_mode'].queryset = Venue.objects.filter(app='sk')
+        self.fields['off_season_mode'].required = False
+
+    def clean(self):
+        data = super().clean()
+        if data.get('starts_at') and data.get('ends_at') and data['ends_at'] < data['starts_at']:
+            raise ValidationError('Конец сезона раньше начала')
+        return data
+
+
+SeasonFormSet = forms.inlineformset_factory(Venue, Season, form=SeasonForm, fk_name='venue', extra=1, can_delete=True)
+
+
+def _json_list(value, need=None):
+    if not isinstance(value, list) or not all(isinstance(x, dict) for x in value):
+        raise ValidationError('Нужен список объектов')
+    for x in value:
+        for key in need or ():
+            if not x.get(key):
+                raise ValidationError(f'У каждого элемента нужно поле {key}')
+    return value
+
+
+class ShowcaseForm(PanelForm, forms.ModelForm):
+    """Главная режима (ТЗ §7.2): шапка, факты, кнопка, плитки разделов."""
+
+    cta = L10nField(label='Текст кнопки', required=False, max_length=40)
+    facts = forms.JSONField(label='Факты (JSON)', required=False, widget=forms.Textarea(attrs={'rows': 4}),
+                            help_text='[{"ru": "3 000 м", "ky": "…", "en": "…"}, …] — в порядке показа')
+    tiles = forms.JSONField(label='Плитки (JSON)', required=False, widget=forms.Textarea(attrs={'rows': 8}),
+                            help_text='[{"section": "skipass", "icon": "skipass", "title": {"ru": "Скипасс"}}] — '
+                                      'порядок в списке = порядок в приложении')
+
+    class Meta:
+        model = Showcase
+        fields = ['hero_image', 'hero_image_night', 'facts', 'cta', 'cta_section', 'tiles']
+        widgets = {'hero_image': forms.HiddenInput, 'hero_image_night': forms.HiddenInput}
+
+    def __init__(self, *args, sections=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.section_keys = [k for k, _ in sections]
+        self.fields['cta_section'] = forms.ChoiceField(label='Кнопка ведёт в раздел', required=False,
+                                                       choices=[('', '—')] + list(sections))
+
+    def clean_facts(self):
+        v = self.cleaned_data.get('facts') or []
+        if not isinstance(v, list) or not all(isinstance(f, dict) and f.get('ru') for f in v):
+            raise ValidationError('Нужен список вида [{"ru": "…"}]')
+        return v
+
+    def clean_tiles(self):
+        from apps.catalog.models import SHOWCASE_ICONS
+        v = _json_list(self.cleaned_data.get('tiles') or [], need=('section', 'title'))
+        for t in v:
+            if t['section'] not in self.section_keys:
+                raise ValidationError(f'Нет раздела {t["section"]}')
+            if t.get('icon') and t['icon'] not in SHOWCASE_ICONS:
+                raise ValidationError(f'Иконка {t["icon"]} не из справочника: {", ".join(SHOWCASE_ICONS)}')
+        return v
+
+
+class NewsItemForm(forms.ModelForm):
+    title = L10nField(label='Заголовок', required=False, max_length=120)
+    when = L10nField(label='Когда (текст)', required=False, max_length=60)
+    place = L10nField(label='Место', required=False, max_length=80)
+
+    class Meta:
+        model = NewsItem
+        fields = ['title', 'when', 'date', 'place', 'image', 'article_id', 'sort_order', 'is_active']
+        widgets = {'date': DateInput(), 'image': forms.HiddenInput}
+        labels = {'sort_order': 'Порядок', 'article_id': 'Статья (id)'}
+
+    def clean(self):
+        data = super().clean()
+        if not self.cleaned_data.get('DELETE') and self.has_changed() and not (data.get('title') or {}).get('ru'):
+            self.add_error('title', 'Обязателен русский вариант')
+        return data
+
+
+NewsFormSet = forms.inlineformset_factory(Venue, NewsItem, form=NewsItemForm, extra=1, can_delete=True)
+
+
+class EternalNewsForm(PanelForm, forms.ModelForm):
+    """«Вечная новость» (ТЗ §7.2): рассказ о другом сезоне S&K со слайдами и бонусом за раннюю бронь."""
+
+    title = L10nField(label='Заголовок', max_length=120)
+    lead = L10nField(label='Подводка', required=False, textarea=True, rows=3)
+    show_in = forms.MultipleChoiceField(label='Показывать в режимах', widget=forms.CheckboxSelectMultiple)
+    slides = forms.JSONField(label='Слайды (JSON)', required=False, widget=forms.Textarea(attrs={'rows': 12}),
+                             help_text='[{"image": "…", "title": {"ru": …}, "text": {"ru": …}, "cta": {"label": '
+                                       '{"ru": "Забронировать"}, "action": "openSection", "mode": "kymyz", '
+                                       '"target": "stay"} или null}] — порядок = порядок слайдов')
+    early_bonus = forms.JSONField(label='Бонус за раннюю бронь (JSON)', required=False,
+                                  widget=forms.Textarea(attrs={'rows': 3}),
+                                  help_text='{"kind": "points", "value": 500, "text": {"ru": "+500 баллов"}} '
+                                            'или пусто')
+
+    class Meta:
+        model = EternalNews
+        fields = ['about', 'show_in', 'title', 'lead', 'cover', 'slides', 'early_bonus', 'is_active']
+        widgets = {'cover': forms.HiddenInput}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        sk = Venue.objects.filter(app='sk')
+        self.fields['about'].queryset = sk
+        self.fields['show_in'].choices = [(v.pk, str(v)) for v in sk]
+
+    def clean_slides(self):
+        return _json_list(self.cleaned_data.get('slides') or [])
+
+    def clean_early_bonus(self):
+        v = self.cleaned_data.get('early_bonus')
+        if not v:
+            return None
+        if not isinstance(v, dict) or v.get('kind') not in ('points', 'percent') or not v.get('value'):
+            raise ValidationError('Нужно {"kind": "points" | "percent", "value": число, "text": {...}}')
+        return v
+
+
+class AppReleaseForm(forms.ModelForm):
+    maintenance_message = L10nField(label='Текст техработ', required=False, textarea=True, rows=2)
+
+    class Meta:
+        model = AppRelease
+        fields = ['min_version_ios', 'min_version_android', 'maintenance', 'maintenance_message']
+        labels = {'min_version_ios': 'Минимальная версия iOS', 'min_version_android': 'Минимальная версия Android'}
 
 
 WEEKDAYS = [(0, 'Пн'), (1, 'Вт'), (2, 'Ср'), (3, 'Чт'), (4, 'Пт'), (5, 'Сб'), (6, 'Вс')]
@@ -426,7 +591,7 @@ class ItemForm(PanelForm, forms.ModelForm):
         section, venue = data.get('section'), data.get('venue')
         if section and venue and section.venue_id != venue.pk:
             self.add_error('section', 'Подраздел другого объекта')
-        if venue and venue.pk != 'baytur' and not section:
+        if venue and venue.pk != DEFAULT_VENUE and not section:
             self.add_error('section', 'Для этого объекта выберите подраздел — без него услуга не видна в приложении')
         sf, st = data.get('season_from'), data.get('season_to')
         if sf and st and sf > st:
@@ -508,7 +673,7 @@ class TierStyleForm(PanelForm, forms.Form):
         return [self.cleaned_data[f'color{i}'].upper() for i in range(3)]
 
 
-class PrivilegeForm(PanelForm, forms.ModelForm):
+class PrivilegeForm(ModesFormMixin, PanelForm, forms.ModelForm):
     id = forms.SlugField(label='Id', max_length=40)
     icon = forms.ChoiceField(label='Иконка', choices=[(i, i) for i in PERK_ICONS], widget=IconGrid)
     title = L10nField(label='Название', max_length=80)
@@ -525,12 +690,19 @@ class PrivilegeForm(PanelForm, forms.ModelForm):
                   'group': 'Группа «Апгрейдер» (одна привилегия на разных уровнях, напр. late-checkout)'}
         help_texts = {'group': '{rate} в текстах подставляет ставку кешбека уровня, %'}
 
-    RULE_FIELDS = ['id', 'tier', 'group', 'icon', 'sort_order']
+    RULE_FIELDS = ['id', 'tier', 'group', 'icon', 'sort_order', 'modes']
+    modes_label = 'Где действует'
+    modes_help = 'Пусто — во всех режимах; иначе в приложении подпись «Только …»'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.add_modes_field()
         if self.instance and self.instance.pk:
             self.fields['id'].disabled = True
+
+    def save(self, commit=True):
+        self.apply_modes()
+        return super().save(commit)
 
     def clean_id(self):
         v = self.cleaned_data['id']
@@ -541,8 +713,16 @@ class PrivilegeForm(PanelForm, forms.ModelForm):
 
 # ---------------------------------------------------------------- контент
 
-class PublishableForm(forms.ModelForm):
-    pass
+class PublishableForm(ModesFormMixin, forms.ModelForm):
+    modes_default = [DEFAULT_VENUE]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.add_modes_field()
+
+    def save(self, commit=True):
+        self.apply_modes()
+        return super().save(commit)
 
 
 from apps.common.text import slug_from_title  # noqa: E402

@@ -8,7 +8,8 @@ class CommonConfig(AppConfig):
     # Изменение любой из этих моделей сбрасывает кеш публичных справочников
     PUBLIC_MODELS = (
         'catalog.Outlet', 'catalog.Category', 'catalog.Item', 'catalog.ItemPromo',
-        'catalog.Venue', 'catalog.Section', 'catalog.Promotion',
+        'catalog.Venue', 'catalog.Section', 'catalog.Promotion', 'catalog.Season', 'catalog.InfoBlock',
+        'catalog.Showcase', 'catalog.NewsItem', 'catalog.EternalNews', 'catalog.AppRelease',
         'loyalty.Tier', 'loyalty.Privilege', 'loyalty.Achievement', 'loyalty.TierAchievement',
         'loyalty.LoyaltySettings',
         'content.Article', 'content.Promo', 'content.ResortEvent', 'content.Story', 'content.StorySlide',

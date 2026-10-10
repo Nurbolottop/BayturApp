@@ -15,7 +15,7 @@ def doc(view, method, tags, summary, request=None, response=None, params=(), sta
         responses[code] = o.Error
     handler = getattr(view, method)
     extend_schema(tags=tags, summary=summary, request=request, responses=responses, operation_id=operation_id,
-                  parameters=[o.LANG_HEADER, o.DEVICE_HEADER, *params])(handler)
+                  parameters=[o.LANG_HEADER, o.DEVICE_HEADER, o.APP_HEADER, o.MODE_HEADER, *params])(handler)
 
 
 def apply():
@@ -122,7 +122,18 @@ def apply():
     doc(members.AppConfigView, 'get', SYS, 'Минимальная версия приложения и техработы', response=o.AppConfig,
         auth=False, params=[OpenApiParameter('X-Platform', str, OpenApiParameter.HEADER, enum=['ios', 'android']),
                             OpenApiParameter('X-App-Version', str, OpenApiParameter.HEADER)])
-    doc(members.ResortContactsView, 'get', SYS, 'Контакты курорта', response=o.ResortContacts, auth=False)
+    doc(members.ResortContactsView, 'get', SYS, 'Контакты курорта / объекта режима', response=o.ResortContacts,
+        auth=False)
+    doc(catalog.ModesView, 'get', CAT, 'Режимы экосистемы: resort, ski, kymyz', response=o.Mode(many=True),
+        auth=False)
+    doc(catalog.ShowcaseView, 'get', CAT, 'Главная режима: шапка, факты, плитки, акции, новости, «вечная новость»',
+        response=o.Showcase, auth=False)
+    doc(catalog.EternalView, 'get', CNT, '«Вечная новость» режима; нет — 404', response=o.Eternal, auth=False,
+        errors=(404,))
+    doc(catalog.ServicesView, 'get', CAT, 'Услуги режима: разделы → группы → позиции, справка',
+        response=o.Services, auth=False)
+    doc(catalog.ServiceDetailView, 'get', CAT, 'Позиция прайса (любой режим)', response=o.Service, auth=False,
+        errors=(404,), operation_id='service_detail')
     doc(catalog.CatalogView, 'get', CAT, 'Каталог курорта на Иссык-Куле (старое приложение): категории с услугами',
         response=o.ServiceCategory(many=True), auth=False)
     doc(catalog.CatalogItemView, 'get', CAT, 'Услуга (в т.ч. неактивная — для истории)', response=o.ServiceItem,

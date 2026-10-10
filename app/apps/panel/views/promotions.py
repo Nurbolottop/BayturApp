@@ -4,13 +4,14 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.catalog.models import Promotion, Venue
+from apps.catalog.models import Promotion
 from apps.catalog.promotions import is_active_at, used
 from apps.common.audit import audit, model_snapshot
 from apps.common.caching import bump_content_version
 
 from ..access import forbidden, panel_view
 from ..forms import PromotionForm
+from ..modes import current_mode
 
 
 def status_of(p, now):
@@ -28,7 +29,7 @@ def status_of(p, now):
 @panel_view('promotions')
 def promotions(request):
     now = timezone.now()
-    venue = request.GET.get('venue') or ''
+    venue = '' if request.GET.get('all') else current_mode(request)  # режим из шапки; ?all=1 — все режимы
     qs = Promotion.objects.prefetch_related('venues', 'sections', 'items').select_related('gift_item')
     if venue:
         qs = qs.filter(venues__pk=venue) | qs.filter(sections__venue_id=venue) | qs.filter(items__venue_id=venue) \
@@ -40,7 +41,7 @@ def promotions(request):
         rows.append({'obj': p, 'status': key, 'status_label': label,
                      'used': used(p) if p.usage_limit is not None else None})
     return render(request, 'panel/promotions/list.html', {
-        'rows': rows, 'venues': Venue.objects.all(), 'venue': venue,
+        'rows': rows, 'venue': venue,
         'can_edit': request.user.can('catalog.edit')})
 
 

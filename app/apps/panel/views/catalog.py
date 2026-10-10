@@ -13,7 +13,8 @@ from apps.common.media import process_upload
 from apps.common.models import ProgramSettings, Upload
 
 from ..access import is_staff_user, panel_view
-from ..forms import CategoryForm, ItemForm, PromoRateForm, SectionForm, VenueForm
+from ..forms import CategoryForm, ItemForm, PromoRateForm, SectionForm
+from ..modes import current_mode
 
 
 def _editor_only(user):
@@ -27,9 +28,7 @@ def _match(item, q):
 @panel_view('catalog')
 def catalog(request):
     """Вкладки объектов: курорт на Иссык-Куле — по разделам программы, остальные объекты — по подразделам."""
-    venues = list(Venue.objects.all())
-    venue = next((v for v in venues if v.pk == request.GET.get('venue')), None) \
-        or next((v for v in venues if v.pk == DEFAULT_VENUE), venues[0] if venues else None)
+    venue = Venue.objects.filter(pk=current_mode(request)).first()  # режим из переключателя в шапке
     now = timezone.now()
     q = (request.GET.get('q') or '').strip().lower()
     groups, sections = [], []
@@ -51,23 +50,8 @@ def catalog(request):
             sections.append({'section': s, 'is_parent': s.pk in parents,
                              'items': [{'obj': i, 'promo': i.active_promo(now)} for i in items]})
     return render(request, 'panel/catalog/index.html', {
-        'groups': groups, 'sections': sections, 'venues': venues, 'venue': venue, 'q': q,
+        'groups': groups, 'sections': sections, 'venue': venue, 'q': q,
         'can_edit': request.user.can('catalog.edit')})
-
-
-@panel_view('catalog')
-def venue_edit(request, venue_id):
-    venue = get_object_or_404(Venue, pk=venue_id)
-    form = VenueForm(request.POST or None, instance=venue)
-    if _editor_only(request.user):
-        form.lock(['sort_order', 'is_active'])
-    if request.method == 'POST' and form.is_valid():
-        before = model_snapshot(venue)
-        obj = form.save()
-        audit(request, 'venue.update', obj, before=before, after=model_snapshot(obj))
-        messages.success(request, 'Объект сохранён')
-        return redirect(f"{redirect('panel:catalog').url}?venue={obj.pk}")
-    return render(request, 'panel/catalog/venue.html', {'form': form, 'venue': venue})
 
 
 @panel_view('catalog')
@@ -112,7 +96,7 @@ def item_edit(request, item_id=None):
     if item is None and not user.can('catalog.edit'):
         from ..access import forbidden
         return forbidden(request, 'Создавать услуги может директор')
-    initial = {}
+    initial = {'venue': current_mode(request)} if item is None else {}  # новая позиция — в режиме из шапки
     if item is None and request.GET.get('category'):
         initial['category'] = request.GET['category']
     if item is None and request.GET.get('section'):

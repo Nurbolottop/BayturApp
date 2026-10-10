@@ -51,6 +51,11 @@ client = [
     # справочники (публичные)
     path('catalog', catalog.CatalogView.as_view()),
     path('catalog/items/<slug:item_id>', catalog.CatalogItemView.as_view()),
+    path('modes', catalog.ModesView.as_view()),
+    path('showcase', catalog.ShowcaseView.as_view()),
+    path('content/eternal', catalog.EternalView.as_view()),
+    path('services', catalog.ServicesView.as_view()),
+    path('services/<slug:service_id>', catalog.ServiceDetailView.as_view()),
     path('venues', catalog.VenuesView.as_view()),
     path('venues/<slug:venue_id>', catalog.VenueDetailView.as_view()),
     path('venues/<slug:venue_id>/catalog', catalog.VenueCatalogView.as_view()),

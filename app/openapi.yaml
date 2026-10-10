@@ -20,6 +20,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -68,6 +86,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -118,6 +154,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -155,6 +209,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -199,6 +271,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -241,6 +331,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -298,6 +406,24 @@ paths:
         schema:
           type: string
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -342,6 +468,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -407,6 +551,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -471,6 +633,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -518,6 +698,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -572,6 +770,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -623,6 +839,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -682,6 +916,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -748,6 +1000,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -794,6 +1064,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -848,6 +1136,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -895,6 +1201,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -940,6 +1264,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -1003,6 +1345,24 @@ paths:
         schema:
           type: string
         description: Повтор с тем же ключом не создаёт вторую заявку
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -1074,6 +1434,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -1121,6 +1499,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -1175,6 +1571,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -1241,6 +1655,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -1279,6 +1711,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -1321,6 +1771,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -1372,6 +1840,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -1437,6 +1923,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -1484,6 +1988,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -1554,6 +2076,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -1611,6 +2151,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -1655,6 +2213,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -1681,6 +2257,61 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/content/eternal:
+    get:
+      operationId: content_eternal_retrieve
+      description: «Вечная новость» для текущего режима целиком; нет — 404.
+      summary: «Вечная новость» режима; нет — 404
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Контент
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Eternal'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/content/events:
     get:
       operationId: content_events_list
@@ -1697,6 +2328,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -1736,6 +2385,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -1777,6 +2444,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -1816,6 +2501,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -1864,6 +2567,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -1902,6 +2623,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -1938,6 +2677,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -1980,6 +2737,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -2039,6 +2814,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -2081,6 +2874,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -2133,6 +2944,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -2175,6 +3004,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -2228,6 +3075,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -2280,6 +3145,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -2321,6 +3204,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -2364,6 +3265,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -2413,6 +3332,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -2456,6 +3393,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -2501,6 +3456,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -2543,6 +3516,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -2596,6 +3587,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -2647,6 +3656,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -2706,6 +3733,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -2757,6 +3802,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -2829,6 +3892,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -2880,6 +3961,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -2907,6 +4006,64 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/modes:
+    get:
+      operationId: modes_list
+      description: Все объекты экосистемы — для пометок в истории, привилегиях и переходов
+        между приложениями.
+      summary: 'Режимы экосистемы: resort, ski, kymyz'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Каталог
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Mode'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/payments:
     post:
       operationId: payments_create
@@ -2922,6 +4079,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -2981,6 +4156,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -3028,6 +4221,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -3078,6 +4289,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -3113,7 +4342,7 @@ paths:
       operationId: resort_contacts_retrieve
       description: Без токена; с токеном отвечает так же (один кеш для всех). Rate
         limit по IP и X-Device-Id.
-      summary: Контакты курорта
+      summary: Контакты курорта / объекта режима
       parameters:
       - in: header
         name: Accept-Language
@@ -3124,6 +4353,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -3139,6 +4386,178 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResortContacts'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/services:
+    get:
+      operationId: services_retrieve
+      description: 'Весь каталог режима (ТЗ §6.3): разделы → подразделы → позиции,
+        справка.'
+      summary: 'Услуги режима: разделы → группы → позиции, справка'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Каталог
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Services'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/services/{service_id}:
+    get:
+      operationId: service_detail
+      description: Одна позиция, в т.ч. скрытая (для ссылок из push и истории) — из
+        любого режима.
+      summary: Позиция прайса (любой режим)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: service_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Каталог
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/showcase:
+    get:
+      operationId: showcase_retrieve
+      description: Главная режима одним запросом (ТЗ §6.2).
+      summary: 'Главная режима: шапка, факты, плитки, акции, новости, «вечная новость»'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Каталог
+      security:
+      - memberBearerOptional: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Showcase'
           description: ''
         '400':
           content:
@@ -3162,6 +4581,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -3218,6 +4655,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -3255,6 +4710,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -3300,6 +4773,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -3378,6 +4869,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -3454,6 +4963,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -3507,6 +5034,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -3562,6 +5107,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -3638,6 +5201,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -3708,6 +5289,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -3751,6 +5350,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -3799,6 +5416,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -3842,6 +5477,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -3896,6 +5549,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -3943,6 +5614,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -4014,6 +5703,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -4057,6 +5764,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -4128,6 +5853,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -4173,6 +5916,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -4220,6 +5981,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -4297,6 +6076,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -4352,6 +6149,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -4425,6 +6240,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -4501,6 +6334,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -4554,6 +6405,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -4596,6 +6465,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -4650,6 +6537,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -4689,6 +6594,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -4733,6 +6656,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -4775,6 +6716,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -4820,6 +6779,24 @@ paths:
           - ru
         description: Язык контента, fallback ru
       - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
         name: X-Device-Id
         schema:
           type: string
@@ -4862,6 +6839,24 @@ paths:
           - ky
           - ru
         description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
       - in: header
         name: X-Device-Id
         schema:
@@ -4922,10 +6917,21 @@ components:
 
             * `lifetime` - lifetime
             * `period` - period
+        modes:
+          type: array
+          items:
+            type: string
+          description: 'Режимы: [] — везде, иначе только перечисленные (resort, ski,
+            kymyz)'
+        modeTitle:
+          type: string
+          nullable: true
       required:
       - description
       - icon
       - id
+      - modeTitle
+      - modes
       - scope
       - title
     AchievementCount:
@@ -4970,6 +6976,24 @@ components:
             $ref: '#/components/schemas/AchievementProgress'
       required:
       - items
+    ActionEnum:
+      enum:
+      - book_stay
+      - book_slot
+      - book_seats
+      - buy_ticket
+      - pay_cashier
+      - request
+      - info
+      type: string
+      description: |-
+        * `book_stay` - book_stay
+        * `book_slot` - book_slot
+        * `book_seats` - book_seats
+        * `buy_ticket` - buy_ticket
+        * `pay_cashier` - pay_cashier
+        * `request` - request
+        * `info` - info
     AdjustInputRequest:
       type: object
       properties:
@@ -5024,6 +7048,7 @@ components:
           type: object
           additionalProperties:
             type: string
+          description: 'для X-Baytur-App: sk — свои версии'
         updateRequired:
           type: boolean
         maintenance:
@@ -5031,11 +7056,41 @@ components:
         maintenanceMessage:
           type: string
           nullable: true
+        mode:
+          $ref: '#/components/schemas/Mode'
+        season:
+          allOf:
+          - $ref: '#/components/schemas/Season'
+          description: |-
+            только sk
+
+            * `winter` - winter
+            * `summer` - summer
+        seasons:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeasonInfo'
+          description: 'только sk: текущий и будущие сезоны'
+        isOpen:
+          type: boolean
+          description: только sk
+        pointsPerSom:
+          type: integer
+          description: только sk
       required:
       - maintenance
       - maintenanceMessage
       - minVersion
+      - mode
       - updateRequired
+    AppEnum:
+      enum:
+      - resort
+      - sk
+      type: string
+      description: |-
+        * `resort` - resort
+        * `sk` - sk
     AppEventInputRequest:
       type: object
       properties:
@@ -5609,12 +7664,34 @@ components:
       required:
       - platform
       - token
+    EarlyBonus:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/EarlyBonusKindEnum'
+        value:
+          type: number
+          format: double
+        text:
+          type: string
+      required:
+      - kind
+      - text
+      - value
+    EarlyBonusKindEnum:
+      enum:
+      - points
+      - percent
+      type: string
+      description: |-
+        * `points` - points
+        * `percent` - percent
     EntryRule:
       type: object
       properties:
         mode:
           allOf:
-          - $ref: '#/components/schemas/ModeEnum'
+          - $ref: '#/components/schemas/EntryRuleModeEnum'
           description: |-
             как считаются задания «для получения»
 
@@ -5627,6 +7704,14 @@ components:
       required:
       - mode
       - n
+    EntryRuleModeEnum:
+      enum:
+      - all
+      - any_n
+      type: string
+      description: |-
+        * `all` - all
+        * `any_n` - any_n
     Error:
       type: object
       properties:
@@ -5644,6 +7729,78 @@ components:
       required:
       - code
       - message
+    Eternal:
+      type: object
+      properties:
+        id:
+          type: integer
+        about:
+          $ref: '#/components/schemas/SkMode'
+        aboutSeason:
+          $ref: '#/components/schemas/Season'
+        title:
+          type: string
+        lead:
+          type: string
+        cover:
+          type: string
+          format: uri
+          nullable: true
+        earlyBonus:
+          allOf:
+          - $ref: '#/components/schemas/EarlyBonus'
+          nullable: true
+        slides:
+          type: array
+          items:
+            $ref: '#/components/schemas/EternalSlide'
+      required:
+      - about
+      - aboutSeason
+      - cover
+      - earlyBonus
+      - id
+      - lead
+      - slides
+      - title
+    EternalCta:
+      type: object
+      properties:
+        label:
+          type: string
+        action:
+          type: string
+        mode:
+          type: string
+          nullable: true
+        target:
+          type: string
+          nullable: true
+      required:
+      - action
+      - label
+      - mode
+      - target
+    EternalSlide:
+      type: object
+      properties:
+        image:
+          type: string
+          format: uri
+          nullable: true
+        title:
+          type: string
+        text:
+          type: string
+        cta:
+          allOf:
+          - $ref: '#/components/schemas/EternalCta'
+          nullable: true
+      required:
+      - cta
+      - image
+      - text
+      - title
     EventsAccepted:
       type: object
       properties:
@@ -5779,6 +7936,47 @@ components:
           description: id_token из Google Sign-In
       required:
       - idToken
+    InfoBlock:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/InfoLine'
+      required:
+      - id
+      - lines
+      - title
+    InfoLine:
+      type: object
+      properties:
+        title:
+          type: string
+          nullable: true
+        value:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        whatsapp:
+          type: string
+          nullable: true
+        level:
+          type: number
+          format: double
+          nullable: true
+          description: сложность трассы 0…1
+      required:
+      - level
+      - phone
+      - title
+      - value
+      - whatsapp
     ItemSnapshot:
       type: object
       properties:
@@ -5910,14 +8108,27 @@ components:
       description: |-
         * `client` - client
         * `resort` - resort
-    ModeEnum:
-      enum:
-      - all
-      - any_n
-      type: string
-      description: |-
-        * `all` - all
-        * `any_n` - any_n
+    Mode:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/Mode'
+        app:
+          $ref: '#/components/schemas/AppEnum'
+        title:
+          type: string
+        subtitle:
+          type: string
+        icon:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - app
+      - icon
+      - id
+      - subtitle
+      - title
     Notification:
       type: object
       properties:
@@ -6609,6 +8820,16 @@ components:
           type: string
         description:
           type: string
+        modes:
+          type: array
+          items:
+            type: string
+          description: 'Режимы: [] — везде, иначе только перечисленные (resort, ski,
+            kymyz)'
+        modeTitle:
+          type: string
+          nullable: true
+          description: «Только Тоо-Ашуу» или null
       required:
       - description
       - footnote
@@ -6616,6 +8837,8 @@ components:
       - groupTitle
       - icon
       - id
+      - modeTitle
+      - modes
       - short
       - tier
       - title
@@ -7031,6 +9254,19 @@ components:
           type: string
           format: uri
           nullable: true
+        email:
+          type: string
+          nullable: true
+          description: только режимы S&K
+        twoGisUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: только режимы S&K
+        address:
+          type: string
+          nullable: true
+          description: только режимы S&K
       required:
       - deletionUrl
       - mapsUrl
@@ -7167,6 +9403,35 @@ components:
       description: |-
         * `lifetime` - lifetime
         * `period` - period
+    Season:
+      enum:
+      - winter
+      - summer
+      type: string
+      description: |-
+        * `winter` - winter
+        * `summer` - summer
+    SeasonInfo:
+      type: object
+      properties:
+        mode:
+          $ref: '#/components/schemas/SkMode'
+        season:
+          $ref: '#/components/schemas/Season'
+        startsAt:
+          type: string
+          format: date
+        endsAt:
+          type: string
+          format: date
+        earlyBookingFrom:
+          type: string
+          format: date
+      required:
+      - endsAt
+      - mode
+      - season
+      - startsAt
     SeasonRange:
       type: object
       properties:
@@ -7181,6 +9446,99 @@ components:
       required:
       - from
       - to
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+        mode:
+          type: string
+        title:
+          type: string
+        note:
+          type: string
+          nullable: true
+        description:
+          type: string
+        includes:
+          type: array
+          items:
+            type: string
+        photos:
+          type: array
+          items:
+            type: string
+            format: uri
+        price:
+          type: integer
+          nullable: true
+          description: null — цена по запросу
+        priceUpTo:
+          type: integer
+          nullable: true
+        unit:
+          $ref: '#/components/schemas/ServiceUnitEnum'
+        unitText:
+          type: string
+          nullable: true
+        pricing:
+          $ref: '#/components/schemas/ServicePricing'
+        promo:
+          allOf:
+          - $ref: '#/components/schemas/ServicePromo'
+          nullable: true
+        cashbackPreview:
+          type: integer
+          nullable: true
+          description: баллы для текущего уровня; null для меню
+        action:
+          $ref: '#/components/schemas/ActionEnum'
+        methods:
+          type: array
+          items:
+            type: string
+        availableFrom:
+          type: string
+          format: date
+          nullable: true
+        availableTo:
+          type: string
+          format: date
+          nullable: true
+        available:
+          type: boolean
+        capacity:
+          type: integer
+          nullable: true
+        featured:
+          type: boolean
+        outletIds:
+          type: array
+          items:
+            type: string
+      required:
+      - action
+      - available
+      - availableFrom
+      - availableTo
+      - capacity
+      - cashbackPreview
+      - description
+      - featured
+      - id
+      - includes
+      - methods
+      - mode
+      - note
+      - outletIds
+      - photos
+      - price
+      - priceUpTo
+      - pricing
+      - promo
+      - title
+      - unit
+      - unitText
     ServiceCategory:
       type: object
       properties:
@@ -7206,6 +9564,21 @@ components:
       - items
       - rules
       - sortOrder
+      - title
+    ServiceGroup:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+      required:
+      - id
+      - items
       - title
     ServiceItem:
       type: object
@@ -7261,7 +9634,7 @@ components:
           description: Действующие акции услуги с условиями
         venue:
           type: string
-          description: 'Объект: baytur, too-ashuu, suusamyr…'
+          description: 'Объект (режим): resort, ski, kymyz'
         section:
           type: string
           nullable: true
@@ -7302,6 +9675,190 @@ components:
       - tag
       - title
       - venue
+    ServicePricing:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/PricingType'
+        min:
+          type: integer
+        max:
+          type: integer
+      required:
+      - max
+      - min
+      - type
+    ServicePromo:
+      type: object
+      properties:
+        id:
+          type: integer
+        badge:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        price:
+          type: integer
+        oldPrice:
+          type: integer
+      required:
+      - badge
+      - id
+      - note
+      - oldPrice
+      - price
+    ServiceSection:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/ServiceSectionKindEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        icon:
+          type: string
+          nullable: true
+        title:
+          type: string
+        subtitle:
+          type: string
+          nullable: true
+        notice:
+          type: string
+          nullable: true
+        cover:
+          type: string
+          format: uri
+          nullable: true
+        fromPrice:
+          type: integer
+          nullable: true
+        hasPromo:
+          type: boolean
+        rules:
+          $ref: '#/components/schemas/ServiceSectionRules'
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceGroup'
+        info:
+          type: array
+          items:
+            $ref: '#/components/schemas/InfoBlock'
+      required:
+      - cover
+      - fromPrice
+      - groups
+      - hasPromo
+      - icon
+      - id
+      - info
+      - kind
+      - notice
+      - rules
+      - subtitle
+      - title
+    ServiceSectionKindEnum:
+      enum:
+      - stay
+      - pass
+      - rental
+      - menu
+      - procedure
+      - transfer
+      - extra
+      - info
+      type: string
+      description: |-
+        * `stay` - stay
+        * `pass` - pass
+        * `rental` - rental
+        * `menu` - menu
+        * `procedure` - procedure
+        * `transfer` - transfer
+        * `extra` - extra
+        * `info` - info
+    ServiceSectionRules:
+      type: object
+      properties:
+        rate:
+          type: number
+          format: double
+        methods:
+          type: array
+          items:
+            type: string
+      required:
+      - methods
+      - rate
+    ServiceUnitEnum:
+      enum:
+      - night
+      - day
+      - hour
+      - min30
+      - hours3
+      - session
+      - person
+      - guest
+      - visit
+      - vehicle_one_way
+      - vehicle_round_trip
+      - seat
+      - portion
+      - piece
+      - none
+      type: string
+      description: |-
+        * `night` - night
+        * `day` - day
+        * `hour` - hour
+        * `min30` - min30
+        * `hours3` - hours3
+        * `session` - session
+        * `person` - person
+        * `guest` - guest
+        * `visit` - visit
+        * `vehicle_one_way` - vehicle_one_way
+        * `vehicle_round_trip` - vehicle_round_trip
+        * `seat` - seat
+        * `portion` - portion
+        * `piece` - piece
+        * `none` - none
+    Services:
+      type: object
+      properties:
+        mode:
+          type: string
+        place:
+          type: string
+        contacts:
+          $ref: '#/components/schemas/ServicesContacts'
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceSection'
+      required:
+      - contacts
+      - mode
+      - place
+      - sections
+    ServicesContacts:
+      type: object
+      properties:
+        phone:
+          type: string
+          nullable: true
+        whatsapp:
+          type: string
+          nullable: true
+      required:
+      - phone
+      - whatsapp
     Settings:
       type: object
       properties:
@@ -7339,6 +9896,162 @@ components:
       - confirmed
       - date
       - rejected
+    Showcase:
+      type: object
+      properties:
+        mode:
+          $ref: '#/components/schemas/Mode'
+        season:
+          type: string
+          nullable: true
+        title:
+          type: string
+        subtitle:
+          type: string
+        heroImage:
+          type: string
+          format: uri
+          nullable: true
+        heroImageNight:
+          type: string
+          format: uri
+          nullable: true
+        facts:
+          type: array
+          items:
+            type: string
+        cta:
+          type: string
+          nullable: true
+        ctaSection:
+          type: string
+          nullable: true
+        tiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShowcaseTile'
+        offers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShowcaseOffer'
+        news:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShowcaseNews'
+        eternal:
+          allOf:
+          - $ref: '#/components/schemas/Eternal'
+          nullable: true
+      required:
+      - cta
+      - ctaSection
+      - eternal
+      - facts
+      - heroImage
+      - heroImageNight
+      - mode
+      - news
+      - offers
+      - season
+      - subtitle
+      - tiles
+      - title
+    ShowcaseNews:
+      type: object
+      properties:
+        id:
+          type: integer
+        when:
+          type: string
+          nullable: true
+        date:
+          type: string
+          format: date
+          nullable: true
+        title:
+          type: string
+        place:
+          type: string
+          nullable: true
+        image:
+          type: string
+          format: uri
+          nullable: true
+        articleId:
+          type: string
+          nullable: true
+      required:
+      - articleId
+      - date
+      - id
+      - image
+      - place
+      - title
+      - when
+    ShowcaseOffer:
+      type: object
+      properties:
+        id:
+          type: integer
+        section:
+          type: string
+          nullable: true
+        serviceId:
+          type: string
+        icon:
+          type: string
+          nullable: true
+        badge:
+          type: string
+          nullable: true
+        title:
+          type: string
+        note:
+          type: string
+          nullable: true
+        price:
+          type: integer
+          nullable: true
+        oldPrice:
+          type: integer
+          nullable: true
+        image:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - badge
+      - icon
+      - id
+      - image
+      - note
+      - oldPrice
+      - price
+      - section
+      - serviceId
+      - title
+    ShowcaseTile:
+      type: object
+      properties:
+        section:
+          type: string
+          description: id раздела из GET /services
+        icon:
+          type: string
+        title:
+          type: string
+      required:
+      - icon
+      - section
+      - title
+    SkMode:
+      enum:
+      - ski
+      - kymyz
+      type: string
+      description: |-
+        * `ski` - ski
+        * `kymyz` - kymyz
     SocialAccountsEnum:
       enum:
       - google

@@ -17,6 +17,7 @@
       {% include 'panel/components/field.html' with f=form.short full=1 %}
       {% include 'panel/components/field.html' with f=form.description full=1 %}
       {% include 'panel/components/field.html' with f=form.footnote full=1 %}
+      {% include 'panel/components/field.html' with f=form.modes full=1 %}
       {% include 'panel/components/field.html' with f=form.sort_order %}
     </div>
     <div class="form-actions"><a class="btn btn-ghost" href="{% url 'panel:tiers' %}">Отмена</a><button class="btn btn-accent btn-l">Сохранить</button></div>

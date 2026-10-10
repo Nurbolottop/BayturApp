@@ -1,0 +1,41 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Главная · {{ venue.name|tr }}{% endblock %}
+{% block content %}
+<div class="topbar"><div><h1 class="page-title">Главная</h1><div class="muted" style="margin-top:6px">{{ venue.name|tr }}: шапка, факты, кнопка, плитки разделов и новости — меняются без выпуска приложения</div></div></div>
+<form method="post" class="stack" style="max-width:920px" novalidate>
+  {% csrf_token %}{% include 'panel/components/form_errors.html' %}
+  <section class="card appear"><div class="form-grid">
+    <div class="field"><span class="label">Шапка (день)</span>
+      <div class="photo-field" data-photo="id_hero_image"><div class="ph">{% icon 'image' 24 %}</div>
+        <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.hero_image }}</div>
+    <div class="field"><span class="label">Шапка (ночь)</span>
+      <div class="photo-field" data-photo="id_hero_image_night"><div class="ph">{% icon 'image' 24 %}</div>
+        <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.hero_image_night }}</div>
+    {% include 'panel/components/field.html' with f=form.facts full=1 %}
+    {% include 'panel/components/field.html' with f=form.cta %}
+    {% include 'panel/components/field.html' with f=form.cta_section %}
+    {% include 'panel/components/field.html' with f=form.tiles full=1 %}
+  </div></section>
+  <section class="card appear"><div class="h3">Акции на главной</div>
+    <div class="small muted" style="margin:4px 0 10px">Лента собирается из акций режима с галочкой «Показать на главной».</div>
+    {% for p in promos %}<div><a href="{% url 'panel:promotion' p.pk %}">{{ p.title|tr }}</a> {% if p.tag|tr %}<span class="tag">{{ p.tag|tr }}</span>{% endif %}</div>{% empty %}<div class="muted">Нет акций с «Показать на главной»</div>{% endfor %}
+  </section>
+  <section class="card appear"><div class="h3" style="margin-bottom:10px">Новости</div>
+    {{ news.management_form }}{{ news.non_form_errors }}
+    <div class="stack">{% for f in news %}<div class="form-grid" style="border-top:1px solid var(--line);padding-top:14px">{% for h in f.hidden_fields %}{% if h.name != 'image' %}{{ h }}{% endif %}{% endfor %}
+      {% include 'panel/components/field.html' with f=f.title full=1 %}
+      {% include 'panel/components/field.html' with f=f.when %}
+      {% include 'panel/components/field.html' with f=f.date %}
+      {% include 'panel/components/field.html' with f=f.place full=1 %}
+      <div class="field"><span class="label">Картинка</span>
+        <div class="photo-field" data-photo="{{ f.image.auto_id }}"><div class="ph">{% icon 'image' 24 %}</div>
+          <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ f.image }}</div>
+      {% include 'panel/components/field.html' with f=f.article_id %}
+      {% include 'panel/components/field.html' with f=f.sort_order %}
+      {% include 'panel/components/field.html' with f=f.is_active %}
+      {% if f.instance.pk %}{% include 'panel/components/field.html' with f=f.DELETE %}{% endif %}
+    </div>{% endfor %}</div>
+  </section>
+  <div class="form-actions"><button class="btn btn-accent">Сохранить</button></div>
+</form>
+{% endblock %}

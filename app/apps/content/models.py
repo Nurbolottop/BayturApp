@@ -10,8 +10,14 @@ class PublishStatus(models.TextChoices):
     PUBLISHED = 'published', 'Опубликовано'
 
 
+def default_modes():
+    return ['resort']
+
+
 class Publishable(models.Model):
     status = models.CharField(max_length=20, choices=PublishStatus.choices, default=PublishStatus.DRAFT)
+    # в каких режимах показывать (ТЗ экосистемы §6.10): resort, ski, kymyz
+    modes = models.JSONField('Режимы', default=default_modes, blank=True)
     use_ru_fallback = models.BooleanField('Использовать ru вместо пустых переводов', default=False)
     published_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)

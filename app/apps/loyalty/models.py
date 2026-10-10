@@ -171,6 +171,7 @@ class Privilege(models.Model):
     """
 
     id = models.SlugField(primary_key=True, max_length=40)
+    modes = models.JSONField('Режимы', default=list, blank=True, help_text='Пусто — везде; ["ski"] — только Тоо-Ашуу')
     group = models.SlugField('Группа (апгрейдер)', max_length=40, blank=True)
     group_title = models.JSONField('Название группы', default=dict, blank=True)  # «Поздний выезд» — заголовок апгрейдера
     footnote = models.JSONField('Сноска мелким шрифтом', default=dict, blank=True)
@@ -405,6 +406,7 @@ class Achievement(models.Model):
     """
 
     id = models.SlugField(primary_key=True, max_length=40)
+    modes = models.JSONField('Режимы', default=list, blank=True, help_text='Пусто — везде')
     title = models.JSONField('Название', default=dict)
     description = models.JSONField('Описание', default=dict, blank=True)
     icon = models.CharField('Иконка', max_length=40, blank=True, choices=[(i, i) for i in ACHIEVEMENT_ICONS])

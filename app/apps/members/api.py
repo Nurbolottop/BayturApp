@@ -274,10 +274,14 @@ class ResortContactsView(PublicAPIView):
     def get(self, request):
         from apps.common.caching import cached_public
 
+        from apps.catalog.models import Venue
+        from apps.catalog.modes import resolve_mode
+        mode = resolve_mode(request)
+
         def build():
             ps = ProgramSettings.get()
             legal = services.legal_payload()
-            return {
+            data = {
                 'phone': ps.resort_phone,
                 'whatsapp': ps.resort_whatsapp.lstrip('+'),
                 'mapsUrl': ps.resort_maps_url or None,
@@ -285,20 +289,42 @@ class ResortContactsView(PublicAPIView):
                 'privacyUrl': (legal.get('privacy') or {}).get('url'),
                 'deletionUrl': (legal.get('deletion') or {}).get('url'),
             }
-        return cached_public('contacts', build, request)
+            venue = Venue.objects.filter(pk=mode).first() if mode != 'resort' else None
+            if venue is not None:  # контакты текущего режима S&K (ТЗ экосистемы §6.1)
+                data.update({'phone': venue.phone or None, 'whatsapp': (venue.whatsapp or '').lstrip('+') or None,
+                             'email': venue.email or None, 'mapsUrl': venue.maps_url or None,
+                             'twoGisUrl': venue.two_gis_url or None, 'address': tr(venue.address) or None})
+            return data
+        return cached_public('contacts', build, request, mode=mode)
 
 
 class AppConfigView(PublicAPIView):
     """Минимальная версия приложения (принудительное обновление) и техработы."""
 
     def get(self, request):
+        from apps.catalog.models import AppRelease, Venue
+        from apps.catalog.modes import SEASON_NAMES, request_app, resolve_mode, seasons_payload
         ps = ProgramSettings.get()
         platform = request._request.platform
         version = request._request.app_version
-        minimum = {'ios': ps.min_version_ios, 'android': ps.min_version_android}
-        return Response({
+        app = request_app(request)
+        mode = resolve_mode(request)
+        if app == 'sk':  # у Baytur S&K свои версии и техработы (ТЗ экосистемы §6.1)
+            rel, _ = AppRelease.objects.get_or_create(app='sk')
+            minimum = {'ios': rel.min_version_ios, 'android': rel.min_version_android}
+            maintenance, message = rel.maintenance, rel.maintenance_message
+        else:
+            minimum = {'ios': ps.min_version_ios, 'android': ps.min_version_android}
+            maintenance, message = ps.maintenance, ps.maintenance_message
+        data = {
             'minVersion': minimum,
             'updateRequired': bool(platform in minimum and is_below(version, minimum[platform])),
-            'maintenance': ps.maintenance,
-            'maintenanceMessage': tr(ps.maintenance_message) or None,
-        })
+            'maintenance': maintenance,
+            'maintenanceMessage': tr(message) or None,
+            'mode': mode,
+        }
+        if app == 'sk':
+            venue = Venue.objects.filter(pk=mode).first()
+            data.update({'season': SEASON_NAMES.get(mode), 'seasons': seasons_payload(),
+                         'isOpen': bool(venue and venue.is_open), 'pointsPerSom': ps.points_per_som})
+        return Response(data)

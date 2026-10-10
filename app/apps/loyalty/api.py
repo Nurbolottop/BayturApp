@@ -61,6 +61,13 @@ def build_program():
     ps = ProgramSettings.get()
     rates = {t.pk: percent_text(tier_cashback_rate(t, ps.base_cashback_rate)) for t in tiers}
 
+    from apps.catalog.models import Venue
+    mode_names = {v.pk: tr(v.name) for v in Venue.objects.all()}
+
+    def mode_title(modes):  # единая программа; ограничение по режимам — подпись «Только …» (ТЗ экосистемы §6.9)
+        names = [mode_names.get(m) for m in modes or [] if mode_names.get(m)]
+        return ('Только ' + ', '.join(names)) if names else None
+
     def text(value, tier_id):
         return (tr(value) or '').replace('{rate}', rates.get(tier_id, '')) or None
 
@@ -72,10 +79,11 @@ def build_program():
             'groupTitle': (text(p.group_title, p.tier_id) or text(p.title, p.tier_id)) if p.group else None, 'icon': p.icon, 'title': text(p.title, p.tier_id),
             'short': text(p.short, p.tier_id), 'description': text(p.description, p.tier_id),
             'footnote': text(p.footnote, p.tier_id),
+            'modes': p.modes or [], 'modeTitle': mode_title(p.modes),
         } for p in Privilege.objects.select_related('tier').filter(tier__deleted_at__isnull=True)],
         'achievements': [{
             'id': a.id, 'title': tr(a.title), 'description': tr(a.description) or None, 'icon': a.icon or None,
-            'scope': a.scope,
+            'scope': a.scope, 'modes': a.modes or [], 'modeTitle': mode_title(a.modes),
         } for a in Achievement.objects.active().filter(visible=True)],
         'settings': {'periodType': ls.period_type, 'floorDepth': ls.floor_depth,
                      'baseCashbackRate': float(ps.base_cashback_rate), 'pointsPerSom': ps.points_per_som},

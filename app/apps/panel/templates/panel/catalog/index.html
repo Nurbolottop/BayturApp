@@ -1,16 +1,14 @@
 {% extends 'panel/base.html' %}{% load panel %}
-{% block title %}Каталог{% endblock %}
+{% block title %}Услуги{% endblock %}
 {% block content %}
 <div class="topbar">
-  <div><h1 class="page-title">Каталог</h1><div class="muted" style="margin-top:6px">Объекты, разделы, правила кешбека и услуги</div></div>
+  <div><h1 class="page-title">Услуги</h1><div class="muted" style="margin-top:6px">{{ venue.name|tr }}: разделы, правила кешбека и позиции</div></div>
   <div class="actions">
     <form method="get" class="search field" style="width:260px">{% if venue %}<input type="hidden" name="venue" value="{{ venue.pk }}">{% endif %}{% icon 'search' 18 %}<input type="search" name="q" value="{{ q }}" placeholder="Найти услугу"></form>
-    {% if venue %}<a class="btn" href="{% url 'panel:venue' venue.pk %}">{% icon 'edit' 18 %} Объект</a>{% endif %}
-    {% if can_edit and venue and venue.pk != 'baytur' %}<a class="btn" href="{% url 'panel:section-new' %}?venue={{ venue.pk }}">{% icon 'plus' 18 %} Подраздел</a>{% endif %}
+        {% if can_edit and venue and venue.pk != 'resort' %}<a class="btn" href="{% url 'panel:section-new' %}?venue={{ venue.pk }}">{% icon 'plus' 18 %} Подраздел</a>{% endif %}
     {% if can_edit %}<a class="btn btn-accent" href="{% url 'panel:item-new' %}">{% icon 'plus' 18 %} Услуга</a>{% endif %}
   </div>
 </div>
-{% if venues|length > 1 %}<div class="seg" style="margin-bottom:18px">{% for v in venues %}<a href="?venue={{ v.pk }}" class="{% if venue.pk == v.pk %}on{% endif %}">{{ v.name|tr }}{% if not v.is_active %} · скрыт{% endif %}</a>{% endfor %}</div>{% endif %}
 <div class="stack">
 {% for g in sections %}
   <section class="card flush appear"{% if g.is_parent %} style="background:transparent;box-shadow:none"{% endif %}>

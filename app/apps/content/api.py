@@ -6,6 +6,8 @@ from apps.common.caching import cached_public
 from apps.common.errors import ApiError
 from apps.common.views import PublicAPIView
 
+from apps.catalog.modes import resolve_mode
+
 from .models import Article, Promo, PublishStatus, ResortEvent, Story
 from .serializers import article_payload, event_payload, promo_payload, story_payload
 
@@ -19,25 +21,29 @@ class PromosView(PublicAPIView):
     """Только активные на сегодня."""
 
     def get(self, request):
-        return cached_public('promos', lambda: [promo_payload(p) for p in
-                                                Promo.objects.visible().select_related('article')],
-                             request, vary=_minute_bucket())
+        mode = resolve_mode(request)  # контент — по режиму приложения (ТЗ экосистемы §6.10)
+        return cached_public('promos', lambda: [promo_payload(p) for p in Promo.objects.visible()
+                                                .filter(modes__contains=[mode]).select_related('article')],
+                             request, vary=_minute_bucket(), mode=mode)
 
 
 class EventsView(PublicAPIView):
     def get(self, request):
-        return cached_public('events', lambda: [event_payload(e) for e in
-                                                ResortEvent.objects.visible().select_related('article')],
-                             request, vary=_minute_bucket())
+        mode = resolve_mode(request)
+        return cached_public('events', lambda: [event_payload(e) for e in ResortEvent.objects.visible()
+                                                .filter(modes__contains=[mode]).select_related('article')],
+                             request, vary=_minute_bucket(), mode=mode)
 
 
 class StoriesView(PublicAPIView):
     def get(self, request):
+        mode = resolve_mode(request)
+
         def build():
-            qs = Story.objects.filter(status=PublishStatus.PUBLISHED, category__is_active=True) \
-                .prefetch_related('slides')
+            qs = Story.objects.filter(status=PublishStatus.PUBLISHED, category__is_active=True,
+                                      modes__contains=[mode]).prefetch_related('slides')
             return [story_payload(s) for s in qs]
-        return cached_public('stories', build, request)
+        return cached_public('stories', build, request, mode=mode)
 
 
 class ArticleView(PublicAPIView):

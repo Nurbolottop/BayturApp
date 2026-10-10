@@ -38,7 +38,7 @@ class Migration(migrations.Migration):
         migrations.RunPython(create_default_venue, migrations.RunPython.noop),
         migrations.AddField(
             model_name='outlet', name='venue',
-            field=models.ForeignKey(default=apps.catalog.models.default_venue, on_delete=django.db.models.deletion.PROTECT,
+            field=models.ForeignKey(default='baytur', on_delete=django.db.models.deletion.PROTECT,
                                     related_name='outlets', to='catalog.venue', verbose_name='Объект'),
         ),
         migrations.CreateModel(
@@ -64,7 +64,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='item', name='venue',
-            field=models.ForeignKey(default=apps.catalog.models.default_venue, on_delete=django.db.models.deletion.PROTECT,
+            field=models.ForeignKey(default='baytur', on_delete=django.db.models.deletion.PROTECT,
                                     related_name='items', to='catalog.venue', verbose_name='Объект'),
         ),
         migrations.AddField(

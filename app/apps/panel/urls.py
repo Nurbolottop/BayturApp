@@ -1,8 +1,8 @@
 from django.urls import path
 
 from . import views
-from .views import (admin, auth, campaigns, catalog, complaints, content, desk, members, money, promotions, reports,
-                    tiers)
+from .views import (admin, auth, campaigns, catalog, complaints, content, desk, members, modes, money, promotions,
+                    reports, tiers)
 
 app_name = 'panel'
 
@@ -47,7 +47,11 @@ urlpatterns = [
     # каталог
     path('catalog/', catalog.catalog, name='catalog'),
     path('catalog/category/<str:category_id>/', catalog.category_edit, name='category'),
-    path('catalog/venues/<slug:venue_id>/', catalog.venue_edit, name='venue'),
+    path('catalog/venues/<slug:venue_id>/', modes.venue_edit, name='venue'),
+    path('mode/<slug:mode>/', modes.mode_switch, name='mode'),
+    path('venue/', modes.venue_current, name='venue-current'),
+    path('showcase/', modes.showcase_edit, name='showcase'),
+    path('eternal/', modes.eternal_edit, name='eternal'),
     path('catalog/sections/new/', catalog.section_edit, name='section-new'),
     path('catalog/sections/<slug:section_id>/', catalog.section_edit, name='section'),
     path('catalog/items/new/', catalog.item_edit, name='item-new'),

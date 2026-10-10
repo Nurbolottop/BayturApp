@@ -18,18 +18,18 @@ def L(ru):
 class PromotionEngineTests(BaseAPITestCase):
     def setUp(self):
         super().setUp()
-        self.venue = Venue.objects.create(id='too-ashuu', name=L('Тоо-Ашуу'))
-        self.rental = Section.objects.create(id='ta-rental', venue=self.venue, category_id='sport', title=L('Прокат'))
-        self.skis = Section.objects.create(id='ta-rental-skis', venue=self.venue, parent=self.rental,
+        self.venue = Venue.objects.create(id='ski', name=L('Тоо-Ашуу'))
+        self.rental = Section.objects.create(id='ski-rental', venue=self.venue, category_id='sport', title=L('Прокат'))
+        self.skis = Section.objects.create(id='ski-rental-skis', venue=self.venue, parent=self.rental,
                                            category_id='sport', title=L('Лыжи'))
-        self.stay = Section.objects.create(id='ta-stay', venue=self.venue, category_id='rooms', title=L('Проживание'))
-        self.ski = Item.objects.create(id='ta-ski-set', venue=self.venue, section=self.skis, category_id='sport',
+        self.stay = Section.objects.create(id='ski-stay', venue=self.venue, category_id='rooms', title=L('Проживание'))
+        self.ski = Item.objects.create(id='ski-ski-set', venue=self.venue, section=self.skis, category_id='sport',
                                        title=L('Лыжный комплект'), price=1100,
                                        pricing={'type': 'unit', 'unit': 'visit', 'min': 1, 'max': 20})
-        self.cottage = Item.objects.create(id='ta-cottage', venue=self.venue, section=self.stay, category_id='rooms',
+        self.cottage = Item.objects.create(id='ski-cottage', venue=self.venue, section=self.stay, category_id='rooms',
                                            title=L('Коттедж'), price=8000,
                                            pricing={'type': 'unit', 'unit': 'night', 'min': 1, 'max': 30})
-        self.skipass = Item.objects.create(id='ta-skipass', venue=self.venue, section=self.rental,
+        self.skipass = Item.objects.create(id='ski-skipass', venue=self.venue, section=self.rental,
                                            category_id='sport', title=L('Скипасс'), price=1500,
                                            pricing={'type': 'unit', 'unit': 'guest', 'min': 1, 'max': 20})
 
@@ -66,7 +66,7 @@ class PromotionEngineTests(BaseAPITestCase):
         Promotion.objects.all().delete()
         self.promo(kind='gift', scope='items', items=[self.cottage], gift_item=self.skipass)
         total, snap = self.price(self.cottage, 1)
-        self.assertEqual((total, snap['gift']['itemId']), (8000, 'ta-skipass'))
+        self.assertEqual((total, snap['gift']['itemId']), (8000, 'ski-skipass'))
 
     def test_scope_section_with_children_venue_and_all(self):
         self.promo(kind='percent', value=10, scope='sections', sections=[self.rental])
@@ -75,11 +75,11 @@ class PromotionEngineTests(BaseAPITestCase):
         Promotion.objects.all().delete()
         self.promo(kind='percent', value=10, scope='venues', venues=[self.venue])
         self.assertEqual(self.price(self.cottage)[0], 7200)
-        self.assertIsNone(self.price(Item.objects.filter(venue_id='baytur').first())[1])
+        self.assertIsNone(self.price(Item.objects.filter(venue_id='resort').first())[1])
         Promotion.objects.all().delete()
         self.promo(kind='percent', value=10, scope='all')
-        baytur = Item.objects.filter(venue_id='baytur', pricing__type='unit').first() or \
-            Item.objects.filter(venue_id='baytur').exclude(pricing__type='check').first()
+        baytur = Item.objects.filter(venue_id='resort', pricing__type='unit').first() or \
+            Item.objects.filter(venue_id='resort').exclude(pricing__type='check').first()
         self.assertIsNotNone(self.price(baytur)[1])
 
     def test_period_weekdays_hours(self):
@@ -130,11 +130,11 @@ class PromotionEngineTests(BaseAPITestCase):
                    usage_limit=1)
         member = self.make_member('+996555505050', points=0)
         self.auth(member)
-        r = self.api.post('/api/v1/cashback-requests/quote', {'itemId': 'ta-ski-set', 'quantity': 1}, format='json')
+        r = self.api.post('/api/v1/cashback-requests/quote', {'itemId': 'ski-ski-set', 'quantity': 1}, format='json')
         self.assertEqual(r.status_code, 200, r.content)
         d = r.json()
         self.assertEqual((d['total'], d['promotion']['basePrice'], d['promotion']['discount']), (880, 1100, 220))
-        r = self.api.post('/api/v1/cashback-requests', {'itemId': 'ta-ski-set', 'quantity': 1, 'method': 'cash'},
+        r = self.api.post('/api/v1/cashback-requests', {'itemId': 'ski-ski-set', 'quantity': 1, 'method': 'cash'},
                           format='json', HTTP_IDEMPOTENCY_KEY='p-1')
         self.assertEqual(r.status_code, 201, r.content)
         from apps.cashback.models import CashbackRequest
@@ -143,7 +143,7 @@ class PromotionEngineTests(BaseAPITestCase):
         # лимит 1 исчерпан — следующий клиент платит полную цену
         other = self.make_member('+996555606060')
         self.auth(other)
-        r = self.api.post('/api/v1/cashback-requests/quote', {'itemId': 'ta-ski-set', 'quantity': 1}, format='json')
+        r = self.api.post('/api/v1/cashback-requests/quote', {'itemId': 'ski-ski-set', 'quantity': 1}, format='json')
         self.assertEqual((r.json()['total'], r.json()['promotion']), (1100, None))
 
     def test_catalog_shows_base_and_promo_price(self):
@@ -151,22 +151,22 @@ class PromotionEngineTests(BaseAPITestCase):
                    tag=L('−20%'))
         self.promo(title='Для золота', kind='percent', value=30, scope='items', items=[self.ski], audience='tiers',
                    tiers=['gold'])
-        d = self.api.get('/api/v1/venues/too-ashuu/catalog').json()
-        rental = [s for s in d['sections'] if s['id'] == 'ta-rental'][0]
+        d = self.api.get('/api/v1/venues/ski/catalog').json()
+        rental = [s for s in d['sections'] if s['id'] == 'ski-rental'][0]
         ski = rental['sections'][0]['items'][0]
         self.assertEqual(ski['promo'], {'basePrice': 1100, 'price': 880, 'promotionId': ski['promo']['promotionId']})
         self.assertEqual(ski['price'], 1100)                         # базовая цена не меняется
         self.assertEqual(sorted(o['title'] for o in ski['promotions']), ['Для золота', '−20 % на прокат'])
-        promos = self.api.get('/api/v1/venues/too-ashuu/promotions').json()
+        promos = self.api.get('/api/v1/venues/ski/promotions').json()
         self.assertEqual(len(promos), 2)
-        self.assertIn('ta-ski-set', promos[0]['itemIds'])
+        self.assertIn('ski-ski-set', promos[0]['itemIds'])
 
     def test_cash_receipt_amount_not_discounted(self):
         from apps.cashback.desk import _cash_input  # noqa: F401 — наличные: сумма = чек, акция не применяется
         self.promo(kind='percent', value=50, scope='all')
         from apps.cashback import services
         member = self.make_member('+996555707070')
-        req, _ = services.create_request(member, {'itemId': 'ta-ski-set', 'quantity': 1, 'method': 'cash',
+        req, _ = services.create_request(member, {'itemId': 'ski-ski-set', 'quantity': 1, 'method': 'cash',
                                                   'pointsSom': 0, '_noPromotions': True})
         self.assertEqual((req.total, req.promotion), (1100, None))
 
@@ -174,16 +174,16 @@ class PromotionEngineTests(BaseAPITestCase):
         p = self.promo(kind='percent', value=20, scope='items', items=[self.ski])
         c = Client()
         c.force_login(self.make_staff('owner'))
-        for url in ('/panel/promotions/', '/panel/promotions/?venue=too-ashuu', '/panel/promotions/new/',
+        for url in ('/panel/promotions/', '/panel/promotions/?venue=ski', '/panel/promotions/new/',
                     f'/panel/promotions/{p.pk}/'):
             self.assertEqual(c.get(url).status_code, 200, url)
         r = c.post('/panel/promotions/new/', {
-            'title_ru': 'Пакет', 'kind': 'bundle', 'value': '0', 'scope': 'items', 'bundle_items': ['ta-ski-set',
-                                                                                               'ta-skipass'],
+            'title_ru': 'Пакет', 'kind': 'bundle', 'value': '0', 'scope': 'items', 'bundle_items': ['ski-ski-set',
+                                                                                               'ski-skipass'],
             'bundle_price': '2200', 'audience': 'all', 'sort_order': '0', 'is_active': 'on'})
         self.assertEqual(r.status_code, 302, r.content.decode()[:2000])
         api = self.staff_client(self.make_staff('owner'))
-        r = api.get('/api/v1/admin/promotions?venue=too-ashuu')
+        r = api.get('/api/v1/admin/promotions?venue=ski')
         self.assertEqual(r.status_code, 200, r.content)
         r = api.patch(f'/api/v1/admin/promotions/{p.pk}', {'value': 150}, format='json')
         self.assertEqual(r.status_code, 400)
@@ -192,7 +192,7 @@ class PromotionEngineTests(BaseAPITestCase):
         call_command('load_venues', stdout=StringIO())
         call_command('load_venues', stdout=StringIO())
         self.assertEqual(Promotion.objects.filter(title__ru__startswith='Завтрак и скипасс').count(), 1)
-        cottage = Item.objects.get(pk='ta-cottage-2')
+        cottage = Item.objects.get(pk='ski-cottage-2')
         total, snap = best_price(cottage, 1, None, None, active_promotions())
-        self.assertEqual((total, snap['gift']['itemId']), (8000, 'ta-skipass-adult'))
+        self.assertEqual((total, snap['gift']['itemId']), (8000, 'ski-skipass-adult'))
         self.assertEqual(Decimal(Promotion.objects.get(title__ru='Трансфер по суперцене').value), Decimal('1000'))

@@ -31,10 +31,13 @@ def bump_content_version(*args, **kwargs):
         cache.set(VERSION_KEY, 2, None)
 
 
-def cached_public(name, builder, request, vary=''):
-    """Строит ответ builder() один раз на (name, язык, версию); отвечает 304 по If-None-Match."""
+def cached_public(name, builder, request, vary='', mode=None):
+    """
+    Строит ответ builder() один раз на (name, режим, язык, версию); отвечает 304 по If-None-Match.
+    mode — режим экосистемы (resort / ski / kymyz): ответ помечается заголовком X-Baytur-Mode.
+    """
     lang = current_language()
-    key = f'pub:{name}:{vary}:{lang}:{content_version()}'
+    key = f'pub:{name}:{vary}:{mode or ""}:{lang}:{content_version()}'
     entry = cache.get(key)
     if entry is None:
         data = builder()
@@ -45,9 +48,11 @@ def cached_public(name, builder, request, vary=''):
     headers = {
         'ETag': entry['etag'],
         'Cache-Control': f'public, max-age={MAX_AGE}',
-        'Vary': 'Accept-Language',
+        'Vary': 'Accept-Language, X-Baytur-App, X-Baytur-Mode' if mode else 'Accept-Language',
         'Content-Language': lang,
     }
+    if mode:
+        headers['X-Baytur-Mode'] = mode
     inm = request.headers.get('If-None-Match', '')
     if entry['etag'] in [t.strip() for t in inm.split(',')]:
         return Response(status=304, headers=headers)

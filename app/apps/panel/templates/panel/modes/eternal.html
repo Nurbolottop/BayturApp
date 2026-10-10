@@ -1,0 +1,21 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}«Вечная новость» · {{ venue.name|tr }}{% endblock %}
+{% block content %}
+<div class="topbar"><div><h1 class="page-title">«Вечная новость»</h1><div class="muted" style="margin-top:6px">Рассказ о другом сезоне в приложении {{ venue.name|tr }}: слайды и бонус за раннюю бронь</div></div></div>
+<form method="post" class="card appear" style="max-width:920px" novalidate>
+  {% csrf_token %}{% include 'panel/components/form_errors.html' %}
+  <div class="form-grid">
+    {% include 'panel/components/field.html' with f=form.about %}
+    {% include 'panel/components/field.html' with f=form.show_in %}
+    {% include 'panel/components/field.html' with f=form.title full=1 %}
+    {% include 'panel/components/field.html' with f=form.lead full=1 %}
+    <div class="field full"><span class="label">Обложка</span>
+      <div class="photo-field" data-photo="id_cover"><div class="ph">{% icon 'image' 24 %}</div>
+        <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.cover }}</div>
+    {% include 'panel/components/field.html' with f=form.slides full=1 %}
+    {% include 'panel/components/field.html' with f=form.early_bonus full=1 %}
+    {% include 'panel/components/field.html' with f=form.is_active %}
+  </div>
+  <div class="form-actions"><button class="btn btn-accent">Сохранить</button></div>
+</form>
+{% endblock %}

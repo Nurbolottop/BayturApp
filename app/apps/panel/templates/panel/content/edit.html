@@ -67,6 +67,7 @@
       </div></template>
     </div>
     {% endif %}
+    <div class="card appear">{% include 'panel/components/field.html' with f=form.modes %}</div>
     <div class="card row-between wrap appear">
       {% include 'panel/components/field.html' with f=form.use_ru_fallback %}
       <div class="row wrap">

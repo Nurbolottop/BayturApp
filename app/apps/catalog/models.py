@@ -44,8 +44,15 @@ FEATURE_ICONS = [
 rate_validators = [MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('1'))]
 
 
-DEFAULT_VENUE = 'baytur'
-DEFAULT_VENUE_NAME = {'ru': 'BAYTUR Иссык-Куль', 'ky': 'BAYTUR Ысык-Көл', 'en': 'BAYTUR Issyk-Kul'}
+DEFAULT_VENUE = 'resort'
+DEFAULT_VENUE_NAME = {'ru': 'Baytur Resort & Spa', 'ky': 'Baytur Resort & Spa', 'en': 'Baytur Resort & Spa'}
+# приложение → его режимы (ТЗ экосистемы §3.2): bayturapp — resort; Baytur S&K — ski (зима) и kymyz (лето)
+APP_MODES = {'resort': ('resort',), 'sk': ('ski', 'kymyz')}
+
+
+class AppChoice(models.TextChoices):
+    RESORT = 'resort', 'bayturapp (Resort & Spa)'
+    SK = 'sk', 'Baytur S&K'
 
 
 def default_venue():
@@ -62,12 +69,23 @@ class Venue(models.Model):
     info — инфоблоки: [{title: l10n, text: l10n}] или [{title: l10n, rows: [{label: l10n, value: l10n}]}].
     """
 
-    id = models.SlugField(primary_key=True, max_length=40)
+    id = models.SlugField('Режим', primary_key=True, max_length=40, help_text='resort, ski, kymyz')
+    app = models.CharField('Приложение', max_length=10, choices=AppChoice.choices, default=AppChoice.RESORT)
     name = models.JSONField('Название', default=dict)
     short = models.JSONField('Подзаголовок', default=dict, blank=True)
     description = models.JSONField('Описание', default=dict, blank=True)
     address = models.JSONField('Адрес', default=dict, blank=True)
     cover = models.CharField('Обложка', max_length=500, blank=True)
+    icon = models.CharField('Иконка', max_length=500, blank=True)
+    phone = models.CharField('Телефон', max_length=30, blank=True)
+    whatsapp = models.CharField('WhatsApp', max_length=30, blank=True)
+    email = models.EmailField('Email', blank=True)
+    maps_url = models.CharField('Карты (ссылка)', max_length=500, blank=True)
+    two_gis_url = models.CharField('2ГИС (ссылка)', max_length=500, blank=True)
+    timezone = models.CharField('Часовой пояс', max_length=40, default='Asia/Bishkek')
+    is_open = models.BooleanField('Объект открыт', default=True)
+    early_booking_enabled = models.BooleanField('Ранняя бронь', default=False)
+    accent = models.CharField('Цвет в админке', max_length=9, default='#C6F24E')
     contacts = models.JSONField('Контакты', default=list, blank=True)
     info = models.JSONField('Инфоблоки', default=list, blank=True)
     sort_order = models.IntegerField(default=0)
@@ -76,11 +94,32 @@ class Venue(models.Model):
 
     class Meta:
         ordering = ['sort_order', 'id']
-        verbose_name = 'Объект'
-        verbose_name_plural = 'Объекты'
+        verbose_name = 'Объект (режим)'
+        verbose_name_plural = 'Объекты (режимы)'
 
     def __str__(self):
         return self.name.get('ru') or self.id
+
+
+class Season(models.Model):
+    """Сезон объекта S&K (ТЗ §4.1): по датам сервер решает, какой режим сейчас у Baytur S&K."""
+
+    venue = models.ForeignKey(Venue, on_delete=models.CASCADE, related_name='seasons', verbose_name='Режим')
+    year = models.PositiveIntegerField('Год')
+    starts_at = models.DateField('Начало')
+    ends_at = models.DateField('Конец')
+    early_booking_from = models.DateField('Ранняя бронь с', null=True, blank=True)
+    off_season_mode = models.ForeignKey(Venue, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+                                        verbose_name='Режим в межсезонье перед этим сезоном')
+
+    class Meta:
+        ordering = ['starts_at']
+        constraints = [models.UniqueConstraint(fields=['venue', 'year'], name='season_venue_year_unique')]
+        verbose_name = 'Сезон'
+        verbose_name_plural = 'Сезоны'
+
+    def __str__(self):
+        return f'{self.venue_id} {self.starts_at:%d.%m.%Y}–{self.ends_at:%d.%m.%Y}'
 
 
 class Outlet(models.Model):
@@ -124,6 +163,45 @@ class Category(models.Model):
         return self.title.get('ru') or self.id
 
 
+class SectionKind(models.TextChoices):
+    STAY = 'stay', 'Проживание'
+    PASS = 'pass', 'Скипасс, билеты'
+    RENTAL = 'rental', 'Прокат'
+    MENU = 'menu', 'Меню'
+    PROCEDURE = 'procedure', 'Процедуры'
+    TRANSFER = 'transfer', 'Трансфер'
+    EXTRA = 'extra', 'Доп. услуги'
+    INFO = 'info', 'Справка'
+
+
+class ServiceUnit(models.TextChoices):
+    NIGHT = 'night', 'ночь'
+    DAY = 'day', 'сутки'
+    HOUR = 'hour', 'час'
+    MIN30 = 'min30', '30 минут'
+    HOURS3 = 'hours3', '3 часа'
+    SESSION = 'session', 'сеанс'
+    PERSON = 'person', 'человек'
+    GUEST = 'guest', 'гость'
+    VISIT = 'visit', 'посещение'
+    VEHICLE_ONE_WAY = 'vehicle_one_way', 'машина в одну сторону'
+    VEHICLE_ROUND_TRIP = 'vehicle_round_trip', 'машина туда и обратно'
+    SEAT = 'seat', 'место'
+    PORTION = 'portion', 'порция'
+    PIECE = 'piece', 'штука'
+    NONE = 'none', '—'
+
+
+class ServiceAction(models.TextChoices):
+    BOOK_STAY = 'book_stay', 'Бронь проживания'
+    BOOK_SLOT = 'book_slot', 'Запись на время'
+    BOOK_SEATS = 'book_seats', 'Места в рейсе'
+    BUY_TICKET = 'buy_ticket', 'Купить билет'
+    PAY_CASHIER = 'pay_cashier', 'Оплата у кассира'
+    REQUEST = 'request', 'Заявка администратору'
+    INFO = 'info', 'Только информация'
+
+
 class Section(models.Model):
     """
     Подраздел прайса объекта: «Прокат», «Кафе» → «Супы»… category — раздел программы, чьи правила (способы
@@ -131,9 +209,19 @@ class Section(models.Model):
     """
 
     id = models.SlugField(primary_key=True, max_length=60)
+    key = models.SlugField('id в приложении', max_length=40, blank=True,
+                           help_text='Короткий id раздела в режиме: skipass, rental, stay…')
     venue = models.ForeignKey(Venue, on_delete=models.PROTECT, related_name='sections', verbose_name='Объект')
     parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='children',
                                verbose_name='Внутри раздела')
+    kind = models.CharField('Тип раздела', max_length=20, choices=SectionKind.choices, blank=True)
+    icon = models.CharField('Иконка', max_length=30, blank=True)
+    subtitle = models.JSONField('Подзаголовок', default=dict, blank=True)
+    cover = models.CharField('Обложка', max_length=500, blank=True)
+    cashback_rate = models.DecimalField('Ставка кешбека', max_digits=5, decimal_places=4, null=True, blank=True,
+                                        help_text='Пусто — базовая ставка программы')
+    methods = models.JSONField('Способы оплаты', null=True, blank=True, help_text='Пусто — из раздела программы')
+    default_unit = models.CharField('Единица по умолчанию', max_length=20, blank=True)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='sections',
                                  verbose_name='Раздел программы (правила)')
     title = models.JSONField('Название', default=dict)
@@ -176,6 +264,15 @@ class Item(models.Model):
     features = models.JSONField('Что входит', default=list, blank=True)
     price_note = models.JSONField('Подпись к цене', default=dict, blank=True,
                                   help_text='«за сутки», «500 сом в час», «от 10 000 до 22 000», «бесплатно»')
+    price_up_to = models.PositiveIntegerField('Цена до (вилка)', null=True, blank=True)
+    price_on_request = models.BooleanField('Цену уточняйте', default=False)
+    unit = models.CharField('Единица', max_length=20, choices=ServiceUnit.choices, blank=True)
+    action = models.CharField('Кнопка в карточке', max_length=20, choices=ServiceAction.choices,
+                              default=ServiceAction.PAY_CASHIER)
+    methods = models.JSONField('Способы оплаты', null=True, blank=True, help_text='Пусто — из раздела')
+    cashback_rate = models.DecimalField('Ставка кешбека', max_digits=5, decimal_places=4, null=True, blank=True)
+    capacity = models.JSONField('Вместимость', null=True, blank=True, help_text='{"minGuests": 1, "maxGuests": 6}')
+    featured = models.BooleanField('Хит', default=False)
     season_from = models.DateField('Доступна с', null=True, blank=True)
     season_to = models.DateField('Доступна по', null=True, blank=True)
     sort_order = models.IntegerField(default=0)
@@ -293,6 +390,9 @@ class Promotion(models.Model):
     title = models.JSONField('Название', default=dict)
     description = models.JSONField('Описание', default=dict, blank=True)
     tag = models.JSONField('Бейдж', default=dict, blank=True, help_text='«−20%», «Суперцена»')
+    note = models.JSONField('Условие (коротко)', default=dict, blank=True, help_text='«по будням», «от 3 ночей»')
+    image = models.CharField('Картинка', max_length=500, blank=True)
+    show_on_home = models.BooleanField('Показать на главной', default=False)
     kind = models.CharField('Вид', max_length=20, choices=PromotionKind.choices)
     value = models.DecimalField('Размер', max_digits=12, decimal_places=2, default=0)
     # охват
@@ -335,3 +435,96 @@ class Promotion(models.Model):
 
     def __str__(self):
         return self.title.get('ru') or f'Акция {self.pk}'
+
+
+class InfoBlock(models.Model):
+    """Справка раздела (ТЗ §4.1): трассы, расписание, как добраться. lines — [{title, value, phone, whatsapp, slopeDeg}]."""
+
+    section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='info_blocks', verbose_name='Раздел')
+    title = models.JSONField('Заголовок', default=dict)
+    lines = models.JSONField('Строки', default=list, blank=True)
+    sort_order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+        verbose_name = 'Справка'
+        verbose_name_plural = 'Справка'
+
+
+class Showcase(models.Model):
+    """Главная режима (ТЗ §6.2): шапка, факты, кнопка, плитки разделов. Акции и новости — свои модели."""
+
+    venue = models.OneToOneField(Venue, primary_key=True, on_delete=models.CASCADE, related_name='showcase')
+    hero_image = models.CharField('Шапка (день)', max_length=500, blank=True)
+    hero_image_night = models.CharField('Шапка (ночь)', max_length=500, blank=True)
+    facts = models.JSONField('Факты', default=list, blank=True, help_text='[{"ru": "3 000 м", …}]')
+    cta = models.JSONField('Кнопка', default=dict, blank=True)
+    cta_section = models.CharField('Кнопка ведёт в раздел', max_length=40, blank=True)
+    tiles = models.JSONField('Плитки', default=list, blank=True, help_text='[{"section", "icon", "title": {...}}]')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Главная'
+        verbose_name_plural = 'Главная'
+
+
+SHOWCASE_ICONS = ['skipass', 'rental', 'stay', 'transfer', 'cafe', 'trails', 'yurt', 'massage', 'kymyz', 'banya',
+                  'horses']
+
+
+class NewsItem(models.Model):
+    """Новость главной (ТЗ §4.1): «Открытие сезона, 20 декабря»."""
+
+    venue = models.ForeignKey(Venue, on_delete=models.CASCADE, related_name='news', verbose_name='Режим')
+    when = models.JSONField('Когда (текст)', default=dict, blank=True)
+    date = models.DateField('Дата', null=True, blank=True)
+    title = models.JSONField('Заголовок', default=dict)
+    place = models.JSONField('Место', default=dict, blank=True)
+    image = models.CharField('Картинка', max_length=500, blank=True)
+    article_id = models.CharField('Статья (id)', max_length=60, blank=True)
+    publish_from = models.DateTimeField('Показывать с', null=True, blank=True)
+    publish_to = models.DateTimeField('Показывать по', null=True, blank=True)
+    sort_order = models.IntegerField(default=0)
+    is_active = models.BooleanField('Показывать', default=True)
+
+    class Meta:
+        ordering = ['sort_order', 'date', 'id']
+        verbose_name = 'Новость главной'
+        verbose_name_plural = 'Новости главной'
+
+
+class EternalNews(models.Model):
+    """
+    «Вечная новость» (ТЗ §4.1): рассказ о другом сезоне S&K со слайдами и бонусом за раннюю бронь.
+    slides — [{image, title: {...}, text: {...}, cta: {label: {...}, action, mode, target} | null}];
+    early_bonus — {kind: points|percent, value, text: {...}}.
+    """
+
+    about = models.ForeignKey(Venue, on_delete=models.CASCADE, related_name='eternal_about',
+                              verbose_name='О каком режиме')
+    show_in = models.JSONField('Показывать в режимах', default=list, help_text='["ski"]')
+    title = models.JSONField('Заголовок', default=dict)
+    lead = models.JSONField('Подводка', default=dict, blank=True)
+    cover = models.CharField('Обложка', max_length=500, blank=True)
+    slides = models.JSONField('Слайды', default=list, blank=True)
+    early_bonus = models.JSONField('Бонус за раннюю бронь', null=True, blank=True)
+    is_active = models.BooleanField('Показывать', default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '«Вечная новость»'
+        verbose_name_plural = '«Вечные новости»'
+
+
+class AppRelease(models.Model):
+    """Настройки приложения S&K (ТЗ §6.1): своя минимальная версия и техработы. Resort — в ProgramSettings."""
+
+    app = models.CharField(primary_key=True, max_length=10, choices=AppChoice.choices)
+    min_version_ios = models.CharField(max_length=20, default='0.1.0')
+    min_version_android = models.CharField(max_length=20, default='0.1.0')
+    maintenance = models.BooleanField('Техработы', default=False)
+    maintenance_message = models.JSONField('Текст техработ', default=dict, blank=True)
+
+    class Meta:
+        verbose_name = 'Приложение'
+        verbose_name_plural = 'Приложения'

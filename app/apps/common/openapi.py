@@ -36,6 +36,12 @@ LANG_HEADER = OpenApiParameter('Accept-Language', str, OpenApiParameter.HEADER, 
                                enum=['ru', 'ky', 'en'], description='Язык контента, fallback ru')
 DEVICE_HEADER = OpenApiParameter('X-Device-Id', str, OpenApiParameter.HEADER, required=False,
                                  description='Анонимный UUID установки (для аналитики и rate limit)')
+APP_HEADER = OpenApiParameter('X-Baytur-App', str, OpenApiParameter.HEADER, required=False, enum=['resort', 'sk'],
+                             description='Приложение; нет заголовка — resort (bayturapp)')
+MODE_HEADER = OpenApiParameter('X-Baytur-Mode', str, OpenApiParameter.HEADER, required=False,
+                              enum=['resort', 'ski', 'kymyz'],
+                              description='Явный режим; без него для sk — активный сезон. Недопустимая пара → 400 '
+                                          'mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode')
 IDEMPOTENCY_HEADER = OpenApiParameter('Idempotency-Key', str, OpenApiParameter.HEADER, required=False,
                                       description='Повтор с тем же ключом не создаёт вторую заявку')
 CURSOR = OpenApiParameter('cursor', str, required=False)
@@ -110,7 +116,7 @@ class ServiceItem(s.Serializer):
     promo = s.DictField(allow_null=True, help_text='{basePrice, price, promotionId}: акционная цена за единицу для всех '
                                                    'гостей; null — без скидки')
     promotions = s.ListField(child=s.DictField(), help_text='Действующие акции услуги с условиями')
-    venue = s.CharField(help_text='Объект: baytur, too-ashuu, suusamyr…')
+    venue = s.CharField(help_text='Объект (режим): resort, ski, kymyz')
     section = s.CharField(allow_null=True, help_text='Подраздел прайса объекта')
     priceNote = s.CharField(allow_null=True, help_text='«за сутки», «в час», «от 10 000 до 22 000», «бесплатно»')
     season = SeasonRange(allow_null=True, help_text='Услуга доступна только в эти даты')
@@ -231,6 +237,8 @@ class Privilege(s.Serializer):
     title = s.CharField()
     short = s.CharField()
     description = s.CharField()
+    modes = s.ListField(child=s.CharField(), help_text='Режимы: [] — везде, иначе только перечисленные (resort, ski, kymyz)')
+    modeTitle = s.CharField(allow_null=True, help_text='«Только Тоо-Ашуу» или null')
 
 
 class Achievement(s.Serializer):
@@ -239,6 +247,8 @@ class Achievement(s.Serializer):
     description = s.CharField(allow_null=True)
     icon = s.CharField(allow_null=True)
     scope = s.ChoiceField(choices=['lifetime', 'period'], help_text='за всё время / за текущий период (год)')
+    modes = s.ListField(child=s.CharField(), help_text='Режимы: [] — везде, иначе только перечисленные (resort, ski, kymyz)')
+    modeTitle = s.CharField(allow_null=True)
 
 
 class ProgramSettings(s.Serializer):
@@ -698,13 +708,212 @@ class ResortContacts(s.Serializer):
     termsUrl = s.URLField(allow_null=True)
     privacyUrl = s.URLField(allow_null=True)
     deletionUrl = s.URLField(allow_null=True)
+    email = s.CharField(required=False, allow_null=True, help_text='только режимы S&K')
+    twoGisUrl = s.URLField(required=False, allow_null=True, help_text='только режимы S&K')
+    address = s.CharField(required=False, allow_null=True, help_text='только режимы S&K')
+
+
+class SeasonInfo(s.Serializer):
+    mode = s.ChoiceField(choices=['ski', 'kymyz'])
+    season = s.ChoiceField(choices=['winter', 'summer'])
+    startsAt = s.DateField()
+    endsAt = s.DateField()
+    earlyBookingFrom = s.DateField(required=False)
 
 
 class AppConfig(s.Serializer):
-    minVersion = s.DictField(child=s.CharField())
+    minVersion = s.DictField(child=s.CharField(), help_text='для X-Baytur-App: sk — свои версии')
     updateRequired = s.BooleanField()
     maintenance = s.BooleanField()
     maintenanceMessage = s.CharField(allow_null=True)
+    mode = s.ChoiceField(choices=['resort', 'ski', 'kymyz'])
+    season = s.ChoiceField(choices=['winter', 'summer'], required=False, help_text='только sk')
+    seasons = SeasonInfo(many=True, required=False, help_text='только sk: текущий и будущие сезоны')
+    isOpen = s.BooleanField(required=False, help_text='только sk')
+    pointsPerSom = s.IntegerField(required=False, help_text='только sk')
+
+
+# ---------------------------------------------------------------- режимы экосистемы
+
+class Mode(s.Serializer):
+    id = s.ChoiceField(choices=['resort', 'ski', 'kymyz'])
+    app = s.ChoiceField(choices=['resort', 'sk'])
+    title = s.CharField()
+    subtitle = s.CharField()
+    icon = s.URLField(allow_null=True)
+
+
+class EternalCta(s.Serializer):
+    label = s.CharField()
+    action = s.CharField()
+    mode = s.CharField(allow_null=True)
+    target = s.CharField(allow_null=True)
+
+
+class EternalSlide(s.Serializer):
+    image = s.URLField(allow_null=True)
+    title = s.CharField()
+    text = s.CharField()
+    cta = EternalCta(allow_null=True)
+
+
+class EarlyBonus(s.Serializer):
+    kind = s.ChoiceField(choices=['points', 'percent'])
+    value = s.FloatField()
+    text = s.CharField()
+
+
+class Eternal(s.Serializer):
+    id = s.IntegerField()
+    about = s.ChoiceField(choices=['ski', 'kymyz'])
+    aboutSeason = s.ChoiceField(choices=['winter', 'summer'])
+    title = s.CharField()
+    lead = s.CharField()
+    cover = s.URLField(allow_null=True)
+    earlyBonus = EarlyBonus(allow_null=True)
+    slides = EternalSlide(many=True)
+
+
+class ShowcaseTile(s.Serializer):
+    section = s.CharField(help_text='id раздела из GET /services')
+    icon = s.CharField()
+    title = s.CharField()
+
+
+class ShowcaseOffer(s.Serializer):
+    id = s.IntegerField()
+    section = s.CharField(allow_null=True)
+    serviceId = s.CharField()
+    icon = s.CharField(allow_null=True)
+    badge = s.CharField(allow_null=True)
+    title = s.CharField()
+    note = s.CharField(allow_null=True)
+    price = s.IntegerField(allow_null=True)
+    oldPrice = s.IntegerField(allow_null=True)
+    image = s.URLField(allow_null=True)
+
+
+class ShowcaseNews(s.Serializer):
+    id = s.IntegerField()
+    when = s.CharField(allow_null=True)
+    date = s.DateField(allow_null=True)
+    title = s.CharField()
+    place = s.CharField(allow_null=True)
+    image = s.URLField(allow_null=True)
+    articleId = s.CharField(allow_null=True)
+
+
+class Showcase(s.Serializer):
+    mode = s.ChoiceField(choices=['resort', 'ski', 'kymyz'])
+    season = s.CharField(allow_null=True)
+    title = s.CharField()
+    subtitle = s.CharField()
+    heroImage = s.URLField(allow_null=True)
+    heroImageNight = s.URLField(allow_null=True)
+    facts = s.ListField(child=s.CharField())
+    cta = s.CharField(allow_null=True)
+    ctaSection = s.CharField(allow_null=True)
+    tiles = ShowcaseTile(many=True)
+    offers = ShowcaseOffer(many=True)
+    news = ShowcaseNews(many=True)
+    eternal = Eternal(allow_null=True)
+
+
+class ServicePromo(s.Serializer):
+    id = s.IntegerField()
+    badge = s.CharField(allow_null=True)
+    note = s.CharField(allow_null=True)
+    price = s.IntegerField()
+    oldPrice = s.IntegerField()
+
+
+class ServicePricing(s.Serializer):
+    type = s.ChoiceField(choices=['unit', 'check'])
+    min = s.IntegerField()
+    max = s.IntegerField()
+
+
+UNITS = ['night', 'day', 'hour', 'min30', 'hours3', 'session', 'person', 'guest', 'visit', 'vehicle_one_way',
+         'vehicle_round_trip', 'seat', 'portion', 'piece', 'none']
+ACTIONS = ['book_stay', 'book_slot', 'book_seats', 'buy_ticket', 'pay_cashier', 'request', 'info']
+
+
+class Service(s.Serializer):
+    id = s.CharField()
+    mode = s.CharField()
+    title = s.CharField()
+    note = s.CharField(allow_null=True)
+    description = s.CharField()
+    includes = s.ListField(child=s.CharField())
+    photos = s.ListField(child=s.URLField())
+    price = s.IntegerField(allow_null=True, help_text='null — цена по запросу')
+    priceUpTo = s.IntegerField(allow_null=True)
+    unit = s.ChoiceField(choices=UNITS)
+    unitText = s.CharField(allow_null=True)
+    pricing = ServicePricing()
+    promo = ServicePromo(allow_null=True)
+    cashbackPreview = s.IntegerField(allow_null=True, help_text='баллы для текущего уровня; null для меню')
+    action = s.ChoiceField(choices=ACTIONS)
+    methods = s.ListField(child=s.CharField())
+    availableFrom = s.DateField(allow_null=True)
+    availableTo = s.DateField(allow_null=True)
+    available = s.BooleanField()
+    capacity = s.IntegerField(allow_null=True)
+    featured = s.BooleanField()
+    outletIds = s.ListField(child=s.CharField())
+
+
+class ServiceGroup(s.Serializer):
+    id = s.CharField()
+    title = s.CharField()
+    items = Service(many=True)
+
+
+class InfoLine(s.Serializer):
+    title = s.CharField(allow_null=True)
+    value = s.CharField(allow_null=True)
+    phone = s.CharField(allow_null=True)
+    whatsapp = s.CharField(allow_null=True)
+    level = s.FloatField(allow_null=True, help_text='сложность трассы 0…1')
+
+
+class InfoBlock(s.Serializer):
+    id = s.IntegerField()
+    title = s.CharField()
+    lines = InfoLine(many=True)
+
+
+class ServiceSectionRules(s.Serializer):
+    rate = s.FloatField()
+    methods = s.ListField(child=s.CharField())
+
+
+class ServiceSection(s.Serializer):
+    id = s.CharField()
+    kind = s.ChoiceField(choices=['stay', 'pass', 'rental', 'menu', 'procedure', 'transfer', 'extra', 'info'],
+                         allow_null=True)
+    icon = s.CharField(allow_null=True)
+    title = s.CharField()
+    subtitle = s.CharField(allow_null=True)
+    notice = s.CharField(allow_null=True)
+    cover = s.URLField(allow_null=True)
+    fromPrice = s.IntegerField(allow_null=True)
+    hasPromo = s.BooleanField()
+    rules = ServiceSectionRules()
+    groups = ServiceGroup(many=True)
+    info = InfoBlock(many=True)
+
+
+class ServicesContacts(s.Serializer):
+    phone = s.CharField(allow_null=True)
+    whatsapp = s.CharField(allow_null=True)
+
+
+class Services(s.Serializer):
+    mode = s.CharField()
+    place = s.CharField()
+    contacts = ServicesContacts()
+    sections = ServiceSection(many=True)
 
 
 # ---------------------------------------------------------------- обращения

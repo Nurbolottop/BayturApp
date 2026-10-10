@@ -14,6 +14,7 @@ from apps.content.models import Article, Promo, PublishStatus, ResortEvent, Stor
 
 from ..access import panel_view
 from ..forms import ArticleForm, EventForm, PromoForm, StoryForm
+from ..modes import current_mode
 
 KINDS = {
     'articles': {'model': Article, 'form': ArticleForm, 'label': 'Статьи', 'one': 'Статья', 'icon': 'news'},
@@ -59,6 +60,8 @@ def obj_title(obj):
 def content_list(request, kind='articles'):
     k = _kind(kind)
     qs = k['model'].objects.all()
+    if not request.GET.get('all'):  # режим из шапки; ?all=1 — все режимы
+        qs = qs.filter(modes__contains=[current_mode(request)])
     if kind in ('promos', 'events'):
         qs = qs.select_related('article')
     if kind == 'stories':
