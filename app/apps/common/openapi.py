@@ -729,6 +729,8 @@ class AppConfig(s.Serializer):
     mode = s.ChoiceField(choices=['resort', 'ski', 'kymyz'])
     season = s.ChoiceField(choices=['winter', 'summer'], required=False, help_text='только sk')
     seasons = SeasonInfo(many=True, required=False, help_text='только sk: текущий и будущие сезоны')
+    seasonLocked = s.BooleanField(required=False, help_text='только sk: сезон выбран в админке для всех, '
+                                                           'выбор режима пользователем не действует')
     isOpen = s.BooleanField(required=False, help_text='только sk')
     pointsPerSom = s.IntegerField(required=False, help_text='только sk')
 

@@ -4,12 +4,14 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.common.audit import audit, model_snapshot
+from apps.catalog.models import Venue
 from apps.loyalty.models import PERK_ICONS, Privilege, Tier
 from apps.common.errors import ApiError, message_for
 from apps.loyalty.services import (create_tier, delete_tier, delete_tier_preview, preview_tier_change,
                                    recalc_all_tiers)
 
 from ..access import panel_view
+from ..modes import current_mode
 from ..forms import PrivilegeForm, TierForm, TierStyleForm
 
 
@@ -57,9 +59,21 @@ def tiers(request):
                     messages.success(request, 'Уровни сохранены' + (f'. Новый уровень получили {upgraded} клиентов'
                                                                     if changed else ''))
                     return redirect('panel:tiers')
-    rows = [{'tier': t, 'form': f, 'privileges': list(t.privileges.all())} for t, f in zip(tier_list, forms)]
+    venues = list(Venue.objects.all())
+    # привилегии по объектам: общие — во всех; фильтр — объект из шапки, ?obj=all — все объекты
+    shown = request.GET.get('obj') or current_mode(request)
+    rows = []
+    for t, f in zip(tier_list, forms):
+        privileges = list(t.privileges.all())
+        sections = [{'id': '', 'title': 'Общие — во всех объектах', 'items': [p for p in privileges if not p.modes]}]
+        for v in venues:
+            if shown in ('all', v.pk):
+                sections.append({'id': v.pk, 'title': str(v), 'accent': v.accent,
+                                 'items': [p for p in privileges if v.pk in (p.modes or [])]})
+        rows.append({'tier': t, 'form': f, 'privileges': privileges, 'sections': sections})
     return render(request, 'panel/tiers/index.html', {
         'rows': rows, 'preview': preview, 'can_edit': request.user.can('tiers.edit'),
+        'venues': venues, 'shown': shown,
         'perks': {r['tier'].pk: [p.short for p in r['privileges']] for r in rows}})
 
 
@@ -72,6 +86,8 @@ def privilege_edit(request, privilege_id=None):
         return forbidden(request, 'Добавлять привилегии может директор')
     initial = {'tier': request.GET.get('tier')} if obj is None else {}
     form = PrivilegeForm(request.POST or None, instance=obj, initial=initial)
+    if obj is None and request.GET.get('mode'):  # «+» в разделе объекта — привилегия сразу для этого объекта
+        form.initial['modes'] = [request.GET['mode']]
     if not user.can('tiers.edit'):
         form.lock(PrivilegeForm.RULE_FIELDS)
     if request.method == 'POST' and form.is_valid():

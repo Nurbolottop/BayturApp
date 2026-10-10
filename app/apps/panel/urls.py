@@ -2,7 +2,7 @@ from django.urls import path
 
 from . import views
 from .views import (admin, auth, campaigns, catalog, complaints, content, desk, members, modes, money, promotions,
-                    reports, tiers)
+                    reports, season, tiers)
 
 app_name = 'panel'
 
@@ -49,6 +49,7 @@ urlpatterns = [
     path('catalog/category/<str:category_id>/', catalog.category_edit, name='category'),
     path('catalog/venues/<slug:venue_id>/', modes.venue_edit, name='venue'),
     path('mode/<slug:mode>/', modes.mode_switch, name='mode'),
+    path('sk-season/', season.sk_season, name='sk-season'),
     path('venue/', modes.venue_current, name='venue-current'),
     path('showcase/', modes.showcase_edit, name='showcase'),
     path('eternal/', modes.eternal_edit, name='eternal'),

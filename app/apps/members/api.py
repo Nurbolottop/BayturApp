@@ -325,6 +325,8 @@ class AppConfigView(PublicAPIView):
         }
         if app == 'sk':
             venue = Venue.objects.filter(pk=mode).first()
+            from apps.catalog.modes import forced_sk_mode
             data.update({'season': SEASON_NAMES.get(mode), 'seasons': seasons_payload(),
+                         'seasonLocked': bool(forced_sk_mode()),
                          'isOpen': bool(venue and venue.is_open), 'pointsPerSom': ps.points_per_som})
         return Response(data)

@@ -7071,6 +7071,10 @@ components:
           items:
             $ref: '#/components/schemas/SeasonInfo'
           description: 'только sk: текущий и будущие сезоны'
+        seasonLocked:
+          type: boolean
+          description: 'только sk: сезон выбран в админке для всех, выбор режима пользователем
+            не действует'
         isOpen:
           type: boolean
           description: только sk
@@ -8829,7 +8833,7 @@ components:
         modeTitle:
           type: string
           nullable: true
-          description: «Только Тоо-Ашуу» или null
+          description: «Только Baytur Ski» или null
       required:
       - description
       - footnote

@@ -33,12 +33,14 @@ def current_mode(request):
     return mode
 
 
-def season_status(venue, today=None):
-    """«Сезон идёт» / «До сезона N дн.» / «Закрыто» — для S&K по датам сезонов."""
+def season_status(venue, today=None, forced=''):
+    """«Сезон идёт» / «До сезона N дн.» / «Закрыто» — для S&K по датам сезонов или по выбору в админке."""
     if not venue.is_open:
         return 'Закрыто'
     if venue.app != 'sk':
         return 'Открыт'
+    if forced:
+        return 'Показывается всем' if forced == venue.pk else 'Скрыт: выбран другой сезон'
     today = today or timezone.localdate()
     seasons = [s for s in venue.seasons.all() if s.ends_at >= today]
     if not seasons:
@@ -61,11 +63,15 @@ def modes_context(request):
         for venue_id in qs.values_list('item__venue_id', flat=True):
             queue[venue_id] = queue.get(venue_id, 0) + 1
     current = next((v for v in venues if v.pk == mode), None)
+    from apps.common.models import ProgramSettings
+    forced = ProgramSettings.get().sk_mode or ''
     return {
+        'panel_sk_mode': forced,
+        'panel_can_season': request.user.can('catalog.edit') and any(v.app == 'sk' for v in venues),
         'panel_mode': mode,
         'panel_mode_venue': current,
         'panel_accent': current.accent if current else '#C6F24E',
         'panel_modes': [{'id': v.pk, 'name': v.name.get('ru') or v.pk, 'accent': v.accent, 'on': v.pk == mode,
-                         'status': season_status(v), 'queue': queue.get(v.pk, 0)} for v in venues]
+                         'status': season_status(v, forced=forced), 'queue': queue.get(v.pk, 0)} for v in venues]
         if len(venues) > 1 else [],
     }

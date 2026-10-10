@@ -42,15 +42,19 @@
   </div>
 </form>
 
-<div class="h2" style="margin-bottom:14px">Привилегии</div>
+<div class="row-between wrap" style="margin-bottom:14px;gap:12px"><div class="h2">Привилегии</div>
+  <div class="seg">{% for v in venues %}<a href="?obj={{ v.pk }}" class="{% if shown == v.pk %}on{% endif %}">{{ v }}</a>{% endfor %}<a href="?obj=all" class="{% if shown == 'all' %}on{% endif %}">Все объекты</a></div></div>
 <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
   {% for r in rows %}
   <div class="card flush appear">
-    <div class="card-head" style="padding-bottom:10px"><span class="tier-badge tier-{{ r.tier.pk }}">{% medal r.tier.pk 18 %}<span>{{ r.tier.name|tr }}</span></span>{% if can_edit %}<a class="btn btn-s" href="{% url 'panel:privilege-new' %}?tier={{ r.tier.pk }}">{% icon 'plus' 16 %}</a>{% endif %}</div>
+    <div class="card-head" style="padding-bottom:10px"><span class="tier-badge tier-{{ r.tier.pk }}">{% medal r.tier.pk 18 %}<span>{{ r.tier.name|tr }}</span></span></div>
+    {% for sec in r.sections %}
+    <div class="row-between" style="padding:10px 16px 4px;{% if sec.accent %}border-left:3px solid {{ sec.accent }};{% endif %}"><span class="small" style="font-weight:700">{{ sec.title }}</span>{% if can_edit %}<a class="btn btn-s btn-ghost" href="{% url 'panel:privilege-new' %}?tier={{ r.tier.pk }}{% if sec.id %}&mode={{ sec.id }}{% endif %}" title="Добавить">{% icon 'plus' 14 %}</a>{% endif %}</div>
     <table class="table"><tbody>
-      {% for p in r.privileges %}<tr class="link" data-href="{% url 'panel:privilege' p.pk %}"><td><div class="title-cell">{% bubble p.icon 18 %}<div><b>{{ p.title|tr }}</b><span class="small muted">{{ p.short|tr }}</span></div></div></td></tr>
+      {% for p in sec.items %}<tr class="link" data-href="{% url 'panel:privilege' p.pk %}"><td><div class="title-cell">{% bubble p.icon 18 %}<div><b>{{ p.title|tr }}</b><span class="small muted">{{ p.short|tr }}</span></div></div></td></tr>
       {% empty %}<tr><td class="muted small">Нет привилегий</td></tr>{% endfor %}
     </tbody></table>
+    {% endfor %}
   </div>
   {% endfor %}
 </div>

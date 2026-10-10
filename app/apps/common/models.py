@@ -17,6 +17,11 @@ class ProgramSettings(models.Model):
 
     CACHE_KEY = 'program_settings'
 
+    # Baytur S&K: сезон для всех пользователей (пусто — по датам сезонов)
+    sk_mode = models.CharField('Сезон Baytur S&K', max_length=10, blank=True, default='',
+                               choices=[('', 'Автоматически по датам'), ('ski', 'Зима — Baytur Ski'),
+                                        ('kymyz', 'Лето — Baytur Kymyz')],
+                               help_text='Выбранный сезон видят все пользователи приложения, даты не учитываются')
     # Курс и кешбек
     points_per_som = models.PositiveIntegerField('Оплата баллами: баллов за 1 сом', default=10,
                                                  help_text='Курс списания при оплате баллами. На начисление не влияет')

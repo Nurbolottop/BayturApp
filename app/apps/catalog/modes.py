@@ -19,7 +19,16 @@ def request_app(request):
     return app
 
 
+def forced_sk_mode():
+    """Сезон, выбранный в админке для всех пользователей S&K; '' — по датам."""
+    from apps.common.models import ProgramSettings
+    return ProgramSettings.get().sk_mode or ''
+
+
 def active_sk_mode(today=None):
+    forced = forced_sk_mode()
+    if forced:
+        return forced
     today = today or timezone.localdate()
     seasons = list(Season.objects.filter(venue__app='sk', venue__is_active=True).order_by('starts_at'))
     for s in seasons:
@@ -40,9 +49,12 @@ def resolve_mode(request):
         return cached
     app = request_app(request)
     explicit = (request.headers.get('X-Baytur-Mode') or '').strip().lower()
-    if explicit:
-        if explicit not in APP_MODES[app]:
-            raise ApiError('mode_not_allowed', 400)
+    if explicit and explicit not in APP_MODES[app]:
+        raise ApiError('mode_not_allowed', 400)
+    forced = forced_sk_mode() if app == 'sk' else ''
+    if forced:  # сезон выбран в админке — все пользователи S&K видят только его
+        mode = forced
+    elif explicit:
         mode = explicit
     elif app == 'resort':
         mode = 'resort'

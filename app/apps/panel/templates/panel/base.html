@@ -60,6 +60,16 @@
       <div class="mode-bar" style="--mode-accent:{{ panel_accent }}">
         <div class="seg" role="tablist" aria-label="Режим">{% for m in panel_modes %}<a href="{% url 'panel:mode' m.id %}?section={{ request.panel_section|default:'' }}&next={{ request.path|urlencode }}" class="{% if m.on %}on{% endif %}" style="--dot:{{ m.accent }}" title="{{ m.status }}"><span class="mode-dot"></span>{{ m.name }}{% if m.queue %}<span class="count">{{ m.queue }}</span>{% endif %}</a>{% endfor %}</div>
         {% for m in panel_modes %}{% if m.on %}<span class="small muted">{{ m.status }}{% if m.queue %} · в очереди {{ m.queue }}{% endif %}</span>{% endif %}{% endfor %}
+        {% if panel_can_season %}
+        <form method="post" action="{% url 'panel:sk-season' %}" style="display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <label class="small muted" for="sk-season">Сезон для всех пользователей S&amp;K</label>
+          <select id="sk-season" name="sk_mode" onchange="this.form.submit()" style="height:34px;border-radius:999px;padding:0 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:13px">
+            <option value=""{% if not panel_sk_mode %} selected{% endif %}>Автоматически по датам</option>
+            <option value="ski"{% if panel_sk_mode == 'ski' %} selected{% endif %}>Зима — Baytur Ski</option>
+            <option value="kymyz"{% if panel_sk_mode == 'kymyz' %} selected{% endif %}>Лето — Baytur Kymyz</option>
+          </select><noscript><button class="btn btn-s">Сохранить</button></noscript>
+        </form>
+        {% endif %}
       </div>
       {% endif %}
       {% block content %}{% endblock %}
