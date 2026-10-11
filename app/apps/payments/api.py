@@ -31,7 +31,20 @@ class PaymentsView(MemberAPIView):
     def post(self, request):
         s = PaymentInput(data=request.data)
         s.is_valid(raise_exception=True)
-        return Response(services.payment_payload(services.create_payment(request.user, s.validated_data)), status=201)
+        from apps.catalog.modes import request_app
+        app = request_app(request)
+        payment = services.create_payment(request.user, s.validated_data)
+        if (payment.params or {}).get('app') != app:  # куда вернуть после оплаты: bayturapp или Baytur S&K
+            payment.params = {**(payment.params or {}), 'app': app}
+            payment.save(update_fields=['params'])
+        return Response(services.payment_payload(payment), status=201)
+
+
+def app_return_url(payment):
+    """Диплинк возврата в то приложение, из которого начали оплату (схема — APP_URL_SCHEMES)."""
+    app = (payment.params or {}).get('app') or 'resort'
+    scheme = settings.APP_URL_SCHEMES.get(app) or settings.APP_URL_SCHEMES['resort']
+    return f'{scheme}://payment/{payment.pk}'
 
 
 def _own(request, payment_id):
@@ -89,7 +102,7 @@ RETURN_TEXTS = {
 
 
 def payment_return(request, payment_id):
-    """pg_success_url / pg_failure_url провайдера: браузер оплаты → диплинк baytur://payment/{id}."""
+    """pg_success_url / pg_failure_url провайдера: браузер оплаты → диплинк приложения ({scheme}://payment/{id})."""
     payment = get_object_or_404(Payment, pk=payment_id)
     # Результат вебхука может прийти на пару секунд позже редиректа — страница ждёт его (pending)
     status = {PaymentStatus.PAID: 'paid', PaymentStatus.CREATED: 'pending',
@@ -100,7 +113,7 @@ def payment_return(request, payment_id):
     texts = RETURN_TEXTS[lang]
     heading, text = texts[status]
     return render(request, 'payments/return.html', {
-        'return_url': f'baytur://payment/{payment.pk}', 'status': status, 'amount': payment.amount,
+        'return_url': app_return_url(payment), 'status': status, 'amount': payment.amount,
         'payment_id': payment.pk, 'lang': lang, 't': texts, 'heading': heading, 'text': text})
 
 
@@ -117,7 +130,7 @@ def fake_checkout(request, payment_id):
         status = PaymentStatus.PAID if request.POST.get('result') == 'paid' else PaymentStatus.FAILED
         services.set_status(payment.pk, status, payment.amount)
         return render(request, 'payments/fake_done.html', {'payment': payment, 'status': status,
-                                                           'return_url': f'baytur://payment/{payment.pk}'})
+                                                           'return_url': app_return_url(payment)})
     if request.method != 'GET':
         return HttpResponseNotAllowed(['GET', 'POST'])
     return render(request, 'payments/fake_checkout.html', {'payment': payment})

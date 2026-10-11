@@ -114,6 +114,13 @@ class FreedomPayTests(BaseAPITestCase):
         self.member.save()
         self.assertContains(self.client.get(f'/api/v1/payments/{p["id"]}/return'), 'Төлөм өттү')
 
+    def test_return_page_opens_app_that_started_payment(self):
+        data = {'method': 'freedomPay', 'amountSom': 7000, 'itemId': 'spa-stone', 'quantity': 2}
+        p = self.api.post('/api/v1/payments', data, format='json', HTTP_X_BAYTUR_APP='sk').json()
+        r = self.client.get(f'/api/v1/payments/{p["id"]}/return')
+        self.assertContains(r, f'baytursk://payment/{p["id"]}')         # Baytur S&K, не bayturapp
+        self.assertNotContains(r, 'baytur://')
+
     @override_settings(FREEDOMPAY_MERCHANT_ID='')
     def test_disabled_falls_back(self):
         self.assertTrue(self.pay().json()['redirectUrl'].endswith('/checkout'))

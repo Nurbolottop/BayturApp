@@ -326,6 +326,9 @@ OTP_FIXED_CODE = os.getenv('OTP_FIXED_CODE', '').strip()  # только для 
 # Вход через Google / Apple ID: допустимые aud токена (через запятую). Пусто — провайдер выключен.
 # Google: client ID приложений iOS/Android/Web; Apple: bundle ID приложения (и Services ID для веба).
 GOOGLE_CLIENT_IDS = [x.strip() for x in os.getenv('GOOGLE_CLIENT_IDS', '').split(',') if x.strip()]
+# Схемы диплинков приложений: возврат из браузера оплаты в то приложение, где начали оплату
+APP_URL_SCHEMES = {'resort': os.getenv('APP_URL_SCHEME_RESORT', 'baytur'),
+                   'sk': os.getenv('APP_URL_SCHEME_SK', 'baytursk')}
 APPLE_CLIENT_IDS = [x.strip() for x in os.getenv('APPLE_CLIENT_IDS', '').split(',') if x.strip()]
 # Ключ Sign in with Apple (.p8) — для отзыва токенов при удалении аккаунта (App Store 5.1.1(v)).
 # Без него вход работает, отзыв пропускается.
