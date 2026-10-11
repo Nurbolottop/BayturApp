@@ -201,8 +201,10 @@ class DevicesView(MemberAPIView):
         s = DeviceSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         d = s.validated_data
+        from apps.catalog.modes import request_app
         Device.objects.update_or_create(token=d['token'], defaults={
-            'member': request.user, 'platform': d['platform'], 'app_version': d.get('appVersion', ''),
+            'member': request.user, 'platform': d['platform'], 'app': request_app(request),
+            'app_version': d.get('appVersion', ''),
             'device_id': request._request.device_id or ''})
         return Response(status=204)
 

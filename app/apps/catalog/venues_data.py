@@ -85,7 +85,7 @@ VENUES = [
                 '120 km from Bishkek on the Bishkek — Osh highway, about 2.5 hours by car. '
                 'Altitude: 3,000 m above sea level.',
             )},
-            {'title': L('Трансфер Бишкек ↔ Тоо-Ашуу', 'Трансфер Бишкек ↔ Тоо-Ашуу', 'Transfer Bishkek ↔ Too-Ashuu'), 'rows': [
+            {'title': L('Трансфер Бишкек — Тоо-Ашуу', 'Трансфер Бишкек — Тоо-Ашуу', 'Transfer Bishkek — Too-Ashuu'), 'rows': [
                 {'label': L('Транспорт', 'Транспорт', 'Vehicle'),
                  'value': L('бус на 18 человек, водитель Владимир', '18 кишилик бус, айдоочу Владимир',
                             '18-seat minibus, driver Vladimir')},
@@ -235,7 +235,7 @@ SECTIONS = [
     _S('ski-bar-soft', TA, 'ski-bar', 'food', L('Безалкогольные напитки', 'Алкоголсуз суусундуктар', 'Soft drinks'), None, 20),
     _S('ski-bar-alcohol', TA, 'ski-bar', 'food', L('Алкогольные напитки', 'Алкоголдук суусундуктар', 'Alcoholic drinks'), None, 30),
     _S('ski-bar-snacks', TA, 'ski-bar', 'food', L('Закуски и сладости', 'Закускалар жана таттуулар', 'Snacks and sweets'), None, 40),
-    _S('ski-transfer', TA, None, 'sport', L('Трансфер Бишкек ↔ Тоо-Ашуу', 'Трансфер Бишкек ↔ Тоо-Ашуу', 'Transfer Bishkek ↔ Too-Ashuu'),
+    _S('ski-transfer', TA, None, 'sport', L('Трансфер Бишкек — Тоо-Ашуу', 'Трансфер Бишкек — Тоо-Ашуу', 'Transfer Bishkek — Too-Ashuu'),
        L('Бус на 18 человек. Сбор у ТЦ «Дордой Плаза», выезд в 07:00, обратно с базы в 16:20.',
          '18 кишилик бус. «Дордой Плаза» соода борборунда чогулуу, 07:00дө жөнөө, базадан 16:20да кайтуу.',
          '18-seat minibus. Meet at Dordoi Plaza mall, departure 07:00, return from the resort at 16:20.'), 60),
@@ -515,9 +515,9 @@ _simple('ski-bar-snacks', 'ski-bar', VISIT, [
     ('ski-chocolate-tablet', L('Шоколад плиточный', 'Плитка шоколад', 'Chocolate tablet'), 180, None),
 ])
 
-# ===== 1.6 Трансфер Бишкек ↔ Тоо-Ашуу =====
+# ===== 1.6 Трансфер Бишкек — Тоо-Ашуу =====
 _I('ski-transfer-bishkek', 'ski-transfer', 'ski-reception',
-   L('Трансфер Бишкек ↔ Тоо-Ашуу', 'Трансфер Бишкек ↔ Тоо-Ашуу', 'Transfer Bishkek ↔ Too-Ashuu'),
+   L('Трансфер Бишкек — Тоо-Ашуу', 'Трансфер Бишкек — Тоо-Ашуу', 'Transfer Bishkek — Too-Ashuu'),
    1000, _U('guest', 18),
    meta=L('бус на 18 человек · 07:00 / 16:20', '18 кишилик бус · 07:00 / 16:20', '18-seat minibus · 07:00 / 16:20'),
    price_note=N_PERSON,
@@ -776,8 +776,8 @@ _I('kymyz-shower', 'kymyz-extras-leisure', 'kymyz-leisure',
 _I('kymyz-milk-cup', 'kymyz-kymyz', 'kymyz-kymyz',
    L('Молоко, саамал или кымыз, 1 кружка', 'Сүт, саамал же кымыз, 1 кружка', 'Mare milk, saamal or kymyz, 1 cup'),
    150, VISIT, meta=L('1 кружка', '1 кружка', '1 cup'),
-   price_note=L('1 кружка (20–250 г)', '1 кружка (20–250 г)', '1 cup (20–250 g)'),
-   features=[_F('drink', '20–250 г', '20–250 г', '20–250 g')])
+   price_note=L('1 кружка (200–250 г)', '1 кружка (200–250 г)', '1 cup (200–250 g)'),
+   features=[_F('drink', '200–250 г', '200–250 г', '200–250 g')])
 _I('kymyz-kymyz-or-milk-1l', 'kymyz-kymyz', 'kymyz-kymyz',
    L('Кымыз или кобылье молоко, 1 литр', 'Кымыз же бээ сүтү, 1 литр', 'Kymyz or mare milk, 1 liter'),
    350, VISIT, meta=L1, price_note=L('за 1 литр', '1 литрге', 'per liter'),
@@ -803,10 +803,12 @@ ALLOWED_CATEGORIES = {'rooms', 'spa', 'food', 'pools', 'sport'}
 MODES_META = {
     'ski': {'app': 'sk', 'name': L('Baytur Ski', 'Baytur Ski', 'Baytur Ski'),
             'short': L('Горнолыжная база', 'Тоо лыжа базасы', 'Ski resort'),
+            'place': L('Тоо-Ашуу', 'Тоо-Ашуу', 'Too-Ashuu'),
             'phone': '+996701797480', 'whatsapp': '+996701797480', 'email': 'pr@baytur.kg',
             'accent': '#4A90D9', 'early_booking_enabled': False},
     'kymyz': {'app': 'sk', 'name': L('Baytur Kymyz', 'Baytur Kymyz', 'Baytur Kymyz'),
               'short': L('Центр кымызолечения', 'Кымыз менен дарылоо борбору', 'Kymyz cure center'),
+              'place': L('Суусамыр', 'Суусамыр', 'Suusamyr'),
               'phone': '+996770797370', 'whatsapp': '+996770797370', 'email': 'pr@baytur.kg',
               'accent': '#3FA568', 'early_booking_enabled': True},
 }
@@ -881,8 +883,8 @@ PROMOTIONS = [
      'kind': 'specialPrice', 'value': 0, 'scope': 'items', 'audience': 'children',
      'items': ['kymyz-full-kids-under-6', 'kymyz-room-kids-under-6']},
     {'title': L('Трансфер по суперцене', 'Супер баадагы трансфер', 'Transfer at a super price'),
-     'description': L('Трансфер Бишкек ↔ «Тоо-Ашуу» — 1 000 сом с человека.', 'Бишкек ↔ «Тоо-Ашуу» трансфери — кишиге 1 000 сом.',
-                      'Bishkek ↔ Too-Ashuu transfer — 1,000 KGS per person.'),
+     'description': L('Трансфер Бишкек — «Тоо-Ашуу» — 1 000 сом с человека.', 'Бишкек — «Тоо-Ашуу» трансфери — кишиге 1 000 сом.',
+                      'Bishkek — Too-Ashuu transfer — 1,000 KGS per person.'),
      'tag': L('Суперцена', 'Супер баа', 'Super price'),
      'kind': 'specialPrice', 'value': 1000, 'scope': 'items', 'items': ['ski-transfer-bishkek']},
 ]

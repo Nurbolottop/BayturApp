@@ -165,6 +165,8 @@ class Device(models.Model):
     member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='devices')
     token = models.CharField(max_length=512, unique=True)
     platform = models.CharField(max_length=10, choices=Platform.choices)
+    app = models.CharField('Приложение', max_length=10, default='resort',
+                           help_text='resort — bayturapp, sk — Baytur S&K (из X-Baytur-App)')
     app_version = models.CharField(max_length=20, blank=True)
     device_id = models.CharField(max_length=36, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

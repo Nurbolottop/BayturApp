@@ -745,6 +745,14 @@ class Mode(s.Serializer):
     icon = s.URLField(allow_null=True)
 
 
+class Image(s.Serializer):
+    url = s.URLField(help_text='WebP до 1600 px по ширине')
+    thumb = s.URLField(help_text='WebP 400 px — для списков и плиток')
+    width = s.IntegerField(allow_null=True, help_text='размер url — зарезервировать место до загрузки')
+    height = s.IntegerField(allow_null=True)
+    color = s.CharField(allow_null=True, help_text='преобладающий цвет #RRGGBB — фон заглушки')
+
+
 class EternalCta(s.Serializer):
     label = s.CharField()
     action = s.CharField()
@@ -753,7 +761,7 @@ class EternalCta(s.Serializer):
 
 
 class EternalSlide(s.Serializer):
-    image = s.URLField(allow_null=True)
+    image = Image(allow_null=True)
     title = s.CharField()
     text = s.CharField()
     cta = EternalCta(allow_null=True)
@@ -771,7 +779,7 @@ class Eternal(s.Serializer):
     aboutSeason = s.ChoiceField(choices=['winter', 'summer'])
     title = s.CharField()
     lead = s.CharField()
-    cover = s.URLField(allow_null=True)
+    cover = Image(allow_null=True)
     earlyBonus = EarlyBonus(allow_null=True)
     slides = EternalSlide(many=True)
 
@@ -792,7 +800,7 @@ class ShowcaseOffer(s.Serializer):
     note = s.CharField(allow_null=True)
     price = s.IntegerField(allow_null=True)
     oldPrice = s.IntegerField(allow_null=True)
-    image = s.URLField(allow_null=True)
+    image = Image(allow_null=True)
 
 
 class ShowcaseNews(s.Serializer):
@@ -801,7 +809,7 @@ class ShowcaseNews(s.Serializer):
     date = s.DateField(allow_null=True)
     title = s.CharField()
     place = s.CharField(allow_null=True)
-    image = s.URLField(allow_null=True)
+    image = Image(allow_null=True)
     articleId = s.CharField(allow_null=True)
 
 
@@ -810,8 +818,8 @@ class Showcase(s.Serializer):
     season = s.CharField(allow_null=True)
     title = s.CharField()
     subtitle = s.CharField()
-    heroImage = s.URLField(allow_null=True)
-    heroImageNight = s.URLField(allow_null=True)
+    heroImage = Image(allow_null=True)
+    heroImageNight = Image(allow_null=True)
     facts = s.ListField(child=s.CharField())
     cta = s.CharField(allow_null=True)
     ctaSection = s.CharField(allow_null=True)
@@ -847,7 +855,7 @@ class Service(s.Serializer):
     note = s.CharField(allow_null=True)
     description = s.CharField()
     includes = s.ListField(child=s.CharField())
-    photos = s.ListField(child=s.URLField())
+    photos = Image(many=True, help_text='первое — главное')
     price = s.IntegerField(allow_null=True, help_text='null — цена по запросу')
     priceUpTo = s.IntegerField(allow_null=True)
     unit = s.ChoiceField(choices=UNITS)
@@ -868,6 +876,7 @@ class Service(s.Serializer):
 class ServiceGroup(s.Serializer):
     id = s.CharField()
     title = s.CharField()
+    cover = Image(allow_null=True, help_text='обложка подраздела («Супы», «Коттеджи»)')
     items = Service(many=True)
 
 
@@ -898,7 +907,7 @@ class ServiceSection(s.Serializer):
     title = s.CharField()
     subtitle = s.CharField(allow_null=True)
     notice = s.CharField(allow_null=True)
-    cover = s.URLField(allow_null=True)
+    cover = Image(allow_null=True)
     fromPrice = s.IntegerField(allow_null=True)
     hasPromo = s.BooleanField()
     rules = ServiceSectionRules()

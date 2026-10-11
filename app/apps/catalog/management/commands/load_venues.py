@@ -61,7 +61,7 @@ class Command(BaseCommand):
                 m = getattr(D, 'MODES_META', {}).get(v['id'], {})
                 add(Venue, 'venues', v['id'], {
                     'app': m.get('app', 'resort'), 'name': m.get('name') or v['name'],
-                    'short': m.get('short') or v.get('short', {}), 'description': v.get('description', {}),
+                    'short': m.get('short') or v.get('short', {}), 'place': m.get('place', {}), 'description': v.get('description', {}),
                     'address': v.get('address', {}), 'contacts': v.get('contacts', []), 'info': v.get('info', []),
                     'phone': m.get('phone', ''), 'whatsapp': m.get('whatsapp', ''), 'email': m.get('email', ''),
                     'accent': m.get('accent', '#C6F24E'), 'sort_order': v.get('sort_order', 0),

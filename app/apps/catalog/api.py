@@ -133,19 +133,19 @@ class ModesView(PublicAPIView):
 
 def _eternal_payload(e, mode=None):
     from apps.common.i18n import tr
-    from apps.common.media import absolute_media_url
+    from apps.common.media import image_payload
 
     from .modes import SEASON_NAMES
     slides = []
     for s in e.slides or []:
         cta = s.get('cta')
-        slides.append({'image': absolute_media_url(s.get('image')), 'title': tr(s.get('title')) or '',
+        slides.append({'image': image_payload(s.get('image')), 'title': tr(s.get('title')) or '',
                        'text': tr(s.get('text')) or '',
                        'cta': {'label': tr(cta.get('label')), 'action': cta.get('action'), 'mode': cta.get('mode'),
                                'target': cta.get('target')} if cta else None})
     bonus = e.early_bonus or None
     return {'id': e.pk, 'about': e.about_id, 'aboutSeason': SEASON_NAMES.get(e.about_id),
-            'title': tr(e.title), 'lead': tr(e.lead) or '', 'cover': absolute_media_url(e.cover),
+            'title': tr(e.title), 'lead': tr(e.lead) or '', 'cover': image_payload(e.cover),
             'earlyBonus': {'kind': bonus.get('kind'), 'value': bonus.get('value'), 'text': tr(bonus.get('text'))}
             if bonus else None,
             'slides': slides}
@@ -161,7 +161,7 @@ def _eternal_for(mode):
 
 def build_showcase(mode, venue):
     from apps.common.i18n import tr
-    from apps.common.media import absolute_media_url
+    from apps.common.media import image_payload
 
     from .models import NewsItem, Showcase
     from .modes import SEASON_NAMES
@@ -186,20 +186,20 @@ def build_showcase(mode, venue):
                        'title': tr(p.title), 'note': tr(p.note) or None,
                        'price': total if snap and snap['discount'] > 0 else None,
                        'oldPrice': item.price if snap and snap['discount'] > 0 else None,
-                       'image': absolute_media_url(p.image)})
+                       'image': image_payload(p.image)})
     news = []
     for n in NewsItem.objects.filter(venue=venue, is_active=True):
         if (n.publish_from and n.publish_from > now) or (n.publish_to and n.publish_to < now):
             continue
         news.append({'id': n.pk, 'when': tr(n.when) or None, 'date': n.date.isoformat() if n.date else None,
-                     'title': tr(n.title), 'place': tr(n.place) or None, 'image': absolute_media_url(n.image),
+                     'title': tr(n.title), 'place': tr(n.place) or None, 'image': image_payload(n.image),
                      'articleId': n.article_id or None})
     eternal = _eternal_for(mode)
     return {
         'mode': mode, 'season': SEASON_NAMES.get(mode),
         'title': tr(venue.name), 'subtitle': tr(venue.short) or '',
-        'heroImage': absolute_media_url(sc.hero_image) if sc else None,
-        'heroImageNight': absolute_media_url(sc.hero_image_night) if sc else None,
+        'heroImage': image_payload(sc.hero_image) if sc else None,
+        'heroImageNight': image_payload(sc.hero_image_night) if sc else None,
         'facts': [tr(f) for f in (sc.facts if sc else [])],
         'cta': tr(sc.cta) if sc and sc.cta else None,
         'ctaSection': sc.cta_section if sc and sc.cta_section else None,
@@ -269,7 +269,7 @@ def build_services(mode, venue):
         payload = services_section_payload(s, children_of.get(s.id, []), items_of, promotions, now, ps)
         if payload['groups'] or payload['info']:
             out.append(payload)
-    return {'mode': mode, 'place': tr(venue.short) if venue.id == 'resort' else tr(venue.name),
+    return {'mode': mode, 'place': tr(venue.place) or tr(venue.name),
             'contacts': {'phone': venue.phone or None, 'whatsapp': venue.whatsapp or None},
             'sections': out}
 

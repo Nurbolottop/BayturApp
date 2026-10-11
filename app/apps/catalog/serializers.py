@@ -1,6 +1,6 @@
 from apps.cashback.calc import active_methods, round_half_up
 from apps.common.i18n import tr
-from apps.common.media import absolute_media_url
+from apps.common.media import absolute_media_url, image_payload
 from apps.common.models import ProgramSettings
 
 
@@ -198,7 +198,7 @@ def service_payload(item, kind='', promotions=None, now=None, ps=None):
         promotions = active_promotions(now)
     today = tz.localdate(now)
     available = not ((item.season_from and today < item.season_from) or (item.season_to and today > item.season_to))
-    photos = [absolute_media_url(u) for u in ([item.image] if item.image else []) + list(item.gallery or []) if u]
+    paths = list(dict.fromkeys(u for u in ([item.image] if item.image else []) + list(item.gallery or []) if u))
     lo, hi = item.pricing_bounds()
     return {
         'id': item.id,
@@ -207,7 +207,7 @@ def service_payload(item, kind='', promotions=None, now=None, ps=None):
         'note': tr(item.meta) or None,
         'description': tr(item.description) or '',
         'includes': [tr(f.get('text')) for f in item.features or [] if tr(f.get('text'))],
-        'photos': list(dict.fromkeys(photos)),
+        'photos': [image_payload(u) for u in paths],  # первое — главное
         'price': None if item.price_on_request else item.price,
         'priceUpTo': item.price_up_to,
         'unit': item.unit or 'none',
@@ -241,12 +241,12 @@ def services_section_payload(section, children, items_of, promotions, now, ps):
     kind = section.kind or ''
     groups = []
     if items_of.get(section.id):  # позиции прямо в разделе — одна группа
-        groups.append({'id': f'{section.key or section.id}-main', 'title': tr(section.title),
+        groups.append({'id': f'{section.key or section.id}-main', 'title': tr(section.title), 'cover': None,
                        'items': [service_payload(i, kind, promotions, now, ps) for i in items_of[section.id]]})
     for child in children:
         items = items_of.get(child.id) or []
         if items:
-            groups.append({'id': child.key or child.id, 'title': tr(child.title),
+            groups.append({'id': child.key or child.id, 'title': tr(child.title), 'cover': image_payload(child.cover),
                            'items': [service_payload(i, kind, promotions, now, ps) for i in items]})
     all_items = [i for g in groups for i in g['items']]
     prices = [(i['promo'] or {}).get('price') or i['price'] for i in all_items
@@ -259,7 +259,7 @@ def services_section_payload(section, children, items_of, promotions, now, ps):
         'title': tr(section.title),
         'subtitle': tr(section.subtitle) or None,
         'notice': tr(section.note) or None,
-        'cover': absolute_media_url(section.cover),
+        'cover': image_payload(section.cover),
         'fromPrice': min(prices) if prices else None,
         'hasPromo': any(i['promo'] for i in all_items),
         'rules': {'rate': float(rate), 'methods': section_methods(section)},

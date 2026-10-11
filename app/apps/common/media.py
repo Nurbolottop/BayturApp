@@ -106,3 +106,53 @@ def process_avatar(uploaded_file, size=512):
     buf = io.BytesIO()
     img.save(buf, 'JPEG', quality=85, optimize=True)
     return ContentFile(buf.getvalue())
+
+
+IMAGE_FULL, IMAGE_THUMB = 1600, 400
+
+
+def _image_meta(path):
+    """Размер оригинала и преобладающий цвет (#RRGGBB) — считаются один раз, путь неизменяем (новое фото — новый путь)."""
+    from django.core.cache import cache
+    from PIL import Image, ImageOps
+
+    key = f'imgmeta:{path}'
+    meta = cache.get(key)
+    if meta is not None:
+        return meta
+    meta = {}
+    try:
+        with default_storage.open(path, 'rb') as fh:
+            img = ImageOps.exif_transpose(Image.open(fh))
+            meta = {'width': img.width, 'height': img.height}
+            small = img.convert('RGB')
+            small.thumbnail((64, 64))
+            palette = small.quantize(colors=6)
+            counts = sorted(palette.getcolors() or [], reverse=True)
+            if counts:
+                pal = palette.getpalette()
+                r, g, b = pal[counts[0][1] * 3:counts[0][1] * 3 + 3]
+                meta['color'] = f'#{r:02X}{g:02X}{b:02X}'
+    except (OSError, ValueError):
+        meta = {}
+    cache.set(key, meta, None)
+    return meta
+
+
+def image_payload(path):
+    """
+    Картинка для новых экранов (/services, /showcase): {url, thumb, width, height, color} или None.
+    url — WebP до 1600 px по ширине, thumb — 400 px; width/height — размер url (для резерва места до загрузки).
+    """
+    if not path:
+        return None
+    if path.startswith(('http://', 'https://')):
+        return {'url': path, 'thumb': path, 'width': None, 'height': None, 'color': None}
+    meta = _image_meta(path)
+    w, h = meta.get('width'), meta.get('height')
+    if w and h and w > IMAGE_FULL:
+        w, h = IMAGE_FULL, round(h * IMAGE_FULL / w)
+    from urllib.parse import quote
+    base = f'{settings.PUBLIC_BASE_URL}/img/{quote(path)}'
+    return {'url': f'{base}?w={IMAGE_FULL}', 'thumb': f'{base}?w={IMAGE_THUMB}', 'width': w, 'height': h,
+            'color': meta.get('color')}

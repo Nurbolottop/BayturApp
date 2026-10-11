@@ -334,6 +334,8 @@ APPLE_KEY_ID = os.getenv('APPLE_KEY_ID', '')
 APPLE_PRIVATE_KEY_FILE = os.getenv('APPLE_PRIVATE_KEY_FILE', '')
 PUSH_BACKEND = os.getenv('PUSH_BACKEND', 'console')    # console | fcm
 FCM_CREDENTIALS_FILE = os.getenv('FCM_CREDENTIALS_FILE', '')
+# Baytur S&K: свой проект Firebase, если приложение зарегистрировано не в проекте bayturapp
+FCM_CREDENTIALS_FILE_SK = os.getenv('FCM_CREDENTIALS_FILE_SK', '')
 PAYMENT_BACKEND = os.getenv('PAYMENT_BACKEND', 'fake')  # fake | (реальные — после выбора провайдеров)
 PAYMENT_WEBHOOK_SECRET = os.getenv('PAYMENT_WEBHOOK_SECRET', SECRET_KEY)
 # Freedom Pay (метод freedomPay). Пусто — метод идёт через PAYMENT_BACKEND

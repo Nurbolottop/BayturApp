@@ -19,11 +19,11 @@ class ConsoleBackend:
 class FcmBackend:
     SCOPE = 'https://www.googleapis.com/auth/firebase.messaging'
 
-    def __init__(self):
+    def __init__(self, credentials_file=None):
         from google.oauth2 import service_account  # noqa: import at use — пакет нужен только для fcm
-        self.creds = service_account.Credentials.from_service_account_file(settings.FCM_CREDENTIALS_FILE,
-                                                                           scopes=[self.SCOPE])
-        with open(settings.FCM_CREDENTIALS_FILE) as fh:
+        credentials_file = credentials_file or settings.FCM_CREDENTIALS_FILE
+        self.creds = service_account.Credentials.from_service_account_file(credentials_file, scopes=[self.SCOPE])
+        with open(credentials_file) as fh:
             self.project_id = json.load(fh)['project_id']
 
     def _token(self):
@@ -54,11 +54,19 @@ class FcmBackend:
         return False, invalid
 
 
-_backend = None
+_backends = {}
 
 
-def backend():
-    global _backend
-    if _backend is None:
-        _backend = FcmBackend() if settings.PUSH_BACKEND == 'fcm' else ConsoleBackend()
-    return _backend
+def backend(app='resort'):
+    """
+    Отправитель для приложения: у Baytur S&K может быть свой проект Firebase (FCM_CREDENTIALS_FILE_SK);
+    если не задан — тот же, что у bayturapp (оба приложения в одном проекте Firebase).
+    """
+    sk_file = getattr(settings, 'FCM_CREDENTIALS_FILE_SK', '')
+    key = 'sk' if app == 'sk' and sk_file else 'resort'
+    if key not in _backends:
+        if settings.PUSH_BACKEND != 'fcm':
+            _backends[key] = ConsoleBackend()
+        else:
+            _backends[key] = FcmBackend(sk_file if key == 'sk' else None)
+    return _backends[key]

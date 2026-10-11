@@ -7747,8 +7747,8 @@ components:
         lead:
           type: string
         cover:
-          type: string
-          format: uri
+          allOf:
+          - $ref: '#/components/schemas/Image'
           nullable: true
         earlyBonus:
           allOf:
@@ -7789,8 +7789,8 @@ components:
       type: object
       properties:
         image:
-          type: string
-          format: uri
+          allOf:
+          - $ref: '#/components/schemas/Image'
           nullable: true
         title:
           type: string
@@ -7940,6 +7940,34 @@ components:
           description: id_token из Google Sign-In
       required:
       - idToken
+    Image:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+          description: WebP до 1600 px по ширине
+        thumb:
+          type: string
+          format: uri
+          description: WebP 400 px — для списков и плиток
+        width:
+          type: integer
+          nullable: true
+          description: размер url — зарезервировать место до загрузки
+        height:
+          type: integer
+          nullable: true
+        color:
+          type: string
+          nullable: true
+          description: 'преобладающий цвет #RRGGBB — фон заглушки'
+      required:
+      - color
+      - height
+      - thumb
+      - url
+      - width
     InfoBlock:
       type: object
       properties:
@@ -9471,8 +9499,8 @@ components:
         photos:
           type: array
           items:
-            type: string
-            format: uri
+            $ref: '#/components/schemas/Image'
+          description: первое — главное
         price:
           type: integer
           nullable: true
@@ -9576,11 +9604,17 @@ components:
           type: string
         title:
           type: string
+        cover:
+          allOf:
+          - $ref: '#/components/schemas/Image'
+          nullable: true
+          description: обложка подраздела («Супы», «Коттеджи»)
         items:
           type: array
           items:
             $ref: '#/components/schemas/Service'
       required:
+      - cover
       - id
       - items
       - title
@@ -9735,8 +9769,8 @@ components:
           type: string
           nullable: true
         cover:
-          type: string
-          format: uri
+          allOf:
+          - $ref: '#/components/schemas/Image'
           nullable: true
         fromPrice:
           type: integer
@@ -9913,12 +9947,12 @@ components:
         subtitle:
           type: string
         heroImage:
-          type: string
-          format: uri
+          allOf:
+          - $ref: '#/components/schemas/Image'
           nullable: true
         heroImageNight:
-          type: string
-          format: uri
+          allOf:
+          - $ref: '#/components/schemas/Image'
           nullable: true
         facts:
           type: array
@@ -9978,8 +10012,8 @@ components:
           type: string
           nullable: true
         image:
-          type: string
-          format: uri
+          allOf:
+          - $ref: '#/components/schemas/Image'
           nullable: true
         articleId:
           type: string
@@ -10020,8 +10054,8 @@ components:
           type: integer
           nullable: true
         image:
-          type: string
-          format: uri
+          allOf:
+          - $ref: '#/components/schemas/Image'
           nullable: true
       required:
       - badge

@@ -136,7 +136,7 @@ def deliver(n):
     ok_any = False
     for d in devices:
         try:
-            ok, invalid = backend().send(d.token, d.platform, n.title, n.body, n.data)
+            ok, invalid = backend(d.app).send(d.token, d.platform, n.title, n.body, n.data)
         except Exception:
             log.exception('push failed')
             ok, invalid = False, False

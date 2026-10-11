@@ -9,7 +9,7 @@
     {% include 'panel/components/field.html' with f=form.show_in %}
     {% include 'panel/components/field.html' with f=form.title full=1 %}
     {% include 'panel/components/field.html' with f=form.lead full=1 %}
-    <div class="field full"><span class="label">Обложка</span>
+    <div class="field full"><span class="label">Обложка · вертикальная 9:16, от 1080×1920</span>
       <div class="photo-field" data-photo="id_cover"><div class="ph">{% icon 'image' 24 %}</div>
         <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.cover }}</div>
     {% include 'panel/components/field.html' with f=form.bonus_kind %}
@@ -18,7 +18,7 @@
     {% include 'panel/components/field.html' with f=form.is_active %}
   </div>
   <div class="rows-editor" data-rows="id_slides" style="margin-top:18px">
-    <div class="card-head"><div><div class="h3">Слайды</div><div class="small muted">Картинка, заголовок, текст и, если нужно, кнопка. Порядок — перетаскиванием ⋮⋮</div></div>
+    <div class="card-head"><div><div class="h3">Слайды</div><div class="small muted">Картинки слайдов — вертикальные 9:16. Картинка, заголовок, текст и, если нужно, кнопка. Порядок — перетаскиванием ⋮⋮</div></div>
       <button type="button" class="btn btn-s" data-add>{% icon 'plus' 16 %} Слайд</button></div>
     <div class="re-list"></div>{{ form.slides }}{{ form.slides.errors }}
     <template><div class="re-row re-plain"><span class="re-handle" title="Перетащите">⋮⋮</span>

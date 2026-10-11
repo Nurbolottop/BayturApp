@@ -223,6 +223,8 @@ class VenueForm(PanelForm, forms.ModelForm):
 
     name = L10nField(label='Название', max_length=80)
     short = L10nField(label='Подзаголовок', required=False, max_length=160)
+    place = L10nField(label='Место', required=False, max_length=60,
+                      help_text='Название места в приложении: «Тоо-Ашуу», «Суусамыр»')
     description = L10nField(label='Описание', required=False, textarea=True, rows=4)
     address = L10nField(label='Адрес', required=False, max_length=300)
     contacts = JSONListField(required=False)
@@ -230,7 +232,7 @@ class VenueForm(PanelForm, forms.ModelForm):
 
     class Meta:
         model = Venue
-        fields = ['name', 'short', 'description', 'address', 'cover', 'phone', 'whatsapp', 'email', 'maps_url',
+        fields = ['name', 'short', 'place', 'description', 'address', 'cover', 'phone', 'whatsapp', 'email', 'maps_url',
                   'two_gis_url', 'is_open', 'early_booking_enabled', 'accent', 'contacts', 'info', 'sort_order',
                   'is_active']
         widgets = {'cover': forms.HiddenInput, 'accent': forms.TextInput(attrs={'type': 'color'})}
@@ -454,6 +456,8 @@ class PromotionForm(PanelForm, forms.ModelForm):
     title = L10nField(label='Название', max_length=120)
     description = L10nField(label='Описание', required=False, textarea=True, rows=3)
     tag = L10nField(label='Бейдж', required=False, max_length=30)
+    note = L10nField(label='Условие на карточке', required=False, max_length=80,
+                     help_text='Мелкая строка под ценой, например «по будням»')
     weekdays = forms.TypedMultipleChoiceField(label='Дни недели', choices=WEEKDAYS, coerce=int, required=False,
                                               widget=forms.CheckboxSelectMultiple)
     tiers = forms.MultipleChoiceField(label='Уровни', required=False, widget=forms.CheckboxSelectMultiple)
@@ -463,8 +467,9 @@ class PromotionForm(PanelForm, forms.ModelForm):
         fields = ['title', 'description', 'tag', 'kind', 'value', 'scope', 'venues', 'sections', 'items',
                   'gift_item', 'bundle_items', 'bundle_price', 'starts_at', 'ends_at', 'weekdays', 'time_from',
                   'time_to', 'min_quantity', 'min_amount', 'audience', 'tiers', 'group_min', 'stackable',
-                  'usage_limit', 'sort_order', 'is_active']
+                  'usage_limit', 'note', 'image', 'show_on_home', 'sort_order', 'is_active']
         widgets = {
+            'image': forms.HiddenInput,
             'starts_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
             'ends_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
             'time_from': forms.TimeInput(attrs={'type': 'time'}, format='%H:%M'),
@@ -531,10 +536,12 @@ class SectionForm(PanelForm, forms.ModelForm):
     id = forms.SlugField(label='Slug (id)', max_length=60)
     title = L10nField(label='Название', max_length=80)
     note = L10nField(label='Пояснение', required=False, max_length=300)
+    subtitle = L10nField(label='Подзаголовок', required=False, max_length=120)
 
     class Meta:
         model = Section
-        fields = ['id', 'venue', 'parent', 'category', 'title', 'note', 'sort_order', 'is_active']
+        fields = ['id', 'venue', 'parent', 'category', 'title', 'subtitle', 'note', 'cover', 'sort_order', 'is_active']
+        widgets = {'cover': forms.HiddenInput}
         labels = {'venue': 'Объект', 'parent': 'Внутри раздела', 'category': 'Раздел программы (способы оплаты)',
                   'sort_order': 'Порядок', 'is_active': 'Показывать'}
 

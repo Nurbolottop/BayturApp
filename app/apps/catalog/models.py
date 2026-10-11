@@ -73,6 +73,7 @@ class Venue(models.Model):
     app = models.CharField('Приложение', max_length=10, choices=AppChoice.choices, default=AppChoice.RESORT)
     name = models.JSONField('Название', default=dict)
     short = models.JSONField('Подзаголовок', default=dict, blank=True)
+    place = models.JSONField('Место', default=dict, blank=True, help_text='«Тоо-Ашуу», «Суусамыр» — поле place в /services')
     description = models.JSONField('Описание', default=dict, blank=True)
     address = models.JSONField('Адрес', default=dict, blank=True)
     cover = models.CharField('Обложка', max_length=500, blank=True)
