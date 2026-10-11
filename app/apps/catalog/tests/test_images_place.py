@@ -80,3 +80,27 @@ class ImagesAndPlaceTests(BaseAPITestCase):
         self.assertEqual(r.status_code, 204, r.content)
         self.api.post('/api/v1/me/devices', {'token': 't-resort', 'platform': 'android'}, format='json')
         self.assertEqual(dict(Device.objects.values_list('token', 'app')), {'t-sk': 'sk', 't-resort': 'resort'})
+
+
+class ImportPhotosTests(BaseAPITestCase):
+    def test_import_idempotent(self):
+        import json
+        import tempfile
+        call_command('load_venues', stdout=StringIO())
+        folder = tempfile.mkdtemp()
+        for name, color in (('a.jpg', (200, 10, 10)), ('b.jpg', (10, 200, 10))):
+            Image.new('RGB', (1600, 1200), color).save(f'{folder}/{name}', 'JPEG')
+        item = Item.objects.filter(venue_id='ski').first()
+        section = Section.objects.filter(venue_id='ski', parent__isnull=True).first()
+        mapping = f'{folder}/map.json'
+        with open(mapping, 'w') as fh:
+            json.dump({'items': {item.pk: {'image': 'a.jpg', 'gallery': ['a.jpg', 'b.jpg']}},
+                       'sections': {section.pk: {'cover': 'b.jpg'}},
+                       'showcases': {'ski': {'hero_image': 'a.jpg'}}}, fh)
+        call_command('import_photos', mapping, folder, stdout=StringIO())
+        call_command('import_photos', mapping, folder, stdout=StringIO())
+        item.refresh_from_db()
+        section.refresh_from_db()
+        self.assertTrue(item.image.startswith('uploads/import/'))
+        self.assertEqual(len(item.gallery), 1)                      # главное фото не дублируется, повтор — без копий
+        self.assertTrue(section.cover and Showcase.objects.get(venue_id='ski').hero_image == item.image)
