@@ -101,8 +101,14 @@ def showcase_edit(request):
     from apps.catalog.models import Item, Promotion
     from apps.catalog.promotions import covers
     items = list(Item.objects.filter(venue=venue, is_active=True).select_related('section__parent'))
-    promos = [p for p in Promotion.objects.filter(show_on_home=True, is_active=True).prefetch_related(
-        'items', 'sections', 'venues') if any(covers(p, i) for i in items)]
+    promos = []
+    for p in Promotion.objects.filter(show_on_home=True, is_active=True).prefetch_related('items', 'sections', 'venues'):
+        # covers() ждёт охват, подготовленный как в active_promotions(); здесь — и запланированные акции
+        p._venue_ids = {v.pk for v in p.venues.all()}
+        p._section_ids = {s.pk for s in p.sections.all()}
+        p._item_ids = {i.pk for i in p.items.all()}
+        if any(covers(p, i) for i in items):
+            promos.append(p)
     return render(request, 'panel/modes/showcase.html', {
         'form': form, 'news': news, 'venue': venue, 'promos': promos,
         'showcase_icons': [(k, SHOWCASE_ICON_LABELS.get(k, k)) for k in SHOWCASE_ICONS]})

@@ -196,6 +196,13 @@ class ModesPanelTests(BaseAPITestCase):
         self.assertEqual(venue.info[1]['text']['ru'], '3 часа')
         self.assertEqual([(c['phone'], c['whatsapp']) for c in venue.contacts], [('+996 700 000 000', True)])
 
+    def test_showcase_page_with_home_promotions(self):
+        Promotion.objects.update(show_on_home=True)                  # акции «на главной» — страница не падает
+        self.c.get('/panel/mode/ski/')
+        r = self.c.get('/panel/showcase/')
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Трансфер по суперцене')
+
     def test_resort_hides_eternal(self):
         self.c.get('/panel/mode/resort/')
         self.assertNotContains(self.c.get('/panel/catalog/'), '/panel/eternal/')
