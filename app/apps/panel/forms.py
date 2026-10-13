@@ -229,12 +229,13 @@ class VenueForm(PanelForm, forms.ModelForm):
     address = L10nField(label='Адрес', required=False, max_length=300)
     contacts = JSONListField(required=False)
     info = JSONListField(required=False)
+    live = JSONListField(required=False)
 
     class Meta:
         model = Venue
         fields = ['name', 'short', 'place', 'description', 'address', 'cover', 'phone', 'whatsapp', 'email', 'maps_url',
-                  'two_gis_url', 'is_open', 'early_booking_enabled', 'accent', 'contacts', 'info', 'sort_order',
-                  'is_active']
+                  'two_gis_url', 'is_open', 'early_booking_enabled', 'accent', 'contacts', 'info', 'live',
+                  'sort_order', 'is_active']
         widgets = {'cover': forms.HiddenInput, 'accent': forms.TextInput(attrs={'type': 'color'})}
         labels = {'sort_order': 'Порядок', 'is_active': 'Показывать'}
 
@@ -243,6 +244,25 @@ class VenueForm(PanelForm, forms.ModelForm):
         # вид блока для редактора: текст или таблица «название — значение»
         self.initial['info'] = [{**b, 'kind': 'rows' if b.get('rows') else 'text'}
                                 for b in (self.instance.info or [])]
+
+    def clean_live(self):
+        out = []
+        for r in _json_list(self.cleaned_data.get('live') or []):
+            value, title = _l10n(r.get('value')), _l10n(r.get('title'))
+            if not value['ru'] and not title['ru']:
+                continue
+            if not value['ru']:
+                raise ValidationError('В сводке у каждой строки нужно значение (RU), например «−8°»')
+            out.append({'value': value, 'title': title})
+        if len(out) > 4:
+            raise ValidationError('В сводке не больше 4 строк')
+        return out
+
+    def save(self, commit=True):
+        if 'live' in self.changed_data and self.instance.live != self.initial.get('live'):
+            from django.utils import timezone
+            self.instance.live_updated_at = timezone.now()  # «обновлено в 08:30» в приложении
+        return super().save(commit)
 
     def clean_contacts(self):
         out = []
@@ -594,8 +614,8 @@ class ItemForm(PanelForm, forms.ModelForm):
     class Meta:
         model = Item
         fields = ['id', 'venue', 'section', 'category', 'outlet', 'title', 'meta', 'image', 'gallery', 'price',
-                  'price_note', 'season_from', 'season_to', 'tag', 'description', 'features', 'sort_order',
-                  'is_active']
+                  'price_note', 'season_from', 'season_to', 'tag', 'description', 'features', 'in_from_price',
+                  'sort_order', 'is_active']
         widgets = {'image': forms.HiddenInput, 'season_from': forms.DateInput(attrs={'type': 'date'}),
                    'season_to': forms.DateInput(attrs={'type': 'date'})}
         labels = {'venue': 'Объект', 'section': 'Подраздел', 'category': 'Раздел', 'outlet': 'Точка обслуживания',

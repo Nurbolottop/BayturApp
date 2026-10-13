@@ -89,7 +89,8 @@ class LoadVenuesTests(BaseAPITestCase):
     def test_load_is_create_only_and_valid(self):
         from apps.catalog import venues_data as D
         call_command('load_venues', stdout=StringIO())
-        self.assertEqual(Item.objects.filter(venue__in=[v['id'] for v in D.VENUES]).count(), len(D.ITEMS))
+        from apps.catalog.management.commands.load_venues import BILLS
+        self.assertEqual(Item.objects.filter(venue__in=[v['id'] for v in D.VENUES]).count(), len(D.ITEMS) + len(BILLS))
         # правка из админки не перезаписывается повторной загрузкой
         item = Item.objects.get(pk=D.ITEMS[0]['id'])
         item.price = 1

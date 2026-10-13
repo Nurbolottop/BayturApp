@@ -8089,6 +8089,18 @@ components:
       required:
       - url
       - version
+    LiveRow:
+      type: object
+      properties:
+        value:
+          type: string
+          description: 'крупно: «−8°», «40 см», «3 из 3»'
+        title:
+          type: string
+          description: 'подпись: «на склоне», «снега», «трассы открыты»'
+      required:
+      - title
+      - value
     LogoutInputRequest:
       type: object
       properties:
@@ -9980,6 +9992,16 @@ components:
           allOf:
           - $ref: '#/components/schemas/Eternal'
           nullable: true
+        live:
+          type: array
+          items:
+            $ref: '#/components/schemas/LiveRow'
+          description: живая сводка под шапкой, 0–4 строки; пусто — блока нет
+        liveUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: когда сводку обновили в админке
       required:
       - cta
       - ctaSection
@@ -9987,6 +10009,8 @@ components:
       - facts
       - heroImage
       - heroImageNight
+      - live
+      - liveUpdatedAt
       - mode
       - news
       - offers

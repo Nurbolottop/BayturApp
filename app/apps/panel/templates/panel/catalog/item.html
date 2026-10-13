@@ -46,6 +46,7 @@
         <div class="form-grid">
           {% include 'panel/components/field.html' with f=form.price %}
           {% include 'panel/components/field.html' with f=form.price_note %}
+          {% include 'panel/components/field.html' with f=form.in_from_price %}
           {% include 'panel/components/field.html' with f=form.season_from %}
           {% include 'panel/components/field.html' with f=form.season_to %}
           <div class="field"><span class="label">{{ form.pricing_type.label }}</span><div class="checks">{% for r in form.pricing_type %}<label>{{ r.tag }} {{ r.choice_label }}</label>{% endfor %}</div></div>

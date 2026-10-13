@@ -813,6 +813,11 @@ class ShowcaseNews(s.Serializer):
     articleId = s.CharField(allow_null=True)
 
 
+class LiveRow(s.Serializer):
+    value = s.CharField(help_text='крупно: «−8°», «40 см», «3 из 3»')
+    title = s.CharField(help_text='подпись: «на склоне», «снега», «трассы открыты»')
+
+
 class Showcase(s.Serializer):
     mode = s.ChoiceField(choices=['resort', 'ski', 'kymyz'])
     season = s.CharField(allow_null=True)
@@ -827,6 +832,8 @@ class Showcase(s.Serializer):
     offers = ShowcaseOffer(many=True)
     news = ShowcaseNews(many=True)
     eternal = Eternal(allow_null=True)
+    live = LiveRow(many=True, help_text='живая сводка под шапкой, 0–4 строки; пусто — блока нет')
+    liveUpdatedAt = s.DateTimeField(allow_null=True, help_text='когда сводку обновили в админке')
 
 
 class ServicePromo(s.Serializer):

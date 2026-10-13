@@ -25,6 +25,17 @@
     {% include 'panel/components/field.html' with f=form.sort_order %}
     {% include 'panel/components/field.html' with f=form.is_active %}
   </div></section>
+  <section class="card appear rows-editor" data-rows="id_live">
+    <div class="card-head"><div><div class="h3">Живая сводка на главной</div><div class="small muted">До 4 строк под шапкой: погода, снег, трассы; летом — погода и свежий кымыз. Обновляйте утром — в приложении видно «обновлено в …»{% if venue.live_updated_at %}. Последнее обновление: {{ venue.live_updated_at|date:"d.m H:i" }}{% endif %}</div></div>
+      <button type="button" class="btn btn-s" data-add>{% icon 'plus' 16 %} Строка</button></div>
+    <div class="re-list"></div>{{ form.live }}{{ form.live.errors }}
+    <template><div class="re-row re-plain"><span class="re-handle" title="Перетащите">⋮⋮</span>
+      <div class="re-fields">
+        <div class="re-langs"><input data-k="value.ru" placeholder="Значение RU: −8°, 40 см, 3 из 3"><input data-k="value.ky" placeholder="KY"><input data-k="value.en" placeholder="EN"></div>
+        <div class="re-langs"><input data-k="title.ru" placeholder="Подпись RU: на склоне, снега, трассы открыты"><input data-k="title.ky" placeholder="KY"><input data-k="title.en" placeholder="EN"></div>
+      </div>
+      <button type="button" class="btn btn-icon btn-s btn-ghost re-rm" title="Удалить">✕</button></div></template>
+  </section>
   <section class="card appear rows-editor" data-rows="id_contacts">
     <div class="card-head"><div><div class="h3">Контакты</div><div class="small muted">Телефоны и почта на экране «Контакты» в приложении</div></div>
       <button type="button" class="btn btn-s" data-add>{% icon 'plus' 16 %} Контакт</button></div>

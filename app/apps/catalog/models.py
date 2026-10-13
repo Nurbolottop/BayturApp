@@ -89,6 +89,9 @@ class Venue(models.Model):
     accent = models.CharField('Цвет в админке', max_length=9, default='#C6F24E')
     contacts = models.JSONField('Контакты', default=list, blank=True)
     info = models.JSONField('Инфоблоки', default=list, blank=True)
+    live = models.JSONField('Живая сводка', default=list, blank=True,
+                            help_text='[{value: l10n, title: l10n}] — до 4 строк под шапкой главной')
+    live_updated_at = models.DateTimeField('Сводка обновлена', null=True, blank=True)
     sort_order = models.IntegerField(default=0)
     is_active = models.BooleanField('Показывать', default=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -267,6 +270,8 @@ class Item(models.Model):
                                   help_text='«за сутки», «500 сом в час», «от 10 000 до 22 000», «бесплатно»')
     price_up_to = models.PositiveIntegerField('Цена до (вилка)', null=True, blank=True)
     price_on_request = models.BooleanField('Цену уточняйте', default=False)
+    in_from_price = models.BooleanField('Учитывать в цене «от»', default=True,
+                                        help_text='Выключите для доп. мест, детей, завтраков — «от» считается по номерам')
     unit = models.CharField('Единица', max_length=20, choices=ServiceUnit.choices, blank=True)
     action = models.CharField('Кнопка в карточке', max_length=20, choices=ServiceAction.choices,
                               default=ServiceAction.PAY_CASHIER)

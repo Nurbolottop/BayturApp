@@ -208,6 +208,10 @@ def build_showcase(mode, venue):
         'offers': offers,
         'news': news,
         'eternal': _eternal_payload(eternal) if eternal else None,
+        # живая сводка под шапкой: погода, снег, трассы / свежесть кымыза — правится в «Объекте»
+        'live': [{'value': tr(r.get('value')), 'title': tr(r.get('title')) or ''}
+                 for r in (venue.live or []) if tr(r.get('value'))][:4],
+        'liveUpdatedAt': venue.live_updated_at.isoformat() if venue.live_updated_at else None,
     }
 
 

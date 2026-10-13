@@ -31,6 +31,18 @@ def item_unit(item, section_kind):
     return {'night': 'night', 'guest': 'person', 'session': 'session', 'hour': 'hour'}.get(unit, 'visit')
 
 
+def L(ru, ky, en):
+    return {'ru': ru, 'ky': ky, 'en': en}
+
+
+BILLS = [
+    ('ski-cafe-bill', 'ski-cafe', L('Счёт кафе', 'Кафенин эсеби', 'Café bill')),
+    ('ski-bar-bill', 'ski-bar', L('Счёт бара', 'Бардын эсеби', 'Bar bill')),
+    ('kymyz-kymyz-bill', 'kymyz-kymyz', L('Счёт', 'Эсеп', 'Bill')),
+]
+NOT_FROM = ('extra-bed', 'kids', 'breakfast', 'adults-kids')
+
+
 def item_action(section_kind):
     """Пока нет броней (этап 4 ТЗ): меню — справочно, остальное — оплата у кассира."""
     return 'info' if section_kind == 'menu' else 'pay_cashier'
@@ -107,6 +119,22 @@ class Command(BaseCommand):
                     'features': i.get('features') or [], 'description': i.get('description') or {},
                     'tag': i.get('tag') or {}, 'sort_order': i.get('sort_order', 0),
                     'season_from': _date(i.get('season_from')), 'season_to': _date(i.get('season_to'))})
+            # «Счёт» по чеку в меню кафе, бара и кымыза; «от» у проживания — только по номерам
+            for item_id, section_id, title in BILLS:
+                section = Section.objects.filter(pk=section_id).first()
+                if section is None:
+                    continue
+                add(Item, 'items', item_id, {
+                    'venue_id': section.venue_id, 'section': section, 'category_id': section.category_id,
+                    'outlet_id': section_id if Outlet.objects.filter(pk=section_id).exists() else None,
+                    'title': title, 'meta': L('Сумма по чеку', 'Чек боюнча сумма', 'Amount from the receipt'),
+                    'price': 0, 'price_on_request': True, 'pricing': {'type': 'check', 'min': 100, 'max': 200000},
+                    'price_note': L('введите сумму по чеку', 'чектеги сумманы жазыңыз', 'enter the receipt amount'),
+                    'unit': 'none', 'action': 'pay_cashier', 'sort_order': -100, 'in_from_price': False})
+            if created['items']:  # только при первой загрузке — правки из админки не перезаписываются
+                Item.objects.filter(section__kind='stay').exclude(unit='night').update(in_from_price=False)
+                for part in NOT_FROM:
+                    Item.objects.filter(section__kind='stay', id__contains=part).update(in_from_price=False)
             for venue_id, sc in getattr(D, 'SHOWCASES', {}).items():
                 if Showcase.objects.filter(venue_id=venue_id).exists():
                     continue

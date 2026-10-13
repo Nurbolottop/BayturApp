@@ -249,8 +249,11 @@ def services_section_payload(section, children, items_of, promotions, now, ps):
             groups.append({'id': child.key or child.id, 'title': tr(child.title), 'cover': image_payload(child.cover),
                            'items': [service_payload(i, kind, promotions, now, ps) for i in items]})
     all_items = [i for g in groups for i in g['items']]
+    # «от» — только по основным позициям (без доп. мест, детей, завтраков, счёта по чеку)
+    from_ids = {i.id for its in [items_of.get(section.id) or []] + [items_of.get(c.id) or [] for c in children]
+                for i in its if i.in_from_price}
     prices = [(i['promo'] or {}).get('price') or i['price'] for i in all_items
-              if i['price'] is not None and ((i['promo'] or {}).get('price') or i['price'])]
+              if i['id'] in from_ids and i['price'] is not None and ((i['promo'] or {}).get('price') or i['price'])]
     rate = section.cashback_rate if section.cashback_rate is not None else (ps or ProgramSettings.get()).base_cashback_rate
     return {
         'id': section.key or section.id,
