@@ -19,7 +19,7 @@ from apps.loyalty.models import PERK_ICONS, Privilege, Tier
 from apps.members.models import Language, LegalDocument
 from apps.notifications.models import Campaign, PushTemplate
 from apps.staff.models import StaffUser
-from apps.staff.roles import Role
+from apps.staff.roles import RoleKind, role_choices, role_kind
 
 LANG_LABELS = {'ru': 'RU', 'ky': 'KY', 'en': 'EN'}
 
@@ -1073,8 +1073,8 @@ class LegalForm(forms.ModelForm):
 
 class StaffUserForm(forms.ModelForm):
     """
-    Директор: email + пароль (+ 2FA при входе) — веб-панель.
-    Администратор кассы: телефон + 6-значный PIN + точки — приложение кассира.
+    Роли веб-панели (Директор, Маркетинг…): email + пароль (+ 2FA при входе).
+    Роли приложения кассира (Администратор кассы): телефон + 6-значный PIN + точки.
     """
 
     password = forms.CharField(label='Пароль', required=False, widget=forms.PasswordInput(render_value=False),
@@ -1094,6 +1094,8 @@ class StaffUserForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['email'].required = False
+        self.fields['role'] = forms.ChoiceField(label='Роль', choices=role_choices(),
+                                                initial=self.instance.role if self.instance.pk else 'staff')
         self.fields['phone'].widget.attrs.update({'placeholder': '+996 555 000 000', 'inputmode': 'tel'})
 
     def clean_email(self):
@@ -1129,7 +1131,7 @@ class StaffUserForm(forms.ModelForm):
         from apps.staff.auth import validate_pin
         d = super().clean()
         creating = not self.instance.pk
-        if d.get('role') == Role.STAFF:
+        if role_kind(d.get('role')) == RoleKind.APP:
             if not d.get('phone') and 'phone' not in self.errors:
                 self.add_error('phone', 'Администратор входит по номеру телефона')
             if not d.get('outlets'):
@@ -1143,7 +1145,7 @@ class StaffUserForm(forms.ModelForm):
                     self.add_error('pin', '; '.join((e.extra or {}).get('fields', {}).get('pin', [])) or 'неверный PIN')
         else:
             if not d.get('email') and 'email' not in self.errors:
-                self.add_error('email', 'Директор входит в панель по email')
+                self.add_error('email', 'В веб-панель входят по email')
             no_password = creating or not self.instance.has_usable_password()
             if no_password and not d.get('password'):
                 self.add_error('password', 'Задайте пароль')
@@ -1159,7 +1161,7 @@ class StaffUserForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         d = self.cleaned_data
-        if d.get('role') == Role.STAFF:
+        if role_kind(d.get('role')) == RoleKind.APP:
             if not self.instance.pk or user.has_usable_password():
                 user.set_unusable_password()  # в веб-панель администратор не входит
             user.totp_enabled, user.totp_secret = False, ''
@@ -1216,4 +1218,27 @@ class PasswordChangeForm(forms.Form):
         d = super().clean()
         if d.get('new') and d.get('new2') and d['new'] != d['new2']:
             self.add_error('new2', 'Пароли не совпадают')
+        return d
+
+
+# ---------------------------------------------------------------- подарок за регистрацию
+
+class WelcomeOfferForm(PanelForm, forms.ModelForm):
+    title = L10nField(label='Название купона', max_length=80, required=False)
+    description = L10nField(label='Описание', required=False, textarea=True, rows=2)
+    terms = L10nField(label='Условия (мелким шрифтом)', required=False, textarea=True, rows=2)
+
+    class Meta:
+        from apps.coupons.models import WelcomeOffer
+        model = WelcomeOffer
+        fields = ['enabled', 'kind', 'value', 'title', 'description', 'terms', 'valid_days']
+
+    def clean(self):
+        d = super().clean()
+        if d.get('enabled') and not (d.get('title') or {}).get('ru'):
+            self.add_error('title', 'Чтобы включить подарок, задайте название на русском')
+        if d.get('enabled') and d.get('kind') in ('percent', 'amount') and not d.get('value'):
+            self.add_error('value', 'Укажите размер скидки')
+        if d.get('kind') == 'percent' and (d.get('value') or 0) > 100:
+            self.add_error('value', 'Не больше 100%')
         return d

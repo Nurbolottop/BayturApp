@@ -1,0 +1,59 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}{% if role %}{{ role.name }}{% else %}Новая роль{% endif %}{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:roles' %}">{% icon 'arrow-left' 14 %} Роли</a></div>
+  <h1 class="page-title">{% if role %}{{ role.name }}{% else %}Новая роль{% endif %}</h1>
+  {% if locked %}<div class="muted" style="margin-top:6px">У директора всегда все права — их нельзя отключить.</div>{% endif %}</div></div>
+
+<form method="post" class="stack" novalidate>
+  {% csrf_token %}
+  <div class="card stack-s appear">
+    <div class="form-grid">
+      <div class="field{% if errors.name %} has-error{% endif %}"><label for="role-name">Название</label>
+        <input id="role-name" type="text" class="input" name="name" value="{{ name }}" maxlength="60" {% if locked %}disabled{% endif %} placeholder="Например, Маркетинг">
+        {% if errors.name %}<div class="err">{{ errors.name }}</div>{% endif %}</div>
+      <div class="field{% if errors.kind %} has-error{% endif %}"><label for="role-kind">Где работает</label>
+        <select id="role-kind" name="kind" {% if locked or role.is_system %}disabled{% endif %}>
+          {% for v, l in kinds %}<option value="{{ v }}" {% if kind == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select>
+        {% if errors.kind %}<div class="err">{{ errors.kind }}</div>{% endif %}</div>
+    </div>
+    {% if errors.perm %}<div class="banner warn">{% icon 'warning' 18 %}<span>{{ errors.perm }}</span></div>{% endif %}
+  </div>
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
+    {% for title, perms in groups %}
+    <div class="card stack-s appear">
+      <div class="row-between"><div class="h3">{{ title }}</div>
+        {% if not locked %}<button type="button" class="btn btn-s btn-ghost" data-toggle-group>Все</button>{% endif %}</div>
+      {% for p, label, on in perms %}
+        <label class="check"><input type="checkbox" name="perm" value="{{ p }}" {% if on %}checked{% endif %} {% if locked %}disabled{% endif %}> <span>{{ label }}</span></label>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if users %}<div class="card stack-s appear"><div class="h3">Сотрудники с этой ролью</div>
+    <div class="small">{% for u in users %}<a href="{% url 'panel:staff-edit' u.pk %}">{{ u.full_name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</div></div>{% endif %}
+
+  {% if not locked %}<div class="form-actions"><a class="btn btn-ghost" href="{% url 'panel:roles' %}">Отмена</a><button class="btn btn-accent btn-l">Сохранить</button></div>{% endif %}
+</form>
+
+{% if role and not role.is_system %}
+<form method="post" action="{% url 'panel:role-delete' role.pk %}" class="card row-between wrap appear" style="margin-top:18px" data-confirm="Удалить роль «{{ role.name }}»?">
+  {% csrf_token %}<div class="small muted">Удалить можно роль без сотрудников.</div>
+  <button class="btn btn-danger">{% icon 'trash' 18 %} Удалить роль</button>
+</form>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-toggle-group]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var boxes = b.closest('.card').querySelectorAll('input[type=checkbox]');
+    var all = Array.prototype.every.call(boxes, function (x) { return x.checked; });
+    boxes.forEach(function (x) { x.checked = !all; });
+  });
+});
+</script>
+{% endblock %}

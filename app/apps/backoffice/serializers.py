@@ -20,7 +20,7 @@ from apps.loyalty.models import PERK_ICONS, Privilege, Tier
 from apps.members.models import LegalDocument, LegalKind
 from apps.notifications.models import Campaign, PushTemplate
 from apps.staff.models import StaffUser
-from apps.staff.roles import Role
+from apps.staff.roles import RoleKind, role_choices, role_kind
 
 
 # ---------------------------------------------------------------- общие поля
@@ -636,7 +636,7 @@ class StaffSerializer(serializers.ModelSerializer):
 
     email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
     fullName = serializers.CharField(source='full_name', max_length=150)
-    role = serializers.ChoiceField(choices=Role.choices)
+    role = serializers.ChoiceField(choices=())
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
     outletIds = serializers.PrimaryKeyRelatedField(source='outlets', queryset=Outlet.objects.all(), many=True,
                                                    required=False)
@@ -652,6 +652,10 @@ class StaffSerializer(serializers.ModelSerializer):
                   'lastLogin', 'createdAt']
         read_only_fields = ['id']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['role'].choices = role_choices()
+
     def get_pinSet(self, obj):
         return bool(obj.pin_hash)
 
@@ -661,7 +665,7 @@ class StaffSerializer(serializers.ModelSerializer):
         phone = attrs.get('phone', getattr(self.instance, 'phone', ''))
         outlets = attrs['outlets'] if 'outlets' in attrs else (
             list(self.instance.outlets.all()) if self.instance is not None else [])
-        if role == Role.STAFF:
+        if role_kind(role) == RoleKind.APP:
             if not phone:
                 raise serializers.ValidationError({'phone': ['администратор входит по телефону']})
             if not outlets:

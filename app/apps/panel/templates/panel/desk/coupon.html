@@ -1,0 +1,30 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Купон{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:desk-members' %}">{% icon 'arrow-left' 14 %} Клиент</a></div><h1 class="page-title">Купон</h1></div></div>
+<div class="card stack appear" style="max-width:640px">
+  <div class="row-between wrap">
+    <div class="row" style="gap:14px"><span class="ic-bubble">{% icon 'gift' 22 %}</span>
+      <div><div class="h3">{{ coupon.title }}</div><div class="small muted">{{ coupon.member.name }} · {{ coupon.member.memberId }} · {{ coupon.member.phone }}</div></div></div>
+    <div class="paid-sum" style="font-size:30px">{{ coupon.valueText }}</div>
+  </div>
+  {% if coupon.description %}<div>{{ coupon.description }}</div>{% endif %}
+  {% if coupon.terms %}<div class="small muted">{{ coupon.terms }}</div>{% endif %}
+  <div class="small muted">Выдан {{ coupon.issuedAt|slice:":10" }}{% if coupon.expiresAt %} · действует до {{ coupon.expiresAt|slice:":10" }}{% endif %}</div>
+  {% if coupon.status == 'active' and not done %}
+    <form method="post" action="{% url 'panel:desk-coupon-redeem' %}" class="stack-s" data-confirm="Погасить купон? Повторно использовать его будет нельзя.">
+      {% csrf_token %}<input type="hidden" name="token" value="{{ token }}">
+      <div class="field"><label for="c-note">Комментарий (необязательно)</label><input id="c-note" class="input" name="note" maxlength="300" placeholder="Например: номер брони"></div>
+      <button class="btn btn-accent btn-xl">{% icon 'check' 20 %} Погасить купон</button>
+      <p class="small muted">Скидку или подарок оформите по условиям купона на кассе. Кнопка только отмечает, что купон использован.</p>
+    </form>
+  {% elif coupon.status == 'redeemed' %}
+    <div class="banner {% if done %}ok{% else %}warn{% endif %}">{% icon 'check' 18 %}<span>{% if done %}Купон погашен{% else %}Купон уже использован{% endif %}{% if coupon.redeemedAt %} — {{ coupon.redeemedAt|slice:":16"|cut:"T" }}{% endif %}{% if coupon.redeemedBy %}, {{ coupon.redeemedBy }}{% endif %}</span></div>
+  {% elif coupon.status == 'expired' %}
+    <div class="banner warn">{% icon 'warning' 18 %}<span>Срок купона истёк</span></div>
+  {% else %}
+    <div class="banner warn">{% icon 'warning' 18 %}<span>Купон недоступен</span></div>
+  {% endif %}
+  <a class="btn" href="{% url 'panel:desk-members' %}">{% icon 'qr' 18 %} Следующий клиент</a>
+</div>
+{% endblock %}

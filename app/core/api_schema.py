@@ -200,6 +200,27 @@ def apply():
         inline_serializer('EventsAccepted', {'accepted': s.IntegerField(), 'dropped': s.IntegerField()}),
         status=202, auth=False)
 
+    # купоны
+    from apps.coupons import api as coupons
+    coupon = inline_serializer('Coupon', {
+        'id': s.CharField(), 'source': s.CharField(), 'kind': s.ChoiceField(choices=['percent', 'amount', 'gift']),
+        'value': s.IntegerField(), 'valueText': s.CharField(), 'title': s.CharField(),
+        'description': s.CharField(allow_null=True), 'terms': s.CharField(allow_null=True),
+        'status': s.ChoiceField(choices=['active', 'redeemed', 'expired', 'cancelled']),
+        'issuedAt': s.DateTimeField(), 'expiresAt': s.DateTimeField(allow_null=True),
+        'redeemedAt': s.DateTimeField(allow_null=True)})
+    doc(coupons.MyCouponsView, 'get', ME, 'Мои купоны (подарок за регистрацию)',
+        response=inline_serializer('CouponsPage', {'items': coupon.__class__(many=True),
+                                                    'nextCursor': s.CharField(allow_null=True)}),
+        params=[o.CURSOR, o.LIMIT])
+    doc(coupons.MyCouponQrView, 'get', ME, 'QR купона для кассира (~90 с)',
+        response=inline_serializer('CouponQr', {'token': s.CharField(), 'expiresAt': s.DateTimeField()}),
+        errors=(401, 404, 409))
+    staff_coupon = inline_serializer('StaffCoupon', {**coupon.fields, 'member': inline_serializer(
+        'CouponMember', {'memberId': s.CharField(), 'name': s.CharField(), 'phone': s.CharField(allow_null=True)}),
+        'redeemedBy': s.CharField(allow_null=True), 'note': s.CharField(allow_null=True)})
+    coupon_in = inline_serializer('CouponTokenInput', {'token': s.CharField(), 'note': s.CharField(required=False)})
+
     # сотрудник
     staff_err = (401, 403, 404, 409, 422)
     doc(staffdesk.QueueView, 'get', STAFF, 'Очередь pending своих точек (старые сверху)',
@@ -259,6 +280,10 @@ def apply():
         errors=(400, 401, 403, 404, 409, 422))
     doc(staffdesk.ReceiptAcceptView, 'post', STAFF, 'Наличные: «Принять оплату» по чеку — проводится сразу',
         receipt_in, o.StaffRequest, status=201, errors=(400, 401, 403, 404, 409, 422))
+    doc(coupons.StaffCouponScanView, 'post', STAFF, 'QR купона → купон', coupon_in, staff_coupon,
+        errors=(400, 401, 403))
+    doc(coupons.StaffCouponRedeemView, 'post', STAFF, 'Погасить купон (один раз)', coupon_in, staff_coupon,
+        errors=(400, 401, 403, 409))
     doc(staffdesk.ShiftView, 'get', STAFF, 'Итог смены',
         response=inline_serializer('Shift', {'date': s.DateField(), 'confirmed': o.StaffRequest(many=True),
                                              'rejected': o.StaffRequest(many=True), 'adjustedCount': s.IntegerField(),

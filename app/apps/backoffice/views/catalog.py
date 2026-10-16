@@ -238,7 +238,7 @@ class PromotionsView(CollectionView):
     model = Promotion
     serializer_class = PromotionSerializer
     audit_name = 'promotion'
-    required_perms = {'GET': CATALOG_READ, 'POST': 'catalog.edit'}
+    required_perms = {'GET': ['catalog.edit', 'catalog.texts', 'promotions.edit'], 'POST': 'promotions.edit'}
 
     def get_queryset(self):
         return Promotion.objects.prefetch_related('venues', 'sections', 'items', 'bundle_items')
@@ -260,4 +260,4 @@ class PromotionDetailView(DetailView):
     model = Promotion
     serializer_class = PromotionSerializer
     audit_name = 'promotion'
-    required_perms = {'GET': CATALOG_READ, 'PATCH': 'catalog.edit', 'PUT': 'catalog.edit', 'DELETE': 'catalog.edit'}
+    required_perms = {'GET': ['catalog.edit', 'catalog.texts', 'promotions.edit'], 'PATCH': 'promotions.edit', 'PUT': 'promotions.edit', 'DELETE': 'promotions.edit'}

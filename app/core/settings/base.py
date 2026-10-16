@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'apps.notifications',
     'apps.complaints',
     'apps.analytics',
+    'apps.coupons',
     'apps.backoffice',
     'apps.panel',
 ]

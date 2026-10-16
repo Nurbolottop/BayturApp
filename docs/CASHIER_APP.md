@@ -167,6 +167,22 @@ WebSocket `wss://app.baytur.kg/api/v1/staff/events?token=<accessToken>` — со
 
 ---
 
+## 7а. Купон «подарок за регистрацию»
+
+Клиент показывает QR купона из приложения (живёт ~90 с) — это другой QR, не QR участника.
+
+1. `POST /staff/coupons/scan` `{token}` → купон: `{id, kind, value, valueText, title, description, terms, status,
+   expiresAt, member: {memberId, name, phone}, redeemedBy, note}`. Показать, что даёт купон и его статус.
+2. `POST /staff/coupons/redeem` `{token, note?}` → купон со статусом `redeemed`. Кнопка только отмечает
+   купон использованным — скидку или подарок кассир оформляет по условиям купона.
+   Ошибки: `invalid_status` 409 (уже использован / истёк — текст в `message`), `qr_invalid` 400 (QR устарел),
+   `own_account` 403.
+
+Подсказка: если сканер получил токен, а `/staff/scan` ответил `qr_invalid`, попробуйте `/staff/coupons/scan`
+(или различайте по экрану, откуда сканируют).
+
+---
+
 ## 8. Обращения своих точек
 
 | Метод | Путь | Ответ |

@@ -9,10 +9,11 @@ log = logging.getLogger(__name__)
 def daily_maintenance():
     """Раз в час проверяет суточные работы; каждая сама решает, пора ли ей."""
     from apps.analytics.services import purge_old_events
+    from apps.coupons.services import expire_coupons
     from apps.members.services import purge_due_members
     from apps.notifications.services import purge_old_notifications
 
-    for job in (purge_due_members, purge_old_notifications, purge_old_events):
+    for job in (purge_due_members, purge_old_notifications, purge_old_events, expire_coupons):
         try:
             job()
         except Exception:

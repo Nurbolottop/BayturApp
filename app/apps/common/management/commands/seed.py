@@ -50,7 +50,8 @@ class Command(BaseCommand):
         for cid, title, sort, rate, share, methods in D.CATEGORIES:
             upsert(Category, {'id': cid}, {
                 'title': title, 'sort_order': sort, 'rate': Decimal(rate), 'max_points_share': Decimal(share),
-                'methods': methods, 'cover': f'seed/categories/{cid}.jpg'})
+                'methods': methods, 'cover': f'seed/categories/{cid}.jpg',
+                'in_resort_app': cid not in D.HIDDEN_IN_RESORT})
 
         promo_end = datetime(2026, 10, 1, tzinfo=ZoneInfo('Asia/Bishkek'))  # «до 30 сентября»
         for i, (iid, cat, outlet, title, meta, price, pricing, promo, tag, desc, features) in enumerate(D.ITEMS):
@@ -137,7 +138,8 @@ class Command(BaseCommand):
 
     COLORS = {  # цвета разделов: градиент сверху вниз
         'rooms': ('#3F4A56', '#C3CCD6'), 'spa': ('#2A3314', '#C6F24E'), 'food': ('#5E4206', '#E6BF58'),
-        'pools': ('#1C3A5E', '#8FD8FF'), 'sport': ('#4A220F', '#D9976A'), None: ('#232C38', '#B4C2D3'),
+        'pools': ('#1C3A5E', '#8FD8FF'), 'sport': ('#4A220F', '#D9976A'),
+        'entertainment': ('#1C3A5E', '#8FD8FF'), 'beach': ('#5E4206', '#F4D58D'), None: ('#232C38', '#B4C2D3'),
     }
 
     def _placeholders(self):

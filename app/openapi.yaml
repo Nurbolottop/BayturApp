@@ -3059,6 +3059,148 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/me/coupons:
+    get:
+      operationId: me_coupons_retrieve
+      description: Мои купоны, новые сверху.
+      summary: Мои купоны (подарок за регистрацию)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: query
+        name: cursor
+        schema:
+          type: string
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: По умолчанию 20
+      tags:
+      - Профиль
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponsPage'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/me/coupons/{coupon_id}/qr:
+    get:
+      operationId: me_coupons_qr_retrieve
+      description: QR купона для кассира (живёт ~90 с, обновлять перед истечением).
+      summary: QR купона для кассира (~90 с)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: coupon_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Профиль
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponQr'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/me/deletion/confirm:
     post:
       operationId: me_deletion_confirm_create
@@ -5274,6 +5416,164 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/staff/coupons/redeem:
+    post:
+      operationId: staff_coupons_redeem_create
+      description: Погасить купон (один раз).
+      summary: Погасить купон (один раз)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouponTokenInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CouponTokenInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffCoupon'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/coupons/scan:
+    post:
+      operationId: staff_coupons_scan_create
+      description: QR купона → что за купон и можно ли погасить.
+      summary: QR купона → купон
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouponTokenInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CouponTokenInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffCoupon'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/staff/me:
     get:
       operationId: staff_me_retrieve
@@ -7338,6 +7638,8 @@ components:
       - food
       - pools
       - sport
+      - entertainment
+      - beach
       type: string
       description: |-
         * `rooms` - Номера
@@ -7345,6 +7647,8 @@ components:
         * `food` - Рестораны
         * `pools` - Бассейны
         * `sport` - Спорт
+        * `entertainment` - Развлечения
+        * `beach` - Пляж
     CauseEnum:
       enum:
       - promotion
@@ -7581,6 +7885,102 @@ components:
             $ref: '#/components/schemas/PendingConsent'
       required:
       - pendingConsents
+    Coupon:
+      type: object
+      properties:
+        id:
+          type: string
+        source:
+          type: string
+        kind:
+          $ref: '#/components/schemas/Kind477Enum'
+        value:
+          type: integer
+        valueText:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        terms:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/StatusAf1Enum'
+        issuedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        redeemedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - description
+      - expiresAt
+      - id
+      - issuedAt
+      - kind
+      - redeemedAt
+      - source
+      - status
+      - terms
+      - title
+      - value
+      - valueText
+    CouponMember:
+      type: object
+      properties:
+        memberId:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+      required:
+      - memberId
+      - name
+      - phone
+    CouponQr:
+      type: object
+      properties:
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+      - expiresAt
+      - token
+    CouponTokenInputRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+        note:
+          type: string
+          minLength: 1
+      required:
+      - token
+    CouponsPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Coupon'
+        nextCursor:
+          type: string
+          nullable: true
+      required:
+      - items
+      - nextCursor
     DeletionConfirmInputRequest:
       type: object
       properties:
@@ -8027,6 +8427,16 @@ components:
       - id
       - image
       - title
+    Kind477Enum:
+      enum:
+      - percent
+      - amount
+      - gift
+      type: string
+      description: |-
+        * `percent` - percent
+        * `amount` - amount
+        * `gift` - gift
     Language:
       enum:
       - ru
@@ -10202,6 +10612,64 @@ components:
           minLength: 1
       required:
       - text
+    StaffCoupon:
+      type: object
+      properties:
+        id:
+          type: string
+        source:
+          type: string
+        kind:
+          $ref: '#/components/schemas/Kind477Enum'
+        value:
+          type: integer
+        valueText:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        terms:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/StatusAf1Enum'
+        issuedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        redeemedAt:
+          type: string
+          format: date-time
+          nullable: true
+        member:
+          $ref: '#/components/schemas/CouponMember'
+        redeemedBy:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+      required:
+      - description
+      - expiresAt
+      - id
+      - issuedAt
+      - kind
+      - member
+      - note
+      - redeemedAt
+      - redeemedBy
+      - source
+      - status
+      - terms
+      - title
+      - value
+      - valueText
     StaffDeviceInputRequest:
       type: object
       properties:
@@ -10554,6 +11022,18 @@ components:
       required:
       - code
       - twoFactorToken
+    StatusAf1Enum:
+      enum:
+      - active
+      - redeemed
+      - expired
+      - cancelled
+      type: string
+      description: |-
+        * `active` - active
+        * `redeemed` - redeemed
+        * `expired` - expired
+        * `cancelled` - cancelled
     Story:
       type: object
       properties:
@@ -11023,6 +11503,8 @@ components:
             * `food` - Рестораны
             * `pools` - Бассейны
             * `sport` - Спорт
+            * `entertainment` - Развлечения
+            * `beach` - Пляж
         rules:
           $ref: '#/components/schemas/CashbackRules'
         sections:

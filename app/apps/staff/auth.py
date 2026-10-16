@@ -55,7 +55,7 @@ def check_password_step(email, password, ip=None):
     if user is None or not user.is_active:
         _fail(key)
         raise ApiError('invalid_credentials', 401)
-    if not user.is_director:
+    if not user.uses_panel:
         raise ApiError('staff_use_app', 403)  # администраторы касс входят в приложение по PIN
     cache.delete(key)
     token = signing.dumps({'u': user.pk}, salt=TWO_FACTOR_SALT)
@@ -119,9 +119,9 @@ def check_pin_login(phone, pin, ip=None):
         user = StaffUser.objects.select_for_update().filter(phone=phone, is_active=True).first()
         if user is not None and user.pin_locked_until and user.pin_locked_until > now:
             error = ApiError('rate_limited', 429, extra={'retryIn': int((user.pin_locked_until - now).total_seconds())})
-        elif user is None or user.is_director or not user.check_pin(pin):
+        elif user is None or user.uses_panel or not user.check_pin(pin):
             _fail(key)
-            if user is not None and not user.is_director:
+            if user is not None and not user.uses_panel:
                 user.pin_failed += 1
                 if user.pin_failed >= PIN_MAX_FAILS:
                     user.pin_failed, user.pin_locked_until = 0, now + PIN_LOCK

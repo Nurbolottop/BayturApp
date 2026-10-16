@@ -14,9 +14,12 @@ class CommonApiTests(BaseAPITestCase):
         r = self.api.get('/api/v1/catalog', HTTP_ACCEPT_LANGUAGE='en')
         self.assertEqual(r.status_code, 200)
         cats = r.json()
-        self.assertEqual([c['id'] for c in cats], ['rooms', 'spa', 'food', 'pools', 'sport'])
+        # «Бассейны» и «Спорт» объединены в «Развлечения», «Пляж» — последним
+        self.assertEqual([c['id'] for c in cats], ['rooms', 'spa', 'food', 'entertainment', 'beach'])
         self.assertEqual(cats[0]['title'], 'Rooms')
-        self.assertEqual(cats[3]['rules']['methods'], ['cash', 'elqr'])
+        self.assertEqual(cats[3]['title'], 'Entertainment')
+        self.assertEqual({i['id'] for i in cats[3]['items']},
+                         {'pools-thermal', 'pools-outdoor', 'pools-kids', 'sport-gym', 'sport-tennis', 'sport-sup'})
         item = next(i for i in cats[1]['items'] if i['id'] == 'spa-bochka')
         self.assertEqual(item['promoRate'], 0.14)
         self.assertEqual(item['cashbackPreview'], 350)   # 2 500 × 14 % (акция)

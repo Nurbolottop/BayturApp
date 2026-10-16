@@ -2,7 +2,7 @@ from django.urls import path
 
 from . import views
 from .views import (admin, auth, campaigns, catalog, complaints, content, desk, members, modes, money, promotions,
-                    reports, season, tiers)
+                    reports, season, tiers, welcome)
 
 app_name = 'panel'
 
@@ -26,6 +26,7 @@ urlpatterns = [
     path('desk/scan/', desk.desk_scan, name='desk-scan'),
     path('desk/shift/', desk.desk_shift, name='desk-shift'),
     path('desk/pay/quote/', desk.desk_pay_quote, name='desk-pay-quote'),
+    path('desk/coupon/redeem/', desk.desk_coupon_redeem, name='desk-coupon-redeem'),
     path('desk/pay/charge/', desk.desk_pay_charge, name='desk-pay-charge'),
     path('r/<str:request_id>/preview/', desk.adjust_preview, name='request-preview'),
     path('r/<str:request_id>/<slug:action>/', desk.request_action, name='request-action'),
@@ -105,5 +106,10 @@ urlpatterns = [
     path('staff/new/', admin.staff_edit, name='staff-new'),
     path('staff/<int:pk>/', admin.staff_edit, name='staff-edit'),
     path('staff/<int:pk>/reset-2fa/', admin.staff_reset_2fa, name='staff-reset-2fa'),
+    path('welcome/', welcome.welcome, name='welcome'),
+    path('roles/', admin.roles_list, name='roles'),
+    path('roles/new/', admin.role_edit, name='role-new'),
+    path('roles/<slug:role_id>/', admin.role_edit, name='role'),
+    path('roles/<slug:role_id>/delete/', admin.role_delete, name='role-delete'),
     path('audit/', admin.audit_log, name='audit'),
 ]

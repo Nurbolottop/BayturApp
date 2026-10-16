@@ -42,16 +42,16 @@ def promotions(request):
                      'used': used(p) if p.usage_limit is not None else None})
     return render(request, 'panel/promotions/list.html', {
         'rows': rows, 'venue': venue,
-        'can_edit': request.user.can('catalog.edit')})
+        'can_edit': request.user.can('promotions.edit')})
 
 
 @panel_view('promotions')
 def promotion_edit(request, promotion_id=None):
     promo = get_object_or_404(Promotion, pk=promotion_id) if promotion_id else None
-    if not request.user.can('catalog.edit') and promo is None:
+    if not request.user.can('promotions.edit') and promo is None:
         return forbidden(request, 'Создавать акции может директор')
     form = PromotionForm(request.POST or None, instance=promo)
-    if not request.user.can('catalog.edit'):
+    if not request.user.can('promotions.edit'):
         form.lock([n for n in form.fields if n not in ('title', 'description', 'tag')])
     if request.method == 'POST' and form.is_valid():
         before = model_snapshot(promo) if promo else None
@@ -69,7 +69,7 @@ def promotion_edit(request, promotion_id=None):
 
 
 @require_POST
-@panel_view(perm='catalog.edit')
+@panel_view(perm='promotions.edit')
 def promotion_toggle(request, promotion_id):
     promo = get_object_or_404(Promotion, pk=promotion_id)
     promo.is_active = not promo.is_active

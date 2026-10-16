@@ -5,7 +5,7 @@ from django.db import models
 from django.db.models.functions import Lower
 from django.utils import timezone
 
-from .roles import Role, role_has
+from .roles import Role, RoleKind, forget_roles, role_has, role_kind
 
 
 class StaffManager(BaseUserManager):
@@ -34,7 +34,7 @@ class StaffUser(AbstractBaseUser, PermissionsMixin):
 
     email = models.EmailField('Email', unique=True, null=True, blank=True)
     full_name = models.CharField('Имя', max_length=150)
-    role = models.CharField('Роль', max_length=20, choices=Role.choices, default=Role.STAFF)
+    role = models.CharField('Роль', max_length=30, default=Role.STAFF, help_text='id роли StaffRole')
     phone = models.CharField('Телефон', max_length=20, blank=True,
                              help_text='Вход администратора в приложение; сотрудник не подтверждает заявки '
                                        'своего клиентского аккаунта')
@@ -72,6 +72,16 @@ class StaffUser(AbstractBaseUser, PermissionsMixin):
     def is_director(self):
         return self.role == Role.OWNER or self.is_superuser
 
+    @property
+    def uses_panel(self):
+        """Входит в веб-панель (email + пароль + 2FA); иначе — в приложение кассира по PIN."""
+        return self.is_superuser or role_kind(self.role) == RoleKind.PANEL
+
+    @property
+    def role_label(self):
+        from .roles import role_name
+        return role_name(self.role)
+
     # PIN (приложение кассира)
     def set_pin(self, pin):
         from django.contrib.auth.hashers import make_password
@@ -96,7 +106,7 @@ class StaffUser(AbstractBaseUser, PermissionsMixin):
     @property
     def is_outlet_bound(self):
         """Сотрудник видит только свои точки; остальные роли — все."""
-        return self.role == Role.STAFF and not self.is_superuser
+        return not self.uses_panel
 
     def sees_outlet(self, outlet_id):
         return not self.is_outlet_bound or outlet_id in self.outlet_ids
@@ -135,3 +145,34 @@ class StaffDevice(models.Model):
     app_version = models.CharField(max_length=20, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class StaffRole(models.Model):
+    """
+    Роль сотрудника и её права. Системные: owner (Директор — все права, не редактируется) и staff
+    (Администратор кассы). Остальные роли директор создаёт в панели и отмечает права галочками.
+    """
+
+    id = models.SlugField('Код', primary_key=True, max_length=30)
+    name = models.CharField('Название', max_length=60)
+    kind = models.CharField('Где работает', max_length=10, choices=RoleKind.choices, default=RoleKind.PANEL)
+    permissions = models.JSONField('Права', default=list, blank=True)
+    is_system = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Роль'
+        verbose_name_plural = 'Роли'
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        forget_roles()
+
+    def delete(self, *args, **kwargs):
+        result = super().delete(*args, **kwargs)
+        forget_roles()
+        return result

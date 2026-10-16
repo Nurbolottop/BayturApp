@@ -1,0 +1,16 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Роли{% endblock %}
+{% block content %}
+<div class="topbar"><div><h1 class="page-title">Роли</h1><div class="muted" style="margin-top:6px">Что может каждая роль. Директор — все права всегда.</div></div>
+  <div class="actions"><a class="btn btn-accent" href="{% url 'panel:role-new' %}">{% icon 'plus' 18 %} Роль</a></div></div>
+<div class="card flush appear"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Роль</th><th>Где работает</th><th class="n">Прав</th><th class="n">Сотрудников</th></tr></thead>
+  <tbody>{% for r in rows %}
+    <tr class="link" data-href="{% url 'panel:role' r.role.pk %}">
+      <td><div class="title-cell"><span class="ic-bubble s">{% icon 'key' 16 %}</span><div><b>{{ r.role.name }}</b><span class="small muted">{% if r.role.is_system %}системная{% else %}своя роль{% endif %}</span></div></div></td>
+      <td class="small">{% if r.role.kind == 'app' %}Приложение кассира{% else %}Веб-панель{% endif %}</td>
+      <td class="n tabular">{{ r.perms }} из {{ total }}</td>
+      <td class="n tabular">{{ r.users }}</td>
+    </tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

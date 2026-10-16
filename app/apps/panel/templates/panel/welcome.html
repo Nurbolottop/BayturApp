@@ -1,0 +1,38 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Подарок за регистрацию{% endblock %}
+{% block content %}
+<div class="topbar"><div><h1 class="page-title">Подарок за регистрацию</h1>
+  <div class="muted" style="margin-top:6px">Одноразовый купон с QR, который клиент получает после первой регистрации (один раз на номер). Кассир сканирует QR и гасит купон.</div></div></div>
+
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:18px">
+  <div class="card"><div class="small muted">Статус</div><div class="h2">{% if offer.enabled %}<span style="color:var(--positive)">Выдаётся</span>{% else %}Выключен{% endif %}</div></div>
+  <div class="card"><div class="small muted">Действует</div><div class="h2 tabular">{{ stats.active|default:0 }}</div></div>
+  <div class="card"><div class="small muted">Использовано</div><div class="h2 tabular">{{ stats.redeemed|default:0 }}</div></div>
+  <div class="card"><div class="small muted">Истекло</div><div class="h2 tabular">{{ stats.expired|default:0 }}</div></div>
+</div>
+
+<form method="post" class="card stack appear" novalidate>
+  {% csrf_token %}
+  {% include 'panel/components/field.html' with f=form.enabled %}
+  <div class="form-grid">
+    {% include 'panel/components/field.html' with f=form.kind %}
+    {% include 'panel/components/field.html' with f=form.value %}
+  </div>
+  {% include 'panel/components/field.html' with f=form.title %}
+  {% include 'panel/components/field.html' with f=form.description %}
+  {% include 'panel/components/field.html' with f=form.terms %}
+  {% include 'panel/components/field.html' with f=form.valid_days %}
+  <div class="small muted">Изменения действуют на новые купоны — уже выданные сохраняют свои условия. Приветственные баллы настраиваются отдельно в «Настройках».</div>
+  <div class="form-actions"><button class="btn btn-accent btn-l">Сохранить</button></div>
+</form>
+
+<div class="h2" style="margin:24px 0 14px">Выданные купоны</div>
+<div class="card flush appear"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Клиент</th><th>Купон</th><th>Выдан</th><th>Статус</th></tr></thead>
+  <tbody>{% for c in recent %}
+    <tr><td><b>{{ c.member.full_name|default:"—" }}</b><div class="small muted tabular">{{ c.member.member_id }}</div></td>
+      <td>{{ c.title|tr }}</td><td class="small tabular">{{ c.issued_at|local:"d.m.Y" }}</td>
+      <td>{% if c.shown_status == 'active' %}<span class="pill pill-positive">действует</span>{% elif c.shown_status == 'redeemed' %}<span class="pill">использован {{ c.redeemed_at|local:"d.m" }}{% if c.redeemed_by %} · {{ c.redeemed_by.full_name }}{% endif %}</span>{% elif c.shown_status == 'expired' %}<span class="pill pill-muted">истёк</span>{% else %}<span class="pill pill-muted">{{ c.shown_status }}</span>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="4"><div class="empty">Купонов пока нет</div></td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

@@ -43,6 +43,6 @@ def panel(request):
         'panel_menu': [g for g in groups if g['items']],
         'panel_tabs': tabs,
         'panel_counters': counters,
-        'panel_role': user.get_role_display(),
+        'panel_role': user.role_label,
         **modes,
     }

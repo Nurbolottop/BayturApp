@@ -17,7 +17,8 @@ def build_catalog():
     # старое приложение курорта — только услуги курорта на Иссык-Куле; у других объектов свой /venues/{id}/catalog
     items_qs = Item.objects.filter(is_active=True, venue_id=DEFAULT_VENUE).prefetch_related('promos') \
         .select_related('category', 'section__parent').order_by('sort_order', 'id')
-    cats = Category.objects.filter(is_active=True).prefetch_related(Prefetch('items', queryset=items_qs))
+    cats = Category.objects.filter(is_active=True, in_resort_app=True) \
+        .prefetch_related(Prefetch('items', queryset=items_qs))
     promotions = active_promotions(now)
     return [category_payload(c, c.items.all(), now, ps, promotions) for c in cats]
 
@@ -242,7 +243,7 @@ RESORT_KINDS = {'rooms': 'stay', 'spa': 'procedure'}
 def _resort_sections():
     """Курорт на Иссык-Куле — старый каталог (ТЗ §7.2): разделы программы как разделы услуг, без записи в базу."""
     out = []
-    for c in Category.objects.filter(is_active=True):
+    for c in Category.objects.filter(is_active=True, in_resort_app=True):
         out.append(Section(id=f'{RESORT_SECTION_PREFIX}{c.id}', venue_id=DEFAULT_VENUE, category=c, key=c.id,
                            kind=RESORT_KINDS.get(c.id, 'extra'), icon=c.id, title=c.title, cover=c.cover,
                            cashback_rate=c.rate, sort_order=c.sort_order))

@@ -9,9 +9,9 @@
 <div class="card flush appear"><div class="table-wrap"><table class="table">
   <thead><tr><th>Сотрудник</th><th>Роль</th><th class="hide-s">Точки</th><th class="hide-s">Вход</th><th class="hide-s">Последний вход</th><th>Статус</th></tr></thead>
   <tbody>{% for u in users %}
-    <tr class="link" data-href="{% url 'panel:staff-edit' u.pk %}"><td><div class="title-cell"><span class="ic-bubble s">{{ u.full_name|slice:":1" }}</span><div><b>{{ u.full_name }}</b><span class="small muted tabular">{% if u.role == 'staff' %}{{ u.phone }}{% else %}{{ u.email }}{% endif %}</span></div></div></td>
-      <td>{{ u.get_role_display }}</td><td class="hide-s small">{% for o in u.outlets.all %}{{ o.name|tr }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
-      <td class="hide-s">{% if u.role == 'staff' %}{% if u.pin_hash %}<span class="pill pill-positive">PIN задан</span>{% else %}<span class="pill pill-muted">нет PIN</span>{% endif %}{% else %}{% if u.totp_enabled %}<span class="pill pill-positive">2FA вкл</span>{% else %}<span class="pill pill-muted">2FA не настроена</span>{% endif %}{% if u.must_change_password %} <span class="tag">врем. пароль</span>{% endif %}{% endif %}</td>
+    <tr class="link" data-href="{% url 'panel:staff-edit' u.pk %}"><td><div class="title-cell"><span class="ic-bubble s">{{ u.full_name|slice:":1" }}</span><div><b>{{ u.full_name }}</b><span class="small muted tabular">{% if not u.uses_panel %}{{ u.phone }}{% else %}{{ u.email }}{% endif %}</span></div></div></td>
+      <td>{{ u.role_label }}</td><td class="hide-s small">{% for o in u.outlets.all %}{{ o.name|tr }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+      <td class="hide-s">{% if not u.uses_panel %}{% if u.pin_hash %}<span class="pill pill-positive">PIN задан</span>{% else %}<span class="pill pill-muted">нет PIN</span>{% endif %}{% else %}{% if u.totp_enabled %}<span class="pill pill-positive">2FA вкл</span>{% else %}<span class="pill pill-muted">2FA не настроена</span>{% endif %}{% if u.must_change_password %} <span class="tag">врем. пароль</span>{% endif %}{% endif %}</td>
       <td class="hide-s small tabular">{{ u.last_login|local }}</td>
       <td>{% if u.is_active %}{% pill 'bool' True 'активен' %}{% else %}{% pill 'bool' False 'отключён' %}{% endif %}</td></tr>
   {% endfor %}</tbody>

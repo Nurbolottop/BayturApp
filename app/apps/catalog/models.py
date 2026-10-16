@@ -13,6 +13,8 @@ class CategoryId(models.TextChoices):
     FOOD = 'food', 'Рестораны'
     POOLS = 'pools', 'Бассейны'
     SPORT = 'sport', 'Спорт'
+    ENTERTAINMENT = 'entertainment', 'Развлечения'
+    BEACH = 'beach', 'Пляж'
 
 
 class PaymentMethod(models.TextChoices):
@@ -151,6 +153,10 @@ class Category(models.Model):
     cover = models.CharField('Обложка', max_length=500, blank=True)
     sort_order = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
+    in_resort_app = models.BooleanField(
+        'Показывать в приложении курорта', default=True,
+        help_text='Разделы главного экрана курорта. «Бассейны» и «Спорт» скрыты — их услуги в «Развлечениях»; '
+                  '«Спорт» остаётся разделом прайса «Тоо-Ашуу» и Суусамыра')
     # CashbackRules
     rate = models.DecimalField('Доля кешбека', max_digits=5, decimal_places=4, validators=rate_validators)
     max_points_share = models.DecimalField('Доля оплаты баллами', max_digits=5, decimal_places=4,

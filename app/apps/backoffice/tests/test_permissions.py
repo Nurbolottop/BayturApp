@@ -28,10 +28,13 @@ class DirectorTests(AdminTestCase):
                                                             'startsAt': '2026-09-01', 'endsAt': '2026-09-30'})
         self.assertStatus(r, 201)
 
-    def test_only_two_roles(self):
+    def test_roles_list(self):
         r = self.get(self.owner, '/staff/roles')
-        self.assertEqual([x['id'] for x in r.data['items']], ['owner', 'staff'])
-        self.assertEqual([x['label'] for x in r.data['items']], ['Директор', 'Администратор кассы'])
+        roles = {x['id']: x for x in r.data['items']}
+        self.assertEqual(set(roles), {'owner', 'staff', 'marketing'})
+        self.assertEqual(roles['owner']['label'], 'Директор')
+        self.assertEqual(roles['staff']['kind'], 'app')
+        self.assertIn('promotions.edit', roles['marketing']['permissions'])
 
 
 class StaffRoleTests(AdminTestCase):

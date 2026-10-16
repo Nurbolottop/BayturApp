@@ -19,7 +19,7 @@ from apps.common.pagination import paginate
 from apps.members.models import LegalDocument, LegalKind, Member, MemberStatus
 from apps.staff.auth import validate_pin
 from apps.staff.models import StaffRefreshToken, StaffUser
-from apps.staff.roles import PERMISSIONS, Role
+from apps.staff.roles import PERMISSIONS, Role, RoleKind, role_kind, roles_map
 
 from ..base import (ANY_STAFF, AdminAPIView, CollectionView, DetailView, ObjectView, body, field_error,
                     parse_moment, period_filter)
@@ -175,7 +175,7 @@ class StaffListView(CollectionView):
         data = body(request)
         s = StaffSerializer(data=data, context=self.ctx())
         s.is_valid(raise_exception=True)
-        if s.validated_data['role'] == Role.STAFF:
+        if role_kind(s.validated_data['role']) == RoleKind.APP:
             pin = validate_pin(data.get('pin'))
             with transaction.atomic():
                 outlets = s.validated_data.pop('outlets', [])
@@ -250,8 +250,8 @@ class StaffActionView(ObjectView):
                 user.save(update_fields=['totp_enabled', 'totp_secret'])
                 revoke_staff_sessions(user)
             elif self.action == 'set-pin':
-                if user.is_director:
-                    raise field_error('pin', 'PIN — только у администраторов касс')
+                if user.uses_panel:
+                    raise field_error('pin', 'PIN — только у сотрудников приложения кассира')
                 user.set_pin(validate_pin(body(request).get('pin')))
                 user.save(update_fields=['pin_hash', 'pin_failed', 'pin_locked_until'])
                 revoke_staff_sessions(user)
@@ -272,9 +272,10 @@ class RolesView(AdminAPIView):
     required_perms = ANY_STAFF
 
     def get(self, request):
-        return Response({'items': [{'id': role, 'label': label,
-                                    'permissions': sorted(p for p, roles in PERMISSIONS.items() if role in roles)}
-                                   for role, label in Role.choices]})
+        return Response({'items': [{'id': role, 'label': info['name'], 'kind': info['kind'],
+                                    'permissions': sorted(PERMISSIONS) if role == Role.OWNER
+                                    else sorted(info['perms'])}
+                                   for role, info in roles_map().items()]})
 
 
 class StaffDirectoryView(AdminAPIView):

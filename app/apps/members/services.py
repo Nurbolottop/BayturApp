@@ -435,6 +435,8 @@ def register(data, device_id=None, ip=None, avatar_file=None):
             Consent.objects.create(member=member, kind=ConsentKind.MARKETING, granted=marketing, ip=ip)
             from apps.loyalty.services import grant_welcome_bonus
             grant_welcome_bonus(member)
+            from apps.coupons.services import issue_welcome_coupon
+            issue_welcome_coupon(member)
     if token.get('social') and member.status != MemberStatus.BLOCKED:
         link_social(member, token['social'])
     if pin and not member.pin_hash:

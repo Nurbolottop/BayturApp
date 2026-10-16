@@ -55,13 +55,15 @@ SECTIONS = [
     Section('showcase', 'Главная', 'panel:showcase', 'view', ('catalog.edit', 'content.edit'), group='program'),
     Section('eternal', '«Вечная новость»', 'panel:eternal', 'news', ('content.edit',), group='program'),
     Section('venue', 'Объект', 'panel:venue-current', 'location', ('catalog.edit', 'catalog.texts'), group='program'),
-    Section('promotions', 'Акции', 'panel:promotions', 'gift', ('catalog.edit', 'catalog.texts'), group='program'),
+    Section('promotions', 'Акции', 'panel:promotions', 'gift', ('promotions.edit',), group='program'),
+    Section('welcome', 'Подарок новичку', 'panel:welcome', 'gift', ('coupons.manage',), group='program'),
     Section('tiers', 'Уровни', 'panel:tiers', 'medal', ('tiers.edit', 'tiers.texts'), group='program'),
     Section('content', 'Контент', 'panel:content', 'news', ('content.edit',), group='program', tab=True),
     Section('campaigns', 'Рассылки', 'panel:campaigns', 'megaphone', ('campaigns.draft', 'campaigns.send'),
             group='program'),
     Section('settings', 'Настройки', 'panel:settings', 'settings', ('settings.edit',), group='admin'),
     Section('staff', 'Сотрудники', 'panel:staff', 'shield', ('staff.manage',), group='admin'),
+    Section('roles', 'Роли', 'panel:roles', 'key', ('staff.manage',), group='admin'),
     Section('audit', 'Аудит-лог', 'panel:audit', 'history', ('audit.view_all', 'audit.view_own'), group='admin'),
 ]
 

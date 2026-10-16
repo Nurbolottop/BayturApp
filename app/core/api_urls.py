@@ -8,6 +8,7 @@ from apps.cashback import staff_api as staffdesk
 from apps.catalog import api as catalog
 from apps.complaints import api as complaints
 from apps.content import api as content
+from apps.coupons import api as coupons
 from apps.loyalty import api as loyalty
 from apps.members import api as members
 from apps.payments import api as payments
@@ -32,6 +33,8 @@ client = [
     path('me', members.MeView.as_view()),
     path('me/settings', members.MeSettingsView.as_view()),
     path('me/avatar', members.MeAvatarView.as_view()),
+    path('me/coupons', coupons.MyCouponsView.as_view()),
+    path('me/coupons/<str:coupon_id>/qr', coupons.MyCouponQrView.as_view()),
     path('me/pin', members.MePinView.as_view()),
     re_path(r'^me/social/(?P<provider>google|apple)$', members.MeSocialView.as_view()),
     path('me/consents', members.ConsentsView.as_view()),
@@ -112,6 +115,8 @@ staff = [
     path('staff/members', staffdesk.MemberSearchView.as_view()),
     path('staff/scan', staffdesk.ScanView.as_view()),
     path('staff/shift', staffdesk.ShiftView.as_view()),
+    path('staff/coupons/scan', coupons.StaffCouponScanView.as_view()),
+    path('staff/coupons/redeem', coupons.StaffCouponRedeemView.as_view()),
     path('staff/points/items', staffdesk.PayItemsView.as_view()),
     path('staff/points/quote', staffdesk.PayQuoteView.as_view()),
     path('staff/points/charge', staffdesk.PayChargeView.as_view()),

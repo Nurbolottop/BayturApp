@@ -483,6 +483,28 @@ DELETE /me/devices/{token}   → 204
 
 Вызывайте при старте (с `X-Platform`/`X-App-Version`) — `updateRequired: true` → экран обновления.
 
+### 5.9. Подарок за регистрацию (купон)
+
+После первой регистрации номера клиент может получить одноразовый купон (что дарить — скидку %, скидку в сомах
+или подарок — курорт настраивает в админке; пока механизм выключен). Приходит push `coupon.issued`.
+
+```
+GET /me/coupons                 → {items: [Coupon], nextCursor}      // новые сверху
+GET /me/coupons/{id}/qr         → {token, expiresAt}                  // QR для кассира, живёт ~90 с
+```
+
+```json
+// Coupon
+{"id": "cpn_…", "source": "welcome", "kind": "percent", "value": 10, "valueText": "−10%",
+ "title": "Скидка 10% на первое проживание", "description": null, "terms": null,
+ "status": "active",                    // active | redeemed | expired | cancelled
+ "issuedAt": "…", "expiresAt": "…", "redeemedAt": null}
+```
+
+- Показывайте QR из `token` и обновляйте его до `expiresAt` (как QR участника); у неактивного купона QR → 409.
+- Кассир сканирует и гасит купон — придёт realtime `coupon.updated` (статус `redeemed`).
+- Подарок выдаётся один раз на номер: после удаления аккаунта и новой регистрации его не будет.
+
 ---
 
 ## 6. Каталог, программа, контент (публичные)
@@ -518,7 +540,9 @@ DELETE /me/devices/{token}   → 204
 }]
 ```
 
-- `id` категорий фиксирован: `rooms`, `spa`, `food`, `pools`, `sport`.
+- Разделы главного экрана курорта: `rooms`, `spa`, `food`, `entertainment` (Развлечения — бывшие «Бассейны» и
+  «Спорт», их услуги перенесены сюда), `beach` (Пляж, последним). Старые заявки и история могут содержать
+  `category: "pools"` / `"sport"` — показывайте для них иконку «Развлечений». Порядок — как в ответе.
 - `pricing.type = unit` → «цена × количество» (`unit`: night | session | guest | hour | visit; `min…max` количества).
   `pricing.type = check` → клиент вводит сумму чека в `min…max` сом, `price` — средний чек (подсказка и значение по умолчанию).
 - `features[].icon` — enum `FeatureIcon` (§17); картинку подбирает мобилка; неизвестное значение — пропустить.
@@ -940,6 +964,7 @@ Firebase-проект — **`baytur-2add6`**: конфиги `google-services.js
 | `points.adjusted` | — | история |
 | `welcome.bonus` | `{points}` | поздравление «Добро пожаловать», баланс уже обновлён (`wallet.updated`) |
 | `complaint.reply` | `complaintId` | обращение |
+| `coupon.issued` | `couponId` | экран купона (подарок за регистрацию, §5.9) |
 | `campaign` | `campaignId`, `articleId` и/или `itemId` | статья (`GET /content/articles/{articleId}`) или услуга |
 
 Правила на стороне бека (мобилке делать ничего не нужно): сервисные push — по `notifyCashback`, «заявка
@@ -1153,7 +1178,7 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 
 | Enum | Значения |
 |---|---|
-| `CategoryId` | `rooms`, `spa`, `food`, `pools`, `sport` |
+| `CategoryId` | `rooms`, `spa`, `food`, `entertainment`, `beach`; в истории — также устаревшие `pools`, `sport` |
 | `PaymentMethod` | `cash`, `freedomPay`, `elqr` (`finik` — только в старых заявках) |
 | Уровень (`tier.id`) | **не enum** — строка-id из `GET /loyalty/program`; по умолчанию `bronze`, `silver`, `gold`, `platinum`, `titanium`, `ambassador`, но курорт может добавлять и удалять уровни (`diamond` больше не приходит — это `titanium`) |
 | `retention.reason` | `check`, `floor`, `new_this_period`, `not_required` |

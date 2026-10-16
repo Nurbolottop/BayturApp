@@ -142,8 +142,18 @@ def desk_members(request):
 @require_POST
 @panel_view(perm='members.view')
 def desk_scan(request):
+    from apps.coupons import services as coupons
     from apps.members.auth import read_member_qr
     token = (request.POST.get('token') or '').strip()
+    if coupons.is_coupon_token(token):  # QR купона из приложения — карточка купона с гашением
+        try:
+            coupon = coupons.read_qr(token)
+        except ApiError as e:
+            messages.error(request, api_error_message(e))
+            return redirect('panel:desk-members')
+        audit(request, 'coupon.scan', coupon)
+        return render(request, 'panel/desk/coupon.html', {'coupon': coupons.staff_coupon_payload(coupon),
+                                                          'token': token})
     try:
         member = read_member_qr(token)
     except ApiError as e:
@@ -197,3 +207,16 @@ def desk_pay_charge(request):
 @panel_view('desk')
 def desk_shift(request):
     return render(request, 'panel/desk/shift.html', {'shift': actions.shift(request.user)})
+
+
+@require_POST
+@panel_view(perm='requests.process')
+def desk_coupon_redeem(request):
+    from apps.coupons import services as coupons
+    try:
+        coupon = coupons.redeem(request, request.POST.get('token'), request.POST.get('note'))
+    except ApiError as e:
+        messages.error(request, api_error_message(e))
+        return redirect('panel:desk-members')
+    messages.success(request, f'Купон погашен: {coupon.title.get("ru")}')
+    return render(request, 'panel/desk/coupon.html', {'coupon': coupons.staff_coupon_payload(coupon), 'done': True})

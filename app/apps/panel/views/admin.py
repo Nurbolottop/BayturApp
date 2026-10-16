@@ -10,7 +10,7 @@ from apps.common.audit import audit, model_snapshot
 from apps.common.models import AuditLog, ProgramSettings
 from apps.members.models import LegalDocument
 from apps.staff.models import StaffUser
-from apps.staff.roles import Role
+from apps.staff.roles import PERMISSIONS, Role, RoleKind, role_choices, role_kind
 
 from ..access import panel_view
 from ..forms import ContactsForm, LegalForm, OutletForm, ProgramSettingsForm, StaffUserForm, StoreTestForm
@@ -81,7 +81,7 @@ def staff_list(request):
         qs = qs.filter(role=g['role'])
     if g.get('q'):
         qs = qs.filter(Q(email__icontains=g['q']) | Q(full_name__icontains=g['q']) | Q(phone__icontains=g['q']))
-    return render(request, 'panel/staff/list.html', {'users': qs, 'roles': Role.choices, 'f': g})
+    return render(request, 'panel/staff/list.html', {'users': qs, 'roles': role_choices(), 'f': g})
 
 
 def _staff_snapshot(u):
@@ -100,7 +100,7 @@ def staff_edit(request, pk=None):
         else:
             before = _staff_snapshot(obj) if obj else None
             saved = form.save(commit=False)
-            director = saved.role == Role.OWNER
+            director = role_kind(saved.role) == RoleKind.PANEL  # вход в панель по паролю
             if director and form.cleaned_data.get('password') and saved.pk != request.user.pk:
                 saved.must_change_password = True  # временный пароль — директор сменит при входе
             if not director:
@@ -115,7 +115,8 @@ def staff_edit(request, pk=None):
                   after=_staff_snapshot(saved), comment=(', '.join(changed) + ' изменён') if changed else '')
             messages.success(request, 'Сотрудник сохранён')
             return redirect('panel:staff')
-    return render(request, 'panel/staff/edit.html', {'form': form, 'obj': obj})
+    kinds = {r: role_kind(r) for r, _ in role_choices()}
+    return render(request, 'panel/staff/edit.html', {'form': form, 'obj': obj, 'role_kinds': kinds})
 
 
 @require_POST
@@ -154,3 +155,78 @@ def audit_log(request):
         'page': page(request, qs), 'f': g, 'all': user.can('audit.view_all'),
         'actors': StaffUser.objects.order_by('full_name') if user.can('audit.view_all') else [],
     })
+
+
+# ---------------------------------------------------------------- роли
+
+def _role_rows():
+    from django.db.models import Count
+
+    from apps.staff.models import StaffRole
+    counts = dict(StaffUser.objects.values_list('role').annotate(n=Count('id')))
+    return [{'role': r, 'users': counts.get(r.pk, 0),
+             'perms': len(PERMISSIONS) if r.pk == Role.OWNER else len(r.permissions or [])}
+            for r in sorted(StaffRole.objects.all(),
+                            key=lambda r: ({Role.OWNER: 0, Role.STAFF: 1}.get(r.pk, 2), r.name))]
+
+
+@panel_view('roles')
+def roles_list(request):
+    return render(request, 'panel/roles/list.html', {'rows': _role_rows(), 'total': len(PERMISSIONS)})
+
+
+@panel_view('roles')
+def role_edit(request, role_id=None):
+    """Роль и её права галочками. Директор — все права всегда; у системных ролей нельзя менять код и вход."""
+    from apps.common.text import slug_from_title
+    from apps.staff.models import StaffRole
+    from apps.staff.roles import PERMISSION_GROUPS
+    role = get_object_or_404(StaffRole, pk=role_id) if role_id else None
+    locked = role is not None and role.pk == Role.OWNER
+    known = set(PERMISSIONS)
+    errors = {}
+    if request.method == 'POST' and not locked:
+        name = (request.POST.get('name') or '').strip()[:60]
+        kind = request.POST.get('kind') if role is None or not role.is_system else role.kind
+        perms = sorted(p for p in request.POST.getlist('perm') if p in known)
+        if not name:
+            errors['name'] = 'Укажите название'
+        if kind not in RoleKind.values:
+            errors['kind'] = 'Выберите, где работает роль'
+        if kind == RoleKind.APP and any(p in perms for p in ('staff.manage', 'settings.edit')):
+            errors['perm'] = 'Сотрудникам приложения кассира нельзя давать управление сотрудниками и настройками'
+        if not errors:
+            before = model_snapshot(role) if role else None
+            if role is None:
+                role = StaffRole(id=slug_from_title(name, StaffRole, max_length=30, fallback='role'))
+            role.name, role.kind, role.permissions = name, kind, perms
+            role.save()
+            audit(request, 'role.update' if before else 'role.create', role, before=before,
+                  after=model_snapshot(role))
+            messages.success(request, f'Роль «{role.name}» сохранена')
+            return redirect('panel:roles')
+    current = set(PERMISSIONS) if locked else set(request.POST.getlist('perm') if request.method == 'POST'
+                                                  else (role.permissions if role else []))
+    groups = [(title, [(p, label, p in current) for p, label in items]) for title, items in PERMISSION_GROUPS]
+    users = StaffUser.objects.filter(role=role.pk).order_by('full_name') if role else []
+    return render(request, 'panel/roles/edit.html', {
+        'role': role, 'locked': locked, 'groups': groups, 'errors': errors, 'kinds': RoleKind.choices,
+        'name': request.POST.get('name', role.name if role else ''),
+        'kind': request.POST.get('kind', role.kind if role else RoleKind.PANEL), 'users': users})
+
+
+@require_POST
+@panel_view('roles')
+def role_delete(request, role_id):
+    from apps.staff.models import StaffRole
+    role = get_object_or_404(StaffRole, pk=role_id)
+    if role.is_system:
+        messages.error(request, 'Системную роль удалить нельзя')
+    elif StaffUser.objects.filter(role=role.pk).exists():
+        messages.error(request, 'У роли есть сотрудники — сначала смените им роль')
+    else:
+        audit(request, 'role.delete', role, before=model_snapshot(role))
+        role.delete()
+        messages.success(request, 'Роль удалена')
+        return redirect('panel:roles')
+    return redirect('panel:role', role_id=role.pk)
