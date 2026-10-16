@@ -251,7 +251,9 @@ def apply():
         params=[OpenApiParameter('q', str)])
     doc(staffdesk.ScanView, 'post', STAFF, 'QR участника → клиент + payToken для оплаты баллами',
         inline_serializer('ScanInput', {'token': s.CharField()}),
-        inline_serializer('ScanResult', {**brief.fields, 'payToken': s.CharField()}))
+        inline_serializer('ScanResult', {**brief.fields, 'payToken': s.CharField(),
+                                         'coupons': staff_coupon.__class__(many=True,
+                                                                           help_text='неиспользованные подарки клиента')}))
     pay_in = inline_serializer('PayInput', {'payToken': s.CharField(), 'itemId': s.CharField(),
                                            'quantity': s.IntegerField(required=False),
                                            'checkAmount': s.IntegerField(required=False)})
@@ -282,7 +284,12 @@ def apply():
         receipt_in, o.StaffRequest, status=201, errors=(400, 401, 403, 404, 409, 422))
     doc(coupons.StaffCouponScanView, 'post', STAFF, 'QR купона → купон', coupon_in, staff_coupon,
         errors=(400, 401, 403))
-    doc(coupons.StaffCouponRedeemView, 'post', STAFF, 'Погасить купон (один раз)', coupon_in, staff_coupon,
+    redeem_in = inline_serializer('CouponRedeemInput', {
+        'token': s.CharField(required=False, help_text='QR купона'),
+        'payToken': s.CharField(required=False, help_text='из /staff/scan — вместе с couponId'),
+        'couponId': s.CharField(required=False), 'note': s.CharField(required=False)})
+    doc(coupons.StaffCouponRedeemView, 'post', STAFF, 'Погасить купон: по QR купона или выбрав после скана QR участника',
+        redeem_in, staff_coupon,
         errors=(400, 401, 403, 409))
     doc(staffdesk.ShiftView, 'get', STAFF, 'Итог смены',
         response=inline_serializer('Shift', {'date': s.DateField(), 'confirmed': o.StaffRequest(many=True),

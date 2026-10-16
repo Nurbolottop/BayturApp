@@ -123,7 +123,10 @@ class ScanView(StaffAPIView):
         member = read_member_qr(request.data.get('token'))
         audit(request, 'member.scan', member)
         # payToken — разрешение на оплату баллами этого клиента в течение 10 минут после скана
-        return Response({**member_brief(member, request.user), 'payToken': desk.make_pay_token(request.user, member)})
+        from apps.coupons.services import active_coupons, staff_coupon_payload
+        return Response({**member_brief(member, request.user), 'payToken': desk.make_pay_token(request.user, member),
+                         # неиспользованные подарки клиента — кассир выбирает и гасит через /staff/coupons/redeem
+                         'coupons': [staff_coupon_payload(c) for c in active_coupons(member)]})
 
 
 class ShiftView(StaffAPIView):

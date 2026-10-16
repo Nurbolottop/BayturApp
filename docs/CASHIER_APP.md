@@ -169,6 +169,13 @@ WebSocket `wss://app.baytur.kg/api/v1/staff/events?token=<accessToken>` — со
 
 ## 7а. Купон «подарок за регистрацию»
 
+**Основной путь — через QR участника.** `POST /staff/scan` теперь отдаёт и `coupons` — неиспользованные подарки
+клиента (тот же формат, что ниже). Кассир видит их сразу, клиент выбирает, кассир нажимает «Выдать»:
+`POST /staff/coupons/redeem` `{payToken, couponId, note?}` → купон со статусом `redeemed`. После этого подарок
+пропадает у клиента (`coupon.updated`) и из следующих сканов. Пустой `coupons` — подарков нет.
+
+**Запасной путь — QR самого купона** (если клиент открыл экран купона):
+
 Клиент показывает QR купона из приложения (живёт ~90 с) — это другой QR, не QR участника.
 
 1. `POST /staff/coupons/scan` `{token}` → купон: `{id, kind, value, valueText, title, description, terms, status,

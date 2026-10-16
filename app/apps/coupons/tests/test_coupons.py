@@ -56,6 +56,24 @@ class WelcomeCouponTests(BaseAPITestCase):
         self.assertEqual((again.status_code, again.json()['error']['message']), (409, 'Купон уже использован'))
         self.assertEqual(self.api.get(f'/api/v1/me/coupons/{c["id"]}/qr').status_code, 409)
 
+    def test_member_qr_shows_gifts_and_redeem_by_choice(self):
+        self.enable(kind='gift', value=0, title={'ru': 'Бесплатный напиток', 'ky': '', 'en': ''})
+        self.register()
+        qr = self.api.get('/api/v1/me/member-qr').json()['token']
+        cashier = self.staff_client(self.make_staff('staff', outlets=['reception']))
+        scan = cashier.post('/api/v1/staff/scan', {'token': qr}, format='json').json()
+        self.assertEqual([(c['title'], c['status']) for c in scan['coupons']], [('Бесплатный напиток', 'active')])
+        body = {'payToken': scan['payToken'], 'couponId': scan['coupons'][0]['id']}
+        r = cashier.post('/api/v1/staff/coupons/redeem', body, format='json')
+        self.assertEqual((r.status_code, r.json()['status']), (200, 'redeemed'))
+        self.assertEqual(cashier.post('/api/v1/staff/coupons/redeem', body, format='json').status_code, 409)
+        scan = cashier.post('/api/v1/staff/scan', {'token': self.api.get('/api/v1/me/member-qr').json()['token']},
+                            format='json').json()
+        self.assertEqual(scan['coupons'], [])            # погашенный подарок клиенту больше не доступен
+        other = self.staff_client(self.make_staff('staff', outlets=['reception'], phone='+996700111222'))
+        bad = other.post('/api/v1/staff/coupons/redeem', body, format='json')  # payToken чужого кассира
+        self.assertEqual(bad.json()['error']['code'], 'qr_invalid')
+
     def test_once_per_phone_forever(self):
         from apps.members.models import Member
         from apps.members.services import purge

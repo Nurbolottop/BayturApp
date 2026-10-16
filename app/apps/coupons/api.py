@@ -37,6 +37,19 @@ class TokenInput(serializers.Serializer):
     note = serializers.CharField(max_length=300, required=False, allow_blank=True)
 
 
+class RedeemInput(serializers.Serializer):
+    """Либо QR купона (token), либо выбор купона после скана QR участника (payToken + couponId)."""
+    token = serializers.CharField(required=False)
+    payToken = serializers.CharField(required=False)
+    couponId = serializers.CharField(required=False)
+    note = serializers.CharField(max_length=300, required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        if not attrs.get('token') and not (attrs.get('payToken') and attrs.get('couponId')):
+            raise serializers.ValidationError('нужен token или payToken + couponId')
+        return attrs
+
+
 class StaffCouponScanView(StaffAPIView):
     """QR купона → что за купон и можно ли погасить."""
 
@@ -50,7 +63,11 @@ class StaffCouponRedeemView(StaffAPIView):
     """Погасить купон (один раз)."""
 
     def post(self, request):
-        s = TokenInput(data=request.data)
+        s = RedeemInput(data=request.data)
         s.is_valid(raise_exception=True)
-        coupon = services.redeem(request, s.validated_data['token'], s.validated_data.get('note'))
+        d = s.validated_data
+        if d.get('token'):
+            coupon = services.redeem(request, d['token'], d.get('note'))
+        else:
+            coupon = services.redeem_for_member(request, d['payToken'], d['couponId'], d.get('note'))
         return Response(services.staff_coupon_payload(coupon))

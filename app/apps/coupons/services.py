@@ -125,11 +125,32 @@ def is_coupon_token(token):
 
 # ---------------------------------------------------------------- гашение
 
+def active_coupons(member):
+    """Неиспользованные купоны клиента — кассир видит их сразу после скана QR участника."""
+    now = timezone.now()
+    from django.db.models import Q
+    return list(member.coupons.filter(status=CouponStatus.ACTIVE)
+                .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now)).order_by('issued_at'))
+
+
 def redeem(request, token, note=''):
-    """Кассир гасит купон по QR клиента. Повторно погасить нельзя; свой купон — нельзя."""
+    """Кассир гасит купон по QR купона. Повторно погасить нельзя; свой купон — нельзя."""
+    return _redeem(request, read_qr(token), note)
+
+
+def redeem_for_member(request, pay_token, coupon_id, note=''):
+    """Кассир гасит купон, выбрав его после скана QR участника (payToken из /staff/scan)."""
+    from apps.cashback.desk import read_pay_token
+    member = read_pay_token(request.user, pay_token)
+    coupon = member.coupons.filter(pk=coupon_id).first()
+    if coupon is None:
+        raise ApiError('not_found', 404)
+    return _redeem(request, coupon, note)
+
+
+def _redeem(request, coupon, note=''):
     from apps.cashback.desk import check_not_own_member
     user = request.user
-    coupon = read_qr(token)
     check_not_own_member(user, coupon.member)
     with transaction.atomic():
         c = Coupon.objects.select_for_update().get(pk=coupon.pk)

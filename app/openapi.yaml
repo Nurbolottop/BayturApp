@@ -5420,7 +5420,7 @@ paths:
     post:
       operationId: staff_coupons_redeem_create
       description: Погасить купон (один раз).
-      summary: Погасить купон (один раз)
+      summary: 'Погасить купон: по QR купона или выбрав после скана QR участника'
       parameters:
       - in: header
         name: Accept-Language
@@ -5460,11 +5460,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CouponTokenInputRequest'
+              $ref: '#/components/schemas/CouponRedeemInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CouponTokenInputRequest'
-        required: true
+              $ref: '#/components/schemas/CouponRedeemInputRequest'
       security:
       - staffBearer: []
       responses:
@@ -7957,6 +7956,23 @@ components:
       required:
       - expiresAt
       - token
+    CouponRedeemInputRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+          description: QR купона
+        payToken:
+          type: string
+          minLength: 1
+          description: из /staff/scan — вместе с couponId
+        couponId:
+          type: string
+          minLength: 1
+        note:
+          type: string
+          minLength: 1
     CouponTokenInputRequest:
       type: object
       properties:
@@ -9845,7 +9861,13 @@ components:
             $ref: '#/components/schemas/StaffRequest'
         payToken:
           type: string
+        coupons:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffCoupon'
+          description: неиспользованные подарки клиента
       required:
+      - coupons
       - deletedNote
       - id
       - memberId
