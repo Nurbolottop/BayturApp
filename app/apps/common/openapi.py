@@ -327,8 +327,9 @@ class Wallet(s.Serializer):
 
 class Operation(s.Serializer):
     id = s.CharField()
-    kind = s.ChoiceField(choices=['cashback', 'spend', 'refund', 'reversal', 'adjustment', 'forfeit', 'expire'],
-                         help_text='только движения «Доступных»; expire — лишь в старых записях')
+    kind = s.ChoiceField(choices=['cashback', 'spend', 'refund', 'reversal', 'adjustment', 'forfeit', 'expire', 'welcome'],
+                         help_text='только движения «Доступных»; expire — лишь в старых записях; '
+                                   'welcome — приветственный бонус при регистрации')
     points = s.IntegerField(help_text='изменение «Доступных»')
     at = s.DateTimeField()
     itemId = s.CharField(allow_null=True)

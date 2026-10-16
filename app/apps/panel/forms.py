@@ -1000,6 +1000,7 @@ class ProgramSettingsForm(forms.ModelForm):
         ('Жизненный цикл заявки', ['auto_confirm', 'auto_confirm_cash', 'confirm_delay_ms', 'credit_delay_ms',
                                    'pending_ttl_hours', 'staff_adjust_threshold_percent',
                                    'staff_cashback_limit_points']),
+        ('Приветственный бонус', ['welcome_bonus_points', 'welcome_bonus_counts_for_tier']),
         ('Удаление аккаунта', ['purge_days']),
         ('Вход по SMS', ['otp_length', 'otp_ttl_seconds', 'otp_retry_seconds', 'otp_max_attempts',
                          'otp_per_phone_day', 'otp_per_ip_hour', 'min_age']),

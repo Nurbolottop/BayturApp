@@ -21,6 +21,10 @@ from .models import POINTS_KINDS, Campaign, CampaignStatus, Notification, PushKi
 log = logging.getLogger(__name__)
 
 DEFAULT_TEMPLATES = {
+    PushKind.WELCOME_BONUS: (
+        {'ru': 'Добро пожаловать в BAYTUR!', 'ky': 'BAYTUR\'га кош келиңиз!', 'en': 'Welcome to BAYTUR!'},
+        {'ru': 'Вам начислено {points} приветственных баллов', 'ky': 'Сизге {points} тосуу упайы эсептелди',
+         'en': 'You got {points} welcome points'}),
     PushKind.REQUEST_CREDITED: (
         {'ru': 'Кешбек начислен', 'ky': 'Кешбек эсептелди', 'en': 'Cashback credited'},
         {'ru': '+{points} баллов за «{item}»', 'ky': '«{item}» үчүн +{points} упай', 'en': '+{points} points for “{item}”'}),
@@ -315,6 +319,14 @@ def notify_points_adjusted(member_pk, points):
         return
     title, body = render(PushKind.POINTS_ADJUSTED, m.language, points=f'{points:+,}'.replace(',', ' '))
     notify(m, PushKind.POINTS_ADJUSTED, title, body, {}, push=m.notify_cashback)
+
+
+def notify_welcome_bonus(member_pk, points):
+    m = _member(member_pk)
+    if not m:
+        return
+    title, body = render(PushKind.WELCOME_BONUS, m.language, points=points)
+    notify(m, PushKind.WELCOME_BONUS, title, body, {'points': points}, push=m.notify_cashback)
 
 
 def notify_complaint_reply(complaint):

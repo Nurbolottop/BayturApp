@@ -16,12 +16,14 @@ class PushKind(models.TextChoices):
     TIER_AT_RISK = 'tier.at_risk', 'Подтвердите уровень'
     ACHIEVEMENT_COMPLETED = 'achievement.completed', 'Задание выполнено'
     POINTS_ADJUSTED = 'points.adjusted', 'Корректировка баллов'
+    WELCOME_BONUS = 'welcome.bonus', 'Приветственный бонус'
     COMPLAINT_REPLY = 'complaint.reply', 'Ответ на обращение'
     CAMPAIGN = 'campaign', 'Рассылка'
 
 
 # Операции с баллами идут и в тихие часы
-POINTS_KINDS = {PushKind.REQUEST_CREDITED, PushKind.REQUEST_REJECTED, PushKind.REQUEST_PAID, PushKind.POINTS_ADJUSTED}
+POINTS_KINDS = {PushKind.REQUEST_CREDITED, PushKind.REQUEST_REJECTED, PushKind.REQUEST_PAID, PushKind.POINTS_ADJUSTED,
+                PushKind.WELCOME_BONUS}
 
 
 class PushTemplate(models.Model):

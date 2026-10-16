@@ -669,7 +669,7 @@ GET /content/articles/{id}       → Article        (диплинк / push)
 ```json
 {"items": [{
   "id": "op_pyd9rxkf31twn6",
-  "kind": "cashback",                     // cashback | spend | refund | reversal | adjustment | forfeit (| expire — старые)
+  "kind": "cashback",                     // cashback | spend | refund | reversal | adjustment | forfeit | welcome (| expire — старые)
   "points": 8000,                         // изменение «Доступных», со знаком
   "at": "2026-09-29T22:40:34+06:00",
   "itemId": "sport-gym",                  // название подставляйте сами на текущем языке (из каталога)
@@ -683,7 +683,8 @@ GET /content/articles/{id}       → Article        (диплинк / push)
 
 Только движения «Доступных». Служебные проводки (резерв, сброс «Нынешних») не отдаются.
 `reversal` — «Отмена начисления · {услуга}» (заявку отменили после начисления). `adjustment` — ручная корректировка
-курорта (±). `forfeit` — списание при окончательном удалении аккаунта. `expire` больше не создаётся — встречается
+курорта (±). `forfeit` — списание при окончательном удалении аккаунта. `welcome` — приветственный бонус при первой регистрации
+(иконка подарка; включает и задаёт сумму курорт, один раз на номер). `expire` больше не создаётся — встречается
 только в старых записях. Для операций без услуги `itemId` = null — показывайте `reason`.
 
 ### 7.3. `GET /me/achievements` — прогресс по заданиям
@@ -937,6 +938,7 @@ Firebase-проект — **`baytur-2add6`**: конфиги `google-services.js
 | `tier.at_risk` | `tierId`, `dropTo` | вкладка «Уровни» (за 60, 30 и 7 дней до конца года; по `notifyPromos`) |
 | `achievement.completed` | `achievementId`, `tierId?` | вкладка «Уровни» → уровень с этим заданием |
 | `points.adjusted` | — | история |
+| `welcome.bonus` | `{points}` | поздравление «Добро пожаловать», баланс уже обновлён (`wallet.updated`) |
 | `complaint.reply` | `complaintId` | обращение |
 | `campaign` | `campaignId`, `articleId` и/или `itemId` | статья (`GET /content/articles/{articleId}`) или услуга |
 
@@ -1157,7 +1159,7 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 | `retention.reason` | `check`, `floor`, `new_this_period`, `not_required` |
 | `PeriodResult` | `retained`, `dropped`, `promoted_in_period`, `floor`, `not_required` |
 | `RequestStatus` | `pending`, `confirmed`, `credited`, `rejected`, `cancelled` |
-| `OperationKind` | `cashback`, `spend`, `refund`, `reversal`, `adjustment`, `forfeit` (`expire` — только старые записи) |
+| `OperationKind` | `cashback`, `spend`, `refund`, `reversal`, `adjustment`, `forfeit`, `welcome` (`expire` — только старые записи) |
 | `PaymentStatus` | `created`, `pending`, `paid`, `failed`, `expired`, `refunded` |
 | `PricingType` / `PricingUnit` | `unit`, `check` / `night`, `session`, `guest`, `hour`, `visit` |
 | `BonusKind` | `promo`, `birthday` |
@@ -1168,7 +1170,7 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 | `ComplaintStatus` | `new`, `in_progress`, `answered`, `closed` |
 | `ComplaintSubtype` | `not_credited`, `credited_less`, `overcharged`, `other` |
 | `ConsentKind` | `terms`, `privacy` |
-| Push / realtime `type` | `request.updated`, `wallet.updated`, `notification.created`, `payment.updated`, `complaint.updated`, `request.credited`, `request.rejected`, `request.paid`, `tier.upgraded`, `tier.downgraded`, `tier.retained`, `tier.at_risk`, `achievement.completed`, `points.adjusted`, `complaint.reply`, `campaign` (`points.expiring` / `points.expired` удалены) |
+| Push / realtime `type` | `request.updated`, `wallet.updated`, `notification.created`, `payment.updated`, `complaint.updated`, `request.credited`, `request.rejected`, `request.paid`, `tier.upgraded`, `tier.downgraded`, `tier.retained`, `tier.at_risk`, `achievement.completed`, `points.adjusted`, `welcome.bonus`, `complaint.reply`, `campaign` (`points.expiring` / `points.expired` удалены) |
 
 Новые значения `FeatureIcon` / `PerkIcon` / способов оплаты появляются только вместе с релизом мобилки;
 остальные enum могут расширяться — неизвестное значение не должно ломать парсинг.

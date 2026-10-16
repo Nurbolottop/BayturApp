@@ -246,6 +246,7 @@ class OperationKind(models.TextChoices):
     PROMOTION_RESET = 'promotion_reset', 'Сброс «Нынешних» (новый уровень)'
     EXPIRE = 'expire', 'Сгорание'
     FORFEIT = 'forfeit', 'Списание при удалении'
+    WELCOME = 'welcome', 'Приветственный бонус'
 
 
 # Служебные проводки — клиенту в истории не показываются
@@ -465,3 +466,18 @@ class MemberAchievement(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(fields=['member', 'achievement', 'period_key'],
                                                name='member_achievement_unique')]
+
+
+class WelcomeBonusGrant(models.Model):
+    """Выданный приветственный бонус. Номер — в виде хеша: после удаления аккаунта номер стирается,
+    а повторная регистрация того же номера бонус уже не получает."""
+
+    phone_hash = models.CharField(max_length=64, unique=True)
+    member = models.ForeignKey('members.Member', null=True, blank=True, on_delete=models.SET_NULL,
+                               related_name='+')
+    points = models.PositiveIntegerField()
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = 'Приветственный бонус'
+        verbose_name_plural = 'Приветственные бонусы'

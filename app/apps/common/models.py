@@ -22,6 +22,12 @@ class ProgramSettings(models.Model):
                                choices=[('', 'Автоматически по датам'), ('ski', 'Зима — Baytur Ski'),
                                         ('kymyz', 'Лето — Baytur Kymyz')],
                                help_text='Выбранный сезон видят все пользователи приложения, даты не учитываются')
+    # Приветственный бонус: один раз на номер телефона, при первой регистрации
+    welcome_bonus_points = models.PositiveIntegerField(
+        'Приветственный бонус, баллов', default=0, help_text='Начисляется при первой регистрации номера. 0 — выключен')
+    welcome_bonus_counts_for_tier = models.BooleanField(
+        'Приветственный бонус засчитывается в уровень', default=False,
+        help_text='Включено — баллы идут и в «Нынешние» / «За всё время». Выключено — только на баланс')
     # Курс и кешбек
     points_per_som = models.PositiveIntegerField('Оплата баллами: баллов за 1 сом', default=10,
                                                  help_text='Курс списания при оплате баллами. На начисление не влияет')

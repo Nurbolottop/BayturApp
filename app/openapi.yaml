@@ -8236,7 +8236,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/OperationKindEnum'
           description: |-
-            только движения «Доступных»; expire — лишь в старых записях
+            только движения «Доступных»; expire — лишь в старых записях; welcome — приветственный бонус при регистрации
 
             * `cashback` - cashback
             * `spend` - spend
@@ -8245,6 +8245,7 @@ components:
             * `adjustment` - adjustment
             * `forfeit` - forfeit
             * `expire` - expire
+            * `welcome` - welcome
         points:
           type: integer
           description: изменение «Доступных»
@@ -8291,6 +8292,7 @@ components:
       - adjustment
       - forfeit
       - expire
+      - welcome
       type: string
       description: |-
         * `cashback` - cashback
@@ -8300,6 +8302,7 @@ components:
         * `adjustment` - adjustment
         * `forfeit` - forfeit
         * `expire` - expire
+        * `welcome` - welcome
     OperationsPage:
       type: object
       properties:

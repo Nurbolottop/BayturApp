@@ -65,7 +65,7 @@
       <div class="card-head"><div class="h3">Операции</div></div>
       <div class="table-wrap"><table class="table"><tbody>
         {% for o in operations %}<tr>
-          <td><span class="row"><span class="ic-bubble s {% if o.points > 0 %}pos{% else %}neg{% endif %}">{% if o.kind == 'cashback' %}{% icon 'cashback' 16 %}{% elif o.kind == 'spend' %}{% icon 'receipt' 16 %}{% elif o.kind == 'adjustment' %}{% icon 'edit' 16 %}{% elif o.kind == 'expire' or o.kind == 'forfeit' %}{% icon 'fire' 16 %}{% else %}{% icon 'undo' 16 %}{% endif %}</span>
+          <td><span class="row"><span class="ic-bubble s {% if o.points > 0 %}pos{% else %}neg{% endif %}">{% if o.kind == 'cashback' %}{% icon 'cashback' 16 %}{% elif o.kind == 'spend' %}{% icon 'receipt' 16 %}{% elif o.kind == 'adjustment' %}{% icon 'edit' 16 %}{% elif o.kind == 'welcome' %}{% icon 'gift' 16 %}{% elif o.kind == 'expire' or o.kind == 'forfeit' %}{% icon 'fire' 16 %}{% else %}{% icon 'undo' 16 %}{% endif %}</span>
             <span><b>{{ o.get_kind_display }}</b>{% if o.title %} · {{ o.title|tr }}{% endif %}<div class="small muted">{{ o.at|local }}{% if o.author %} · {{ o.author.full_name }}{% endif %}{% if o.reason %} · {{ o.reason }}{% endif %}</div></span></span></td>
           <td class="n {% if o.points > 0 %}pos{% else %}neg{% endif %}" style="font-weight:700">{{ o.points|signed }}</td></tr>
         {% empty %}<tr><td><div class="empty">Операций нет</div></td></tr>{% endfor %}

@@ -344,6 +344,7 @@ def _points_totals(p):
         refund=Coalesce(Sum('points', filter=Q(kind=OperationKind.REFUND)), 0),
         expired=Coalesce(Sum('points', filter=Q(kind=OperationKind.EXPIRE)), 0),
         forfeit=Coalesce(Sum('points', filter=Q(kind=OperationKind.FORFEIT)), 0),
+        welcome=Coalesce(Sum('points', filter=Q(kind=OperationKind.WELCOME)), 0),
         adj_plus=Coalesce(Sum('points', filter=Q(kind=OperationKind.ADJUSTMENT, points__gt=0)), 0),
         adj_minus=Coalesce(Sum('points', filter=Q(kind=OperationKind.ADJUSTMENT, points__lt=0)), 0),
     )
@@ -351,6 +352,7 @@ def _points_totals(p):
     return {
         'credited': agg['credited'], 'spent': spent, 'refunded': agg['refund'],
         'expired': -agg['expired'], 'forfeit': -agg['forfeit'], 'burned': -agg['expired'] - agg['forfeit'],
+        'welcome': agg['welcome'],
         'adjust_plus': agg['adj_plus'], 'adjust_minus': -agg['adj_minus'],
         'adjust_net': agg['adj_plus'] + agg['adj_minus'],
         'spent_share': _ratio(spent, agg['credited']),
@@ -781,6 +783,7 @@ POINTS_KPIS = [
     ('spent', 'Списано', 'points'),
     ('expired', 'Сгорело (неактивность)', 'points'),
     ('forfeit', 'Списано при удалении', 'points'),
+    ('welcome', 'Приветственные бонусы', 'points'),
     ('adjust_plus', 'Корректировки +', 'points'),
     ('adjust_minus', 'Корректировки −', 'points'),
     ('spent_share', 'Доля потраченных (списано / начислено)', 'ratio'),

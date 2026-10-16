@@ -181,6 +181,50 @@ def manual_adjustment(member, points, reason, author, complaint=None, related=No
                          complaint=complaint, related=related)
 
 
+# ---------------------------------------------------------------- приветственный бонус
+
+def welcome_phone_hash(phone):
+    import hashlib
+    import hmac
+
+    from django.conf import settings
+    return hmac.new(settings.SECRET_KEY.encode(), f'welcome:{phone}'.encode(), hashlib.sha256).hexdigest()
+
+
+def grant_welcome_bonus(member):
+    """
+    Приветственный бонус при первой регистрации номера (сумма и «в уровень» — в настройках программы, 0 — выключен).
+    Один раз на номер навсегда: повторная регистрация после удаления аккаунта бонус не получает.
+    → Operation | None.
+    """
+    from django.db import IntegrityError
+
+    from apps.common.models import ProgramSettings
+
+    from .models import OperationKind, WelcomeBonusGrant
+    ps = ProgramSettings.get()
+    points = ps.welcome_bonus_points
+    if points <= 0 or not member.phone:
+        return None
+    counts = ps.welcome_bonus_counts_for_tier
+    try:
+        with transaction.atomic():
+            WelcomeBonusGrant.objects.create(phone_hash=welcome_phone_hash(member.phone), member=member, points=points)
+            wallet = lock_wallet(member)
+            now = timezone.now()
+            engine.ensure_period(wallet, now)
+            op = post_operation(wallet, OperationKind.WELCOME, points, d_current=points if counts else 0,
+                                d_lifetime=points if counts else 0, reason='Приветственный бонус', at=now,
+                                idempotency_key=f'welcome:{member.pk}')
+            if counts:
+                engine.evaluate(wallet, now)
+    except IntegrityError:
+        return None  # этот номер бонус уже получал
+    publish_wallet(member, wallet)
+    engine._on_commit_notify('notify_welcome_bonus', member.pk, points)
+    return op
+
+
 # ---------------------------------------------------------------- пересчёт повышений после смены порогов
 
 def preview_tier_change(new_thresholds):
