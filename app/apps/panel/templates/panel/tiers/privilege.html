@@ -13,6 +13,7 @@
       {% include 'panel/components/field.html' with f=form.group %}
       {% include 'panel/components/field.html' with f=form.group_title full=1 %}
       <div class="field full"><span class="label">Иконка</span>{{ form.icon }}{{ form.icon.errors }}</div>
+      {% include 'panel/components/field.html' with f=form.badge %}
       {% include 'panel/components/field.html' with f=form.title full=1 %}
       {% include 'panel/components/field.html' with f=form.short full=1 %}
       {% include 'panel/components/field.html' with f=form.description full=1 %}

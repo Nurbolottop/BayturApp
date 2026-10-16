@@ -8874,7 +8874,12 @@ components:
           type: string
           nullable: true
           description: «Только Baytur Ski» или null
+        badge:
+          type: string
+          nullable: true
+          description: 'коротко поверх иконки привилегии: «X3»; null — без бейджа'
       required:
+      - badge
       - description
       - footnote
       - group
@@ -10669,6 +10674,10 @@ components:
         from:
           type: integer
           description: 'устарело: накопленная сумма порогов (для старых версий)'
+        fromSom:
+          type: integer
+          nullable: true
+          description: '«от» в сомах по базовой ставке: «потратьте 200 000 сом»'
       required:
       - achievements
       - canBeFloor
@@ -10677,6 +10686,7 @@ components:
       - colors
       - entryRule
       - from
+      - fromSom
       - id
       - medal
       - name

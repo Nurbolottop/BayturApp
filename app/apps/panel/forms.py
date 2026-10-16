@@ -766,7 +766,8 @@ class PrivilegeForm(ModesFormMixin, PanelForm, forms.ModelForm):
 
     class Meta:
         model = Privilege
-        fields = ['id', 'tier', 'group', 'group_title', 'icon', 'title', 'short', 'description', 'footnote', 'sort_order']
+        fields = ['id', 'tier', 'group', 'group_title', 'icon', 'badge', 'title', 'short', 'description', 'footnote',
+                  'sort_order']
         labels = {'tier': 'Уровень', 'sort_order': 'Порядок',
                   'group': 'Группа «Апгрейдер» (одна привилегия на разных уровнях, напр. late-checkout)'}
         help_texts = {'group': '{rate} в текстах подставляет ставку кешбека уровня, %'}

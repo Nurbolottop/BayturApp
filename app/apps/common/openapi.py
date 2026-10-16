@@ -223,6 +223,7 @@ class Tier(s.Serializer):
     medal = s.URLField(allow_null=True, help_text='устарело: = style.medalUrl')
     # 'from' — зарезервированное слово Python
     vars()['from'] = s.IntegerField(help_text='устарело: накопленная сумма порогов (для старых версий)')
+    fromSom = s.IntegerField(allow_null=True, help_text='«от» в сомах по базовой ставке: «потратьте 200 000 сом»')
 
 
 class Privilege(s.Serializer):
@@ -239,6 +240,7 @@ class Privilege(s.Serializer):
     description = s.CharField()
     modes = s.ListField(child=s.CharField(), help_text='Режимы: [] — везде, иначе только перечисленные (resort, ski, kymyz)')
     modeTitle = s.CharField(allow_null=True, help_text='«Только Baytur Ski» или null')
+    badge = s.CharField(allow_null=True, help_text='коротко поверх иконки привилегии: «X3»; null — без бейджа')
 
 
 class Achievement(s.Serializer):

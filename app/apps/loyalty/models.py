@@ -177,6 +177,7 @@ class Privilege(models.Model):
     footnote = models.JSONField('Сноска мелким шрифтом', default=dict, blank=True)
     tier = models.ForeignKey(Tier, on_delete=models.PROTECT, related_name='privileges')
     icon = models.CharField(max_length=30)
+    badge = models.CharField('Бейдж на иконке', max_length=8, blank=True, help_text='Коротко поверх иконки: «X3»')
     title = models.JSONField('Название', default=dict)
     short = models.JSONField('Коротко (1–2 слова)', default=dict)
     description = models.JSONField('Описание', default=dict)

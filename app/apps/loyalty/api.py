@@ -71,15 +71,18 @@ def build_program():
     def text(value, tier_id):
         return (tr(value) or '').replace('{rate}', rates.get(tier_id, '')) or None
 
+    tiers_payload = [tier_program_payload(t, cumulative, ps.base_cashback_rate) for t in tiers]
+    for row in tiers_payload:  # «потратьте 200 000 сом / заработайте 10 000 баллов»: «от» в сомах по базовой ставке
+        row['fromSom'] = int(round(row['from'] / float(ps.base_cashback_rate))) if ps.base_cashback_rate else None
     return {
-        'tiers': [tier_program_payload(t, cumulative, ps.base_cashback_rate) for t in tiers],
+        'tiers': tiers_payload,
         'privileges': [{
             'id': p.id, 'tier': p.tier_id, 'group': p.group or None,
             # без названия группы — название привилегии (у таких групп оно одинаково на всех уровнях)
             'groupTitle': (text(p.group_title, p.tier_id) or text(p.title, p.tier_id)) if p.group else None, 'icon': p.icon, 'title': text(p.title, p.tier_id),
             'short': text(p.short, p.tier_id), 'description': text(p.description, p.tier_id),
             'footnote': text(p.footnote, p.tier_id),
-            'modes': p.modes or [], 'modeTitle': mode_title(p.modes),
+            'modes': p.modes or [], 'modeTitle': mode_title(p.modes), 'badge': p.badge or None,
         } for p in Privilege.objects.select_related('tier').filter(tier__deleted_at__isnull=True)],
         'achievements': [{
             'id': a.id, 'title': tr(a.title), 'description': tr(a.description) or None, 'icon': a.icon or None,
