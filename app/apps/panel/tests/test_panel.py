@@ -23,6 +23,21 @@ class PanelBase(BaseAPITestCase):
 
 
 class LoginTests(PanelBase):
+    def setUp(self):
+        super().setUp()
+        self.settings_obj(panel_two_factor=True)       # код из аутентификатора включён в настройках
+
+    def test_password_only_when_code_disabled(self):
+        self.settings_obj(panel_two_factor=False)
+        self.make_staff('owner', email='boss2@baytur.kg')
+        c = Client()
+        r = c.post('/panel/login/', {'email': 'boss2@baytur.kg', 'password': 'Passw0rd!x'})
+        self.assertEqual(r.status_code, 302)
+        self.assertNotIn('2fa', r['Location'])
+        self.assertEqual(c.get(r['Location']).status_code, 200)
+        r = Client().post('/panel/login/', {'email': 'boss2@baytur.kg', 'password': 'wrong'})
+        self.assertContains(r, 'Неверные данные для входа')   # пароль по-прежнему нужен
+
     def test_two_step_login_with_totp_setup(self):
         user = self.make_staff('owner', email='boss@baytur.kg')
         c = Client()

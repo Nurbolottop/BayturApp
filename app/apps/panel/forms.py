@@ -1001,6 +1001,7 @@ class ProgramSettingsForm(forms.ModelForm):
                                    'pending_ttl_hours', 'staff_adjust_threshold_percent',
                                    'staff_cashback_limit_points']),
         ('Приветственный бонус', ['welcome_bonus_points', 'welcome_bonus_counts_for_tier']),
+        ('Вход в админку', ['panel_two_factor']),
         ('Удаление аккаунта', ['purge_days']),
         ('Вход по SMS', ['otp_length', 'otp_ttl_seconds', 'otp_retry_seconds', 'otp_max_attempts',
                          'otp_per_phone_day', 'otp_per_ip_hour', 'min_age']),

@@ -12,8 +12,10 @@ class LoginView(APIView):
     permission_classes = []
 
     def post(self, request):
-        _, payload = auth.check_password_step(request.data.get('email'), request.data.get('password'),
-                                              client_ip(request))
+        user, payload = auth.check_password_step(request.data.get('email'), request.data.get('password'),
+                                                 client_ip(request))
+        if not payload['twoFactorRequired']:
+            return Response({**payload, **auth.issue_tokens(user)})  # без кода — токены сразу
         return Response(payload)
 
 

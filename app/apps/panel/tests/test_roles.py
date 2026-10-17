@@ -23,6 +23,7 @@ class ConfigurableRolesTests(BaseAPITestCase):
 
     def test_marketing_logs_in_to_panel_with_password(self):
         from apps.staff.auth import check_password_step
+        self.settings_obj(panel_two_factor=True)
         user, step = check_password_step('mk@b.kg', 'Passw0rd!x', '1.1.1.1')
         self.assertTrue(step['twoFactorRequired'])
 

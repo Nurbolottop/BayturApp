@@ -22,6 +22,11 @@ class ProgramSettings(models.Model):
                                choices=[('', 'Автоматически по датам'), ('ski', 'Зима — Baytur Ski'),
                                         ('kymyz', 'Лето — Baytur Kymyz')],
                                help_text='Выбранный сезон видят все пользователи приложения, даты не учитываются')
+    # Вход в админку
+    panel_two_factor = models.BooleanField(
+        'Вход в админку: код из приложения-аутентификатора', default=False,
+        help_text='Включено — после пароля нужен 6-значный код (Google Authenticator и т. п.). '
+                  'Выключено — вход только по email и паролю')
     # Приветственный бонус: один раз на номер телефона, при первой регистрации
     welcome_bonus_points = models.PositiveIntegerField(
         'Приветственный бонус, баллов', default=0, help_text='Начисляется при первой регистрации номера. 0 — выключен')

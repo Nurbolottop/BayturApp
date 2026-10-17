@@ -46,7 +46,10 @@ def _fail(key):
 
 
 def check_password_step(email, password, ip=None):
-    """→ (user, payload для ответа). Не выдаёт токены: второй шаг обязателен."""
+    """
+    → (user, payload). С кодом из аутентификатора (настройка «Вход в админку») токены выдаёт второй шаг;
+    без него — payload {twoFactorRequired: False} и вход сразу.
+    """
     email = (email or '').strip().lower()
     key = f'staff-login:{email}:{ip}'
     if _too_many(key):
@@ -58,11 +61,20 @@ def check_password_step(email, password, ip=None):
     if not user.uses_panel:
         raise ApiError('staff_use_app', 403)  # администраторы касс входят в приложение по PIN
     cache.delete(key)
+    if not two_factor_required():
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login'])
+        return user, {'twoFactorRequired': False}
     token = signing.dumps({'u': user.pk}, salt=TWO_FACTOR_SALT)
     if user.totp_enabled:
         return user, {'twoFactorRequired': True, 'twoFactorToken': token}
     return user, {'twoFactorRequired': True, 'twoFactorSetup': True, 'twoFactorToken': token,
                   'otpauthUri': user.totp_uri()}
+
+
+def two_factor_required():
+    from apps.common.models import ProgramSettings
+    return ProgramSettings.get().panel_two_factor
 
 
 def check_totp_step(two_factor_token, code):

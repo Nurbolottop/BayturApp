@@ -36,6 +36,13 @@ def _next(request):
     return nxt if nxt.startswith('/panel/') else ''
 
 
+def _login(request, user):
+    login(request, user, backend=settings.AUTHENTICATION_BACKENDS[0]
+          if getattr(settings, 'AUTHENTICATION_BACKENDS', None)
+          else 'django.contrib.auth.backends.ModelBackend')
+    audit(request, 'staff.login', user)
+
+
 def login_view(request):
     if is_staff_user(request.user):
         return redirect(_next(request) or home_url(request.user) or 'panel:logout')
@@ -43,11 +50,14 @@ def login_view(request):
     error = None
     if request.method == 'POST' and form.is_valid():
         try:
-            _, payload = staff_auth.check_password_step(form.cleaned_data['email'], form.cleaned_data['password'],
-                                                        client_ip(request))
+            user, payload = staff_auth.check_password_step(form.cleaned_data['email'], form.cleaned_data['password'],
+                                                           client_ip(request))
         except ApiError as e:
             error = api_error_message(e)
         else:
+            if not payload['twoFactorRequired']:  # код из аутентификатора выключен в настройках
+                _login(request, user)
+                return redirect(_next(request) or home_url(user) or 'panel:logout')
             request.session[SESSION_KEY] = {'token': payload['twoFactorToken'],
                                             'uri': payload.get('otpauthUri'), 'next': _next(request)}
             return redirect('panel:login-2fa')
@@ -71,10 +81,7 @@ def totp_view(request):
                 return render(request, 'panel/auth/login.html', {'form': LoginForm(), 'error': error})
         else:
             request.session.pop(SESSION_KEY, None)
-            login(request, user, backend=settings.AUTHENTICATION_BACKENDS[0]
-                  if getattr(settings, 'AUTHENTICATION_BACKENDS', None)
-                  else 'django.contrib.auth.backends.ModelBackend')
-            audit(request, 'staff.login', user)
+            _login(request, user)
             return redirect(state.get('next') or home_url(user) or 'panel:logout')
     ctx = {'form': form, 'error': error, 'setup': bool(state.get('uri'))}
     if state.get('uri'):

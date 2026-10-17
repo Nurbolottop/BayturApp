@@ -158,6 +158,14 @@ class CashierAppLoginTests(AdminTestCase):
         self.client.credentials()
         self.assertStatus(self.login(pin='730519'), 200)
 
+    def test_admin_api_login_without_code(self):
+        boss = self.make_staff('owner')
+        r = self.client.post('/api/v1/admin/auth/login', {'email': boss.email, 'password': 'pass-12345'},
+                             format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertFalse(r.json()['twoFactorRequired'])
+        self.assertIn('accessToken', r.json())
+
     def test_administrator_cannot_sign_in_to_web(self):
         self.staff.email = 'cashier@baytur.kg'
         self.staff.set_password('Passw0rd!x-long')
