@@ -327,6 +327,7 @@ def notify_welcome_bonus(member_pk, points):
         return
     title, body = render(PushKind.WELCOME_BONUS, m.language, points=points)
     notify(m, PushKind.WELCOME_BONUS, title, body, {'points': points}, push=m.notify_cashback)
+    publish_member(m.pk, 'welcome.bonus', {'points': points})  # realtime — для праздничного экрана
 
 
 def notify_complaint_reply(complaint):

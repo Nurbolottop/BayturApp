@@ -9725,6 +9725,11 @@ components:
           type: string
           format: uri
           nullable: true
+        tour3dUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: 3D-тур по курорту; null — кнопку не показывать
         termsUrl:
           type: string
           format: uri
@@ -9756,6 +9761,7 @@ components:
       - phone
       - privacyUrl
       - termsUrl
+      - tour3dUrl
       - whatsapp
     ResortEvent:
       type: object

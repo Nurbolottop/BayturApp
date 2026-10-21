@@ -49,6 +49,8 @@ def _notify_issued(coupon):
     titles = {'ru': 'Подарок за регистрацию', 'ky': 'Каттоо үчүн белек', 'en': 'Welcome gift'}
     notify(m, 'coupon.issued', tr(titles, m.language), tr(coupon.title, m.language) or '',
            {'couponId': coupon.pk}, push=True)
+    from apps.common.realtime import publish_member
+    publish_member(m.pk, 'coupon.issued', coupon_payload(coupon, m.language))  # realtime: сам купон
 
 
 # ---------------------------------------------------------------- представление

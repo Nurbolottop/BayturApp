@@ -287,6 +287,7 @@ class ResortContactsView(PublicAPIView):
                 'phone': ps.resort_phone,
                 'whatsapp': ps.resort_whatsapp.lstrip('+'),
                 'mapsUrl': ps.resort_maps_url or None,
+                'tour3dUrl': ps.resort_tour3d_url or None,
                 'termsUrl': (legal.get('terms') or {}).get('url'),
                 'privacyUrl': (legal.get('privacy') or {}).get('url'),
                 'deletionUrl': (legal.get('deletion') or {}).get('url'),

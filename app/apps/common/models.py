@@ -82,6 +82,8 @@ class ProgramSettings(models.Model):
     resort_phone = models.CharField('Телефон курорта', max_length=30, default='+996312000000')
     resort_whatsapp = models.CharField('WhatsApp (без +)', max_length=30, default='996555000000')
     resort_maps_url = models.URLField('Карта', default='https://maps.app.goo.gl/baytur', blank=True)
+    resort_tour3d_url = models.URLField('3D-тур по курорту', max_length=500, blank=True,
+                                        help_text='Полная ссылка https://…. Пусто — кнопки «3D-тур» в приложении нет')
 
     # Уведомления
     promo_push_monthly_limit = models.PositiveSmallIntegerField('Рекламных push в месяц', default=4)

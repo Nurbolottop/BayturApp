@@ -1,3 +1,5 @@
+from unittest import mock
+
 from django.core.cache import cache
 
 from apps.common.testing import BaseAPITestCase
@@ -41,6 +43,12 @@ class WelcomeBonusTests(BaseAPITestCase):
         self.auth(member)
         history = self.api.get('/api/v1/wallet/operations').json()['items']
         self.assertEqual([(o['kind'], o['points']) for o in history], [('welcome', 500)])
+
+    def test_realtime_event(self):
+        self.settings_obj(welcome_bonus_points=300)
+        with mock.patch('apps.notifications.services.publish_member') as pub:
+            self.register()
+        self.assertIn(('welcome.bonus', {'points': 300}), [c.args[1:] for c in pub.call_args_list])
 
     def test_counts_for_tier(self):
         self.settings_obj(welcome_bonus_points=1000, welcome_bonus_counts_for_tier=True)

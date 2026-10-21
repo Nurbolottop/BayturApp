@@ -74,6 +74,19 @@ class WelcomeCouponTests(BaseAPITestCase):
         bad = other.post('/api/v1/staff/coupons/redeem', body, format='json')  # payToken чужого кассира
         self.assertEqual(bad.json()['error']['code'], 'qr_invalid')
 
+    def test_issued_realtime_event_and_push_data(self):
+        from unittest import mock
+
+        from apps.notifications.models import Notification
+        self.enable()
+        with mock.patch('apps.common.realtime.publish_member') as pub, self.captureOnCommitCallbacks(execute=True):
+            self.register()
+        coupon = Coupon.objects.get()
+        events = {c.args[1]: c.args[2] for c in pub.call_args_list}
+        self.assertEqual(events['coupon.issued']['id'], coupon.pk)
+        n = Notification.objects.get(kind='coupon.issued')
+        self.assertEqual(n.data, {'type': 'coupon.issued', 'couponId': coupon.pk})
+
     def test_once_per_phone_forever(self):
         from apps.members.models import Member
         from apps.members.services import purge

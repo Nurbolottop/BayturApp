@@ -449,6 +449,7 @@ GET /legal
 
 ```json
 {"phone": "+996312000000", "whatsapp": "996555000000", "mapsUrl": "https://maps.app.goo.gl/...",
+ "tour3dUrl": null,   // 3D-тур по курорту; null — кнопку «3D-тур» не показывать
  "termsUrl": "https://...", "privacyUrl": "https://...", "deletionUrl": "https://app.baytur.kg/account/delete?lang=ru"}
 ```
 
@@ -964,9 +965,9 @@ Firebase-проект — **`baytur-2add6`**: конфиги `google-services.js
 | `tier.at_risk` | `tierId`, `dropTo` | вкладка «Уровни» (за 60, 30 и 7 дней до конца года; по `notifyPromos`) |
 | `achievement.completed` | `achievementId`, `tierId?` | вкладка «Уровни» → уровень с этим заданием |
 | `points.adjusted` | — | история |
-| `welcome.bonus` | `{points}` | поздравление «Добро пожаловать», баланс уже обновлён (`wallet.updated`) |
+| `welcome.bonus` | `{points}` | поздравление «Добро пожаловать», баланс уже обновлён (`wallet.updated`). Приходит и push (`data.type = "welcome.bonus"`, `data.points` — строкой), и отдельное WS-событие `welcome.bonus` |
 | `complaint.reply` | `complaintId` | обращение |
-| `coupon.issued` | `couponId` | экран купона (подарок за регистрацию, §5.9) |
+| `coupon.issued` | push: `couponId`; WS: `Coupon` целиком | экран купона (подарок за регистрацию, §5.9). Push: `data = {type: "coupon.issued", couponId}`; WS-событие `coupon.issued` приносит сам купон |
 | `campaign` | `campaignId`, `articleId` и/или `itemId` | статья (`GET /content/articles/{articleId}`) или услуга |
 
 Правила на стороне бека (мобилке делать ничего не нужно): сервисные push — по `notifyCashback`, «заявка
@@ -1197,7 +1198,7 @@ GET /me/member-qr → {"token": "eyJt...", "expiresAt": "2026-09-29T22:42:00+06:
 | `ComplaintStatus` | `new`, `in_progress`, `answered`, `closed` |
 | `ComplaintSubtype` | `not_credited`, `credited_less`, `overcharged`, `other` |
 | `ConsentKind` | `terms`, `privacy` |
-| Push / realtime `type` | `request.updated`, `wallet.updated`, `notification.created`, `payment.updated`, `complaint.updated`, `request.credited`, `request.rejected`, `request.paid`, `tier.upgraded`, `tier.downgraded`, `tier.retained`, `tier.at_risk`, `achievement.completed`, `points.adjusted`, `welcome.bonus`, `complaint.reply`, `campaign` (`points.expiring` / `points.expired` удалены) |
+| Push / realtime `type` | `request.updated`, `wallet.updated`, `notification.created`, `payment.updated`, `complaint.updated`, `request.credited`, `request.rejected`, `request.paid`, `tier.upgraded`, `tier.downgraded`, `tier.retained`, `tier.at_risk`, `achievement.completed`, `points.adjusted`, `welcome.bonus`, `coupon.issued`, `coupon.updated`, `complaint.reply`, `campaign` (`points.expiring` / `points.expired` удалены) |
 
 Новые значения `FeatureIcon` / `PerkIcon` / способов оплаты появляются только вместе с релизом мобилки;
 остальные enum могут расширяться — неизвестное значение не должно ломать парсинг.

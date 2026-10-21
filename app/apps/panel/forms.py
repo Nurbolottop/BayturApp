@@ -990,7 +990,8 @@ class ProgramSettingsForm(forms.ModelForm):
 
     class Meta:
         model = ProgramSettings
-        exclude = ['test_enabled', 'test_phone', 'test_code', 'resort_phone', 'resort_whatsapp', 'resort_maps_url']
+        exclude = ['test_enabled', 'test_phone', 'test_code', 'resort_phone', 'resort_whatsapp', 'resort_maps_url',
+                   'resort_tour3d_url']
         widgets = {'quiet_hours_start': forms.TimeInput(attrs={'type': 'time'}, format='%H:%M'),
                    'quiet_hours_end': forms.TimeInput(attrs={'type': 'time'}, format='%H:%M')}
 
@@ -1019,7 +1020,7 @@ class ProgramSettingsForm(forms.ModelForm):
 class ContactsForm(forms.ModelForm):
     class Meta:
         model = ProgramSettings
-        fields = ['resort_phone', 'resort_whatsapp', 'resort_maps_url']
+        fields = ['resort_phone', 'resort_whatsapp', 'resort_maps_url', 'resort_tour3d_url']
 
 
 class StoreTestForm(forms.ModelForm):

@@ -708,6 +708,7 @@ class ResortContacts(s.Serializer):
     phone = s.CharField()
     whatsapp = s.CharField()
     mapsUrl = s.URLField(allow_null=True)
+    tour3dUrl = s.URLField(allow_null=True, help_text='3D-тур по курорту; null — кнопку не показывать')
     termsUrl = s.URLField(allow_null=True)
     privacyUrl = s.URLField(allow_null=True)
     deletionUrl = s.URLField(allow_null=True)

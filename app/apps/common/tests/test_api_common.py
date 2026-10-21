@@ -73,7 +73,8 @@ class CommonApiTests(BaseAPITestCase):
 
     def test_resort_contacts(self):
         d = self.api.get('/api/v1/resort/contacts').json()
-        self.assertEqual(set(d), {'phone', 'whatsapp', 'mapsUrl', 'termsUrl', 'privacyUrl', 'deletionUrl'})
+        self.assertIsNone(d['tour3dUrl'])                                   # пусто — кнопки нет
+        self.assertEqual(set(d), {'phone', 'whatsapp', 'mapsUrl', 'tour3dUrl', 'termsUrl', 'privacyUrl', 'deletionUrl'})
         self.assertFalse(d['whatsapp'].startswith('+'))
 
     def test_openapi_schema(self):
