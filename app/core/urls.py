@@ -14,6 +14,7 @@ urlpatterns = [
     # публичная страница удаления аккаунта без приложения (требование Google Play)
     path('account/delete', members_web.delete_account, name='account-delete'),
     path('legal/<slug:kind>', members_web.legal_page, name='legal-page'),
+    path('brief/', members_web.content_brief, name='content-brief'),
     path('panel/', include('apps.panel.urls')),
     # технический Django admin — только для разработчиков
     path('django-admin/', admin.site.urls),

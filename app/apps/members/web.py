@@ -98,3 +98,18 @@ def legal_page(request, kind):
                                            'purge_days': ps.purge_days, 'points_per_som': ps.points_per_som})
     return render(request, 'members/legal.html', {
         'lang': lang, 'kind': kind, 'title': title, 'html': mark_safe(html), 'doc': doc})
+
+
+def content_brief(request):
+    """ТЗ на контент для маркетинга курорта (тексты и фото для приложений) — apps/members/content/brief.md."""
+    import datetime
+    import os
+
+    from django.utils.safestring import mark_safe
+
+    from apps.common.mdlite import render as render_md
+    path = os.path.join(os.path.dirname(__file__), 'content', 'brief.md')
+    with open(path, encoding='utf-8') as fh:
+        title, html = render_md(fh.read())
+    updated = datetime.date.fromtimestamp(os.path.getmtime(path))
+    return render(request, 'members/brief.html', {'title': title, 'html': mark_safe(html), 'updated': updated})
