@@ -8362,11 +8362,15 @@ components:
         url:
           type: string
           format: uri
-          description: WebP до 1600 px по ширине
+          description: WebP до 1600 px по ширине (меньший исходник не увеличивается)
+        medium:
+          type: string
+          format: uri
+          description: WebP 800 px — плитки и половинные карточки на 3x-экранах
         thumb:
           type: string
           format: uri
-          description: WebP 400 px — для списков и плиток
+          description: WebP 400 px — миниатюры
         width:
           type: integer
           nullable: true
@@ -8381,6 +8385,7 @@ components:
       required:
       - color
       - height
+      - medium
       - thumb
       - url
       - width

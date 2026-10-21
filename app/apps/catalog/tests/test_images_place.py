@@ -33,10 +33,30 @@ class ImagesAndPlaceTests(BaseAPITestCase):
         r, g, b = (int(img['color'][i:i + 2], 16) for i in (1, 3, 5))         # JPEG чуть сдвигает цвет
         self.assertTrue(abs(r - 111) <= 3 and abs(g - 143) <= 3 and abs(b - 63) <= 3, img['color'])
         self.assertTrue(img['url'].endswith('?w=1600') and img['thumb'].endswith('?w=400'))
+        self.assertTrue(img['medium'].endswith('?w=800'))
         r = self.client.get('/img/' + img['thumb'].split('/img/', 1)[1].split('?')[0], {'w': 400})
         self.assertEqual((r.status_code, r['Content-Type']), (200, 'image/webp'))
+        small = image_payload(save_image('small', size=(1080, 1920)))     # слайд 1080 не растягивается до 1600
+        self.assertEqual((small['width'], small['height']), (1080, 1920))
         self.assertIsNone(image_payload(''))
         self.assertEqual(image_payload('https://cdn.example/x.jpg')['url'], 'https://cdn.example/x.jpg')
+
+    def test_transparency_kept_in_webp(self):
+        from apps.common.media import get_resized
+        for mode in ('RGBA', 'P'):
+            img = Image.new('RGBA', (1200, 1200), (0, 0, 0, 0))
+            img.paste((200, 30, 30, 255), (300, 300, 900, 900))
+            if mode == 'P':
+                img = img.convert('P', palette=Image.ADAPTIVE, colors=8)
+                img.info['transparency'] = img.getpixel((0, 0))
+            buf = io.BytesIO()
+            img.save(buf, 'PNG', transparency=img.info.get('transparency')) if mode == 'P' else img.save(buf, 'PNG')
+            path = default_storage.save(f'uploads/test/cut-{mode}.png', ContentFile(buf.getvalue()))
+            with default_storage.open(get_resized(path, 800), 'rb') as fh:
+                out = Image.open(fh)
+                out.load()
+            self.assertEqual(out.mode, 'RGBA', mode)
+            self.assertEqual(out.getpixel((5, 5))[3], 0, mode)              # угол прозрачный, не белый/чёрный
 
     def test_services_and_showcase_images(self):
         cover, photo, hero = save_image('cover'), save_image('photo'), save_image('hero', (1280, 1600))

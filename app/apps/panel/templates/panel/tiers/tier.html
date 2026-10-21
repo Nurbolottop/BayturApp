@@ -25,7 +25,7 @@
     <div class="field"><span class="label">Медаль (необязательно)</span>
       <div class="photo-field" data-photo="id_medal"><div class="ph">{% icon 'medal' 24 %}</div>
         <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить PNG<input type="file" accept="image/png,image/webp,image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.medal }}
-      <div class="help">PNG с прозрачным фоном. Без картинки рисуется стандартная медаль в цветах уровня.</div></div>
+      <div class="help">PNG с прозрачным фоном, квадрат 1:1 от 1024×1024, поля 8%. Без картинки рисуется стандартная медаль в цветах уровня.</div></div>
     <div class="form-actions"><a class="btn btn-ghost" href="{% url 'panel:tiers' %}">Отмена</a><button class="btn btn-accent btn-l">{% if creating %}Добавить уровень{% else %}Сохранить{% endif %}</button></div>
   </form>
 

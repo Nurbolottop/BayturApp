@@ -21,7 +21,7 @@
         {% include 'panel/components/field.html' with f=form.title full=1 %}
         {% include 'panel/components/field.html' with f=form.id %}
         {% include 'panel/components/field.html' with f=form.tag %}
-        <div class="field full"><span class="label">Обложка</span><div class="photo-field" data-photo="id_image"><div class="ph">{% icon 'image' 24 %}</div><div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.image }}</div>
+        <div class="field full"><span class="label">Обложка · горизонтальная 16:9, от 1600×900 (по краям 5% без важного)</span><div class="photo-field" data-photo="id_image"><div class="ph">{% icon 'image' 24 %}</div><div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.image }}</div>
         {% include 'panel/components/field.html' with f=form.lead full=1 %}
         {% include 'panel/components/field.html' with f=form.body full=1 %}
         {% include 'panel/components/field.html' with f=form.quote full=1 %}
@@ -32,7 +32,7 @@
         {% include 'panel/components/field.html' with f=form.article full=1 %}
         {% include 'panel/components/field.html' with f=form.subtitle full=1 %}
         {% include 'panel/components/field.html' with f=form.cta %}
-        <div class="field"><span class="label">PNG без фона</span><div class="photo-field" data-photo="id_cutout"><div class="ph" style="background-size:contain">{% icon 'image' 24 %}</div><div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/png,image/webp" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.cutout }}</div>
+        <div class="field"><span class="label">PNG без фона · квадрат 1:1, от 1000×1000, отступ 5%</span><div class="photo-field" data-photo="id_cutout"><div class="ph" style="background-size:contain">{% icon 'image' 24 %}</div><div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/png,image/webp" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.cutout }}</div>
         {% include 'panel/components/field.html' with f=form.active_from %}
         {% include 'panel/components/field.html' with f=form.active_to %}
         {% include 'panel/components/field.html' with f=form.sort_order %}
@@ -47,13 +47,13 @@
         {% include 'panel/components/field.html' with f=form.category %}
         {% include 'panel/components/field.html' with f=form.sort_order %}
         {% include 'panel/components/field.html' with f=form.title full=1 %}
-        <div class="field full"><span class="label">Обложка</span><div class="photo-field" data-photo="id_cover"><div class="ph">{% icon 'image' 24 %}</div><div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.cover }}</div>
+        <div class="field full"><span class="label">Обложка · квадрат 1:1, от 600×600 — показывается кружком, объект в центре</span><div class="photo-field" data-photo="id_cover"><div class="ph">{% icon 'image' 24 %}</div><div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.cover }}</div>
       {% endif %}
       </div>
     </div>
     {% if kind == 'stories' %}
     <div class="card appear rows-editor" data-slides="id_slides">
-      <div class="card-head"><div class="h3">{% bubble 'story' 18 %} Слайды</div><button type="button" class="btn btn-s" data-add>{% icon 'plus' 16 %} Слайд</button></div>
+      <div class="card-head"><div><div class="h3">{% bubble 'story' 18 %} Слайды</div><div class="small muted">Вертикальные 9:16, 1080×1920. Сверху 250 px и снизу 340 px — без важного (полоски, крестик, кнопка)</div></div><button type="button" class="btn btn-s" data-add>{% icon 'plus' 16 %} Слайд</button></div>
       <div class="re-list"></div>{{ form.slides }}{{ form.slides.errors }}
       <template><div class="re-row" style="grid-template-columns:28px 64px minmax(0,1fr) 34px">
         <span class="re-handle">⋮⋮</span>

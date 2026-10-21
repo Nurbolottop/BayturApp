@@ -41,7 +41,7 @@
     {% include 'panel/components/field.html' with f=form.stackable %}
     {% include 'panel/components/field.html' with f=form.usage_limit %}
     {% include 'panel/components/field.html' with f=form.note full=1 %}
-    <div class="field full"><span class="label">Картинка для ленты на главной · 4:3</span>
+    <div class="field full"><span class="label">Картинка для ленты на главной · горизонтальная 2:1, от 1600×800; левые 55% — под текст и кнопку</span>
       <div class="photo-field" data-photo="id_image"><div class="ph">{% icon 'image' 24 %}</div>
         <div class="stack-s"><label class="btn btn-s">{% icon 'upload' 16 %} Загрузить<input type="file" accept="image/*" hidden></label><button type="button" class="btn btn-s btn-ghost" data-photo-remove>Убрать</button></div></div>{{ form.image }}</div>
     {% include 'panel/components/field.html' with f=form.show_on_home full=1 %}

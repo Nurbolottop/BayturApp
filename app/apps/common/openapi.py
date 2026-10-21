@@ -749,8 +749,9 @@ class Mode(s.Serializer):
 
 
 class Image(s.Serializer):
-    url = s.URLField(help_text='WebP до 1600 px по ширине')
-    thumb = s.URLField(help_text='WebP 400 px — для списков и плиток')
+    url = s.URLField(help_text='WebP до 1600 px по ширине (меньший исходник не увеличивается)')
+    medium = s.URLField(help_text='WebP 800 px — плитки и половинные карточки на 3x-экранах')
+    thumb = s.URLField(help_text='WebP 400 px — миниатюры')
     width = s.IntegerField(allow_null=True, help_text='размер url — зарезервировать место до загрузки')
     height = s.IntegerField(allow_null=True)
     color = s.CharField(allow_null=True, help_text='преобладающий цвет #RRGGBB — фон заглушки')

@@ -43,7 +43,9 @@ def get_resized(path, width):
             img.thumbnail((width, width * 10))
         buf = io.BytesIO()
         if img.mode not in ('RGB', 'RGBA'):
-            img = img.convert('RGBA' if 'A' in img.getbands() else 'RGB')
+            # прозрачность сохраняем: RGBA/LA и палитровый PNG с transparency (cutout, логотип, медаль)
+            alpha = 'A' in img.getbands() or 'transparency' in img.info
+            img = img.convert('RGBA' if alpha else 'RGB')
         img.save(buf, 'WEBP', quality=82)
     default_storage.save(target, ContentFile(buf.getvalue()))
     return target
@@ -108,7 +110,7 @@ def process_avatar(uploaded_file, size=512):
     return ContentFile(buf.getvalue())
 
 
-IMAGE_FULL, IMAGE_THUMB = 1600, 400
+IMAGE_FULL, IMAGE_MEDIUM, IMAGE_THUMB = 1600, 800, 400
 
 
 def _image_meta(path):
@@ -142,17 +144,19 @@ def _image_meta(path):
 def image_payload(path):
     """
     Картинка для новых экранов (/services, /showcase): {url, thumb, width, height, color} или None.
-    url — WebP до 1600 px по ширине, thumb — 400 px; width/height — размер url (для резерва места до загрузки).
+    url — WebP до 1600 px по ширине, medium — 800 px (плитки на 3x-экранах), thumb — 400 px; исходник меньше
+    нужной ширины не увеличивается. width/height — размер url (для резерва места до загрузки). Прозрачность сохраняется.
     """
     if not path:
         return None
     if path.startswith(('http://', 'https://')):
-        return {'url': path, 'thumb': path, 'width': None, 'height': None, 'color': None}
+        return {'url': path, 'medium': path, 'thumb': path, 'width': None, 'height': None, 'color': None}
     meta = _image_meta(path)
     w, h = meta.get('width'), meta.get('height')
     if w and h and w > IMAGE_FULL:
         w, h = IMAGE_FULL, round(h * IMAGE_FULL / w)
     from urllib.parse import quote
     base = f'{settings.PUBLIC_BASE_URL}/img/{quote(path)}'
-    return {'url': f'{base}?w={IMAGE_FULL}', 'thumb': f'{base}?w={IMAGE_THUMB}', 'width': w, 'height': h,
+    return {'url': f'{base}?w={IMAGE_FULL}', 'medium': f'{base}?w={IMAGE_MEDIUM}', 'thumb': f'{base}?w={IMAGE_THUMB}',
+            'width': w, 'height': h,
             'color': meta.get('color')}
