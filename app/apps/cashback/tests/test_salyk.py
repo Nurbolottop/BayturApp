@@ -26,8 +26,8 @@ TICKET = {
 }
 
 
-def response(status=200, data=None):
-    r = mock.Mock(status_code=status, text='')
+def response(status=200, data=None, content=b'{}'):
+    r = mock.Mock(status_code=status, text=content.decode(), content=content)
     r.json = mock.Mock(return_value=data if data is not None else TICKET)
     return r
 
@@ -66,6 +66,15 @@ class SalykTests(BaseAPITestCase):
             with self.assertRaises(ApiError) as e:
                 parse_receipt(QR)
         self.assertEqual(e.exception.code, 'receipt_not_found')
+
+    def test_tax_service_closed_falls_back_to_qr(self):
+        # налоговая закрыта от внешних запросов: 400 с пустым телом или 450 на любой чек — не «поддельный»
+        for resp in (response(400, content=b''), response(450, content=b'')):
+            cache.clear()
+            with mock.patch('apps.cashback.receipts.requests.get', return_value=resp):
+                r = parse_receipt(QR)
+            self.assertEqual(r['amount'], 240)
+            self.assertFalse(r['details']['verified'])
 
     def test_refund_receipt_rejected(self):
         with mock.patch('apps.cashback.receipts.requests.get', return_value=response(data={**TICKET, 'operationType': 2})):
