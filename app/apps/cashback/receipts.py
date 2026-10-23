@@ -122,16 +122,22 @@ def fetch_salyk(params, key):
     return details
 
 
-def _salyk(raw, fields, original):
-    """Чек ГНС КР (tax.salyk.kg): сумма в тыйынах, номер — ИНН + ФМ + ФД; данные — из налоговой."""
+def _salyk(raw, fields, original, manual_amount=None):
+    """
+    Чек ГНС КР (tax.salyk.kg): сумма в тыйынах, номер — ИНН + ФМ + ФД; данные — из налоговой.
+    В QR некоторых касс (JaratmanKassa) суммы нет: тогда она из налоговой, а если та недоступна — введённая
+    кассиром (manual_amount); без неё — receipt_amount_required.
+    """
     host = (urlsplit(raw).hostname or '').lower() if '://' in raw else ''
-    if not (host == 'salyk.kg' or host.endswith('.salyk.kg')) or 'sum' not in fields:
+    if not (host == 'salyk.kg' or host.endswith('.salyk.kg')):
         return None
-    value = fields['sum'].strip()
-    amount = _amount(value) if any(ch in value for ch in '.,') else (_amount(Decimal(value) / 100)
-                                                                       if value.isdigit() else None)
-    if amount is None:
-        raise ApiError('receipt_unreadable', 422)
+    amount = None
+    if fields.get('sum'):
+        value = fields['sum'].strip()
+        amount = _amount(value) if any(ch in value for ch in '.,') else (_amount(Decimal(value) / 100)
+                                                                           if value.isdigit() else None)
+        if amount is None:
+            raise ApiError('receipt_unreadable', 422)
     ids = [fields.get(k, '').strip() for k in ('tin', 'fn_number', 'fd_number')]
     if not all(ids):
         raise ApiError('receipt_unreadable', 422)
@@ -144,19 +150,27 @@ def _salyk(raw, fields, original):
         if details['operationType'] not in (1, None):  # 1 — приход; возврат и прочее не принимаются
             raise ApiError('receipt_not_sale', 422)
         amount = details['total'] or amount
-    else:
+    if amount is None:
+        if not manual_amount:
+            raise ApiError('receipt_amount_required', 422)
+        amount = int(manual_amount)
+        details = {'verified': False, 'total': amount, 'manual': True}
+    elif details is None:
         details = {'verified': False, 'total': amount}
     return {'key': key, 'amount': amount, 'fields': {**fields, 'details': details}, 'raw': raw, 'details': details}
 
 
-def parse_receipt(raw):
-    """→ {'key', 'amount', 'fields', 'raw'}; ApiError('receipt_unreadable') — если суммы в QR нет."""
+def parse_receipt(raw, manual_amount=None):
+    """
+    → {'key', 'amount', 'fields', 'raw'}; ApiError('receipt_unreadable') — если суммы в QR нет.
+    manual_amount — сумма, введённая кассиром; нужна только чеку ГНС без суммы в QR.
+    """
     raw = (raw or '').strip()
     if not raw or len(raw) > MAX_QR_LENGTH:
         raise ApiError('receipt_unreadable', 422)
     pairs = [(k.strip(), v.strip()) for k, v in _pairs(raw) if k.strip()]
     fields = {k.lower(): v for k, v in pairs}
-    salyk = _salyk(raw, fields, dict(pairs))
+    salyk = _salyk(raw, fields, dict(pairs), manual_amount)
     if salyk is not None:
         return salyk
     amount = next((a for a in (_amount(fields[k]) for k in AMOUNT_KEYS if k in fields) if a), None)

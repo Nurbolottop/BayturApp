@@ -192,6 +192,8 @@ class ReceiptInput(serializers.Serializer):
     itemId = serializers.CharField()
     receiptQr = serializers.CharField(max_length=2000)
     requestId = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    # сумма с чека, введённая кассиром — только после ошибки receipt_amount_required (в QR чека суммы нет)
+    amount = serializers.IntegerField(required=False, allow_null=True, min_value=1, max_value=10_000_000)
 
 
 def _receipt_input(request):
@@ -206,7 +208,7 @@ class ReceiptPreviewView(StaffAPIView):
     def post(self, request):
         d = _receipt_input(request)
         return Response(desk.receipt_preview(request.user, d['payToken'], d['itemId'], d['receiptQr'],
-                                             d.get('requestId') or None))
+                                             d.get('requestId') or None, d.get('amount')))
 
 
 class ReceiptAcceptView(StaffAPIView):
@@ -214,5 +216,6 @@ class ReceiptAcceptView(StaffAPIView):
 
     def post(self, request):
         d = _receipt_input(request)
-        req = desk.receipt_accept(request, d['payToken'], d['itemId'], d['receiptQr'], d.get('requestId') or None)
+        req = desk.receipt_accept(request, d['payToken'], d['itemId'], d['receiptQr'], d.get('requestId') or None,
+                                  d.get('amount'))
         return Response(payload(req), status=201)

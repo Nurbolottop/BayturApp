@@ -65,6 +65,7 @@ MESSAGES = {
     'mode_closed': {'ru': 'Объект закрыт на эти даты', 'ky': 'Объект бул күндөрү жабык', 'en': 'The resort is closed on these dates'},
     'out_of_season': {'ru': 'Услуга недоступна вне сезона', 'ky': 'Кызмат мезгилден тышкары жеткиликсиз', 'en': 'The service is not available out of season'},
     'receipt_unreadable': {'ru': 'Не удалось прочитать чек — отсканируйте QR фискального чека ещё раз', 'ky': 'Чек окулган жок — фискалдык чектин QR кодун кайра сканерлеңиз', 'en': 'Could not read the receipt — scan the fiscal receipt QR again'},
+    'receipt_amount_required': {'ru': 'В QR этого чека нет суммы — введите сумму с чека', 'ky': 'Бул чектин QR кодунда сумма жок — чектеги сумманы киргизиңиз', 'en': 'This receipt QR has no amount — enter the amount from the receipt'},
     'receipt_not_found': {'ru': 'Налоговая не нашла такой чек — проверьте QR', 'ky': 'Салык кызматы мындай чекти тапкан жок — QR кодду текшериңиз', 'en': 'The tax service could not find this receipt — check the QR'},
     'receipt_not_sale': {'ru': 'Это не чек продажи (например, возврат) — принять нельзя', 'ky': 'Бул сатуу чеги эмес (мисалы, кайтаруу) — кабыл алууга болбойт', 'en': 'This is not a sales receipt (e.g. a refund) and cannot be accepted'},
     'receipt_foreign': {'ru': 'Чек выдан не курортом BAYTUR', 'ky': 'Чек BAYTUR курорту тарабынан берилген эмес', 'en': 'This receipt was not issued by BAYTUR resort'},

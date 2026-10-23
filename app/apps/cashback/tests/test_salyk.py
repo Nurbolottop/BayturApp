@@ -76,6 +76,23 @@ class SalykTests(BaseAPITestCase):
             self.assertEqual(r['amount'], 240)
             self.assertFalse(r['details']['verified'])
 
+    def test_qr_without_sum_needs_amount_when_tax_service_closed(self):
+        # JaratmanKassa: в QR нет sum и date
+        qr = ('https://tax.salyk.kg/tax-web-control/client/api/v1/ticket?type=3&fn_number=0000000002451406'
+              '&fd_number=1698&fm=218212929134284&tin=01604199910194&regNumber=0000000000300409')
+        closed = response(400, content=b'')
+        with mock.patch('apps.cashback.receipts.requests.get', return_value=closed):
+            with self.assertRaises(ApiError) as e:
+                parse_receipt(qr)
+            self.assertEqual(e.exception.code, 'receipt_amount_required')
+            r = parse_receipt(qr, 12500)
+        self.assertEqual((r['amount'], r['key']), (12500, 'salyk:01604199910194:0000000002451406:1698'))
+        self.assertTrue(r['details']['manual'])
+        # налоговая ответила — сумма из неё, введённая кассиром не нужна
+        cache.clear()
+        with mock.patch('apps.cashback.receipts.requests.get', return_value=response()):
+            self.assertEqual(parse_receipt(qr, 99999)['amount'], 240)
+
     def test_refund_receipt_rejected(self):
         with mock.patch('apps.cashback.receipts.requests.get', return_value=response(data={**TICKET, 'operationType': 2})):
             with self.assertRaises(ApiError) as e:

@@ -374,14 +374,14 @@ def _client_cash_request(user, member, request_id, item_id):
     return req
 
 
-def receipt_preview(user, pay_token, item_id, receipt_qr, request_id=None):
+def receipt_preview(user, pay_token, item_id, receipt_qr, request_id=None, amount=None):
     """Что увидит сотрудник после скана чека: сумма, кешбек клиенту; чек ещё не принят."""
     from django.utils import timezone as tz
 
     from .calc import compute_split, compute_total, resolve_rules
     from .receipts import parse_receipt
     member = read_pay_token(user, pay_token)
-    receipt = parse_receipt(receipt_qr)
+    receipt = parse_receipt(receipt_qr, amount)
     _receipt_used(receipt['key'])
     item = _pay_item(user, item_id)
     if request_id:
@@ -395,11 +395,12 @@ def receipt_preview(user, pay_token, item_id, receipt_qr, request_id=None):
     return {'itemId': item.pk, 'amount': receipt['amount'], 'total': total, 'quantity': quantity,
             'cashback': split.cashback, 'rate': str(split.rate), 'receiptNumber': receipt['key'],
             'requestId': request_id or None,
-            # данные чека из налоговой (verified=false — налоговая не ответила, сумма взята из QR)
+            # данные чека из налоговой (verified=false — налоговая не ответила, сумма взята из QR;
+            # manual=true — суммы в QR нет, её ввёл кассир)
             'receipt': receipt.get('details')}
 
 
-def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None):
+def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None, amount=None):
     """
     «Принять оплату» по чеку: операция проводится сразу (без очереди подтверждения), кешбек начисляется
     клиенту. Чек запоминается — повторный скан даёт receipt_used.
@@ -412,7 +413,7 @@ def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None):
     from .receipts import parse_receipt
     user = request.user
     member = read_pay_token(user, pay_token)
-    receipt = parse_receipt(receipt_qr)
+    receipt = parse_receipt(receipt_qr, amount)
     _receipt_used(receipt['key'])
     item = _pay_item(user, item_id)
     check_not_own_member(user, member)
