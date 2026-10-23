@@ -159,6 +159,9 @@ def parse_receipt(raw):
         return salyk
     amount = next((a for a in (_amount(fields[k]) for k in AMOUNT_KEYS if k in fields) if a), None)
     if amount is None:
+        # образец для поддержки новых форматов (банковские слипы и т. п.); цифры длиннее 12 маскируются
+        import re
+        log.warning('receipt unreadable QR: %s', re.sub(r'\d{13,}', lambda m: m.group()[:4] + '…', raw[:400]))
         raise ApiError('receipt_unreadable', 422)
     ids = sorted((k, fields[k]) for k in ID_KEYS if fields.get(k))
     # одних реквизитов вроде даты мало — нужен хотя бы один номер; иначе номер чека — хеш всего QR
