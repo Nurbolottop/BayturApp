@@ -68,8 +68,8 @@ class SalykTests(BaseAPITestCase):
         self.assertEqual(e.exception.code, 'receipt_not_found')
 
     def test_tax_service_closed_falls_back_to_qr(self):
-        # налоговая закрыта от внешних запросов: 400 с пустым телом или 450 на любой чек — не «поддельный»
-        for resp in (response(400, content=b''), response(450, content=b'')):
+        # сайт налоговой отдаёт 450 при блокировке — это «недоступна», а не «поддельный»
+        for resp in (response(450, content=b''),):
             cache.clear()
             with mock.patch('apps.cashback.receipts.requests.get', return_value=resp):
                 r = parse_receipt(QR)
@@ -80,7 +80,7 @@ class SalykTests(BaseAPITestCase):
         # JaratmanKassa: в QR нет sum и date
         qr = ('https://tax.salyk.kg/tax-web-control/client/api/v1/ticket?type=3&fn_number=0000000002451406'
               '&fd_number=1698&fm=218212929134284&tin=01604199910194&regNumber=0000000000300409')
-        closed = response(400, content=b'')
+        closed = response(450, content=b'')
         with mock.patch('apps.cashback.receipts.requests.get', return_value=closed):
             with self.assertRaises(ApiError) as e:
                 parse_receipt(qr)

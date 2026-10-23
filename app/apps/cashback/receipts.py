@@ -103,9 +103,8 @@ def fetch_salyk(params, key):
     except requests.RequestException as e:
         log.warning('salyk unavailable: %s', e)
         return None
-    # 404 / 400 с ответом — налоговая чека не знает; 400 с пустым телом и 450 налоговая отдаёт на любой запрос,
-    # когда закрыта от внешних запросов (с 10.2026) — это «недоступна», а не «поддельный»
-    if resp.status_code == 404 or (resp.status_code == 400 and resp.content.strip()):
+    # 404 — чека нет, 400 — реквизиты QR не те (подделка): оба отклоняются
+    if resp.status_code in (400, 404):
         raise ApiError('receipt_not_found', 422)
     if resp.status_code != 200:
         log.warning('salyk %s: %s', resp.status_code, resp.text[:200])
