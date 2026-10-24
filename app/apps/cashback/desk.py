@@ -334,7 +334,7 @@ def _pay_item(user, item_id):
     return item
 
 
-def points_quote(user, member, item_id, quantity=None, check_amount=None):
+def points_quote(user, member, item_id, quantity=None, check_amount=None, amount=None):
     """
     Хватает ли баллов, чтобы оплатить услугу целиком. Баланс клиента сотруднику не показывается —
     только «хватает» или «не хватает N сом». Лимита доли по разделам нет: reason — только 'balance'.
@@ -343,30 +343,34 @@ def points_quote(user, member, item_id, quantity=None, check_amount=None):
 
     from apps.loyalty.services import get_wallet
 
-    from .calc import balance_som, compute_total, resolve_rules
+    from .calc import balance_som, discounted_total, resolve_rules
     item = _pay_item(user, item_id)
     rules = resolve_rules(item, member, ProgramSettings.get(), timezone.now())
-    total, quantity = compute_total(item, quantity, check_amount)
-    total, promotion = services._with_promotions(item, total, quantity, member, timezone.now())
+    total, quantity, original = discounted_total(item, quantity, check_amount, amount)
+    if amount is None or item.pricing_type == 'check':
+        total, promotion = services._with_promotions(item, total, quantity, member, timezone.now())
+    else:
+        promotion = None  # сумму со скидкой вписал кассир
     available = get_wallet(member).available
     balance = balance_som(available, rules)
     enough = balance >= total
     return {
         'itemId': item.pk, 'total': total, 'quantity': quantity, 'points': total * rules.points_per_som,
+        'originalTotal': original,
         'enough': enough, 'shortSom': max(0, total - balance), 'reason': None if enough else 'balance',
         'promotion': services.promotion_payload(promotion),
         'limitPercent': 100,  # устарело: лимита доли больше нет, оставлено для совместимости
     }
 
 
-def charge_points(request, pay_token, item_id, quantity=None, check_amount=None):
+def charge_points(request, pay_token, item_id, quantity=None, check_amount=None, amount=None):
     """
     Оплата баллами по QR: заявка «оплачено баллами» сразу подтверждается этим сотрудником (баллы списываются,
     кешбек 0). Напрямую сотрудник баллы не списывает — только через заявку (ТЗ §8.3).
     """
     user = request.user
     member = read_pay_token(user, pay_token)
-    quote = points_quote(user, member, item_id, quantity, check_amount)
+    quote = points_quote(user, member, item_id, quantity, check_amount, amount)
     if not quote['enough']:
         raise ApiError('insufficient_points', 422, extra={'shortSom': quote['shortSom']})
     check_not_own_member(user, member)
@@ -374,6 +378,7 @@ def charge_points(request, pay_token, item_id, quantity=None, check_amount=None)
         req, _ = services.create_request(member, {
             'itemId': item_id, 'quantity': quote['quantity'],
             'checkAmount': quote['total'] if check_amount is not None else None,
+            'amount': quote['total'] if quote['originalTotal'] is not None else None,
             'pointsSom': quote['total'], 'method': None})
         req = services.confirm_request(req.pk, staff=user, cash_received=True)
     audit(request, 'request.points_payment', req,
@@ -393,18 +398,24 @@ def _receipt_used(key):
             'outlet': used.outlet_id})
 
 
-def _cash_input(item, amount, quantity=None):
+def _cash_input(item, amount, quantity=None, expected_amount=None):
     """
-    Сумма чека → ввод заявки: «по сумме чека» — сумма; фиксированная цена — количество. Кассир указал
-    количество (номер 3 040 × 6 ночей) — сумма чека должна быть цена × количество; не указал — сумма должна делиться.
+    Сумма чека → ввод заявки: «по сумме чека» — сумма; фиксированная цена — количество. Кассир вписал сумму
+    со скидкой (expected_amount) — сумма чека должна совпасть с ней. Указал только количество (номер 3 040 × 6 ночей) —
+    сумма чека должна быть цена × количество; не указал — сумма должна делиться на цену.
     """
+    if expected_amount is not None and amount != expected_amount:
+        raise ApiError('receipt_amount_mismatch', 422, extra={'price': item.price, 'amount': amount,
+                                                              'quantity': quantity, 'expected': expected_amount})
     if item.pricing_type == 'check':
-        return {'checkAmount': amount, 'quantity': None}
+        return {'checkAmount': amount, 'quantity': None, 'amount': None}
+    if expected_amount is not None:
+        return {'checkAmount': None, 'quantity': quantity or 1, 'amount': amount}
     expected = item.price * quantity if quantity else None
     if not item.price or (amount != expected if quantity else amount % item.price):
         raise ApiError('receipt_amount_mismatch', 422, extra={'price': item.price, 'amount': amount,
                                                               'quantity': quantity, 'expected': expected})
-    return {'checkAmount': None, 'quantity': quantity or amount // item.price}
+    return {'checkAmount': None, 'quantity': quantity or amount // item.price, 'amount': None}
 
 
 def _client_cash_request(user, member, request_id, item_id):
@@ -421,7 +432,7 @@ def receipt_preview(user, pay_token, item_id, receipt_qr, request_id=None, amoun
     """Что увидит сотрудник после скана чека: сумма, кешбек клиенту; чек ещё не принят."""
     from django.utils import timezone as tz
 
-    from .calc import compute_split, compute_total, resolve_rules
+    from .calc import compute_split, discounted_total, resolve_rules
     from .receipts import parse_receipt
     member = read_pay_token(user, pay_token)
     receipt = parse_receipt(receipt_qr, amount)
@@ -432,10 +443,11 @@ def receipt_preview(user, pay_token, item_id, receipt_qr, request_id=None, amoun
     rules = resolve_rules(item, member, ProgramSettings.get(), tz.now())
     if 'cash' not in rules.methods:
         raise ApiError('method_not_allowed', 422)
-    data = _cash_input(item, receipt['amount'], quantity)
-    total, quantity = compute_total(item, data['quantity'], data['checkAmount'])
+    data = _cash_input(item, receipt['amount'], quantity, amount)
+    total, quantity, original = discounted_total(item, data['quantity'], data['checkAmount'], data['amount'])
     split = compute_split(total, rules, 0, 0)
     return {'itemId': item.pk, 'amount': receipt['amount'], 'total': total, 'quantity': quantity,
+            'originalTotal': original,
             'cashback': split.cashback, 'rate': str(split.rate), 'receiptNumber': receipt['key'],
             'requestId': request_id or None,
             # данные чека из налоговой (verified=false — налоговая не ответила, сумма взята из QR;
@@ -460,7 +472,7 @@ def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None, amo
     _receipt_used(receipt['key'])
     item = _pay_item(user, item_id)
     check_not_own_member(user, member)
-    data = _cash_input(item, receipt['amount'], quantity)
+    data = _cash_input(item, receipt['amount'], quantity, amount)
     try:
         with transaction.atomic():
             if request_id:
@@ -471,7 +483,7 @@ def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None, amo
             else:
                 req, _ = services.create_request(member, {
                     'itemId': item.pk, 'quantity': data['quantity'], 'checkAmount': data['checkAmount'],
-                    'pointsSom': 0, 'method': PaymentMethod.CASH, '_noPromotions': True})
+                    'amount': data['amount'], 'pointsSom': 0, 'method': PaymentMethod.CASH, '_noPromotions': True})
             FiscalReceipt.objects.create(key=receipt['key'], raw=receipt['raw'], amount=receipt['amount'],
                                          fields=receipt['fields'], request=req, outlet=req.outlet, accepted_by=user)
             # приём по чеку — оформление кассира: отменить его можно 10 минут (POST /staff/requests/{id}/cancel)
@@ -527,16 +539,19 @@ def find_duplicate(member, item, exclude=None):
     return qs.first()
 
 
-def sale_quote(user, member, item_id, quantity=None, check_amount=None):
-    """Расчёт до оформления: сумма по прайсу, кешбек за деньги, хватает ли баллов, порог, повтор."""
+def sale_quote(user, member, item_id, quantity=None, check_amount=None, amount=None):
+    """
+    Расчёт до оформления: сумма (по прайсу или со скидкой кассира — amount), кешбек за деньги, хватает ли баллов,
+    порог, повтор. originalTotal — сумма по прайсу, если кассир дал скидку.
+    """
     from .calc import compute_split, resolve_rules
-    q = points_quote(user, member, item_id, quantity, check_amount)
+    q = points_quote(user, member, item_id, quantity, check_amount, amount)
     item = _pay_item(user, item_id)
     rules = resolve_rules(item, member, ProgramSettings.get(), timezone.now())
     dup = find_duplicate(member, item)
     from apps.common.i18n import iso
     return {
-        'itemId': item.pk, 'total': q['total'], 'quantity': q['quantity'],
+        'itemId': item.pk, 'total': q['total'], 'quantity': q['quantity'], 'originalTotal': q['originalTotal'],
         'cashback': compute_split(q['total'], rules, 0, 0).cashback,
         'points': q['points'], 'enough': q['enough'], 'shortSom': q['shortSom'],
         'needsManager': _threshold_exceeded(user, item, q['total']),
@@ -546,7 +561,7 @@ def sale_quote(user, member, item_id, quantity=None, check_amount=None):
     }
 
 
-def sale(request, pay_token, item_id, method, quantity=None, check_amount=None, idempotency_key=None):
+def sale(request, pay_token, item_id, method, quantity=None, check_amount=None, idempotency_key=None, amount=None):
     """
     Кассир оформляет услугу по QR клиента. → (req, escalated).
     cash / card — сразу confirmed; points — awaiting_client (клиент подтверждает за 2 мин);
@@ -565,7 +580,7 @@ def sale(request, pay_token, item_id, method, quantity=None, check_amount=None, 
     item = _pay_item(user, item_id)
     check_not_own_member(user, member)
     _check_sale_method(item, method, check_amount)
-    q = points_quote(user, member, item_id, quantity, check_amount)
+    q = points_quote(user, member, item_id, quantity, check_amount, amount)
     if method == 'points' and not q['enough']:
         raise ApiError('insufficient_points', 422, extra={'shortSom': q['shortSom']})
     escalated = _threshold_exceeded(user, item, q['total'])
@@ -579,6 +594,7 @@ def sale(request, pay_token, item_id, method, quantity=None, check_amount=None, 
         req, created = services.create_request(member, {
             'itemId': item.pk, 'quantity': q['quantity'],
             'checkAmount': q['total'] if item.pricing_type == 'check' else None,
+            'amount': q['total'] if amount is not None and item.pricing_type != 'check' else None,
             'pointsSom': q['total'] if method == 'points' else 0, 'method': req_method,
         }, idempotency_key=idempotency_key, created_by=user, extra=extra)
         if not created:
@@ -589,6 +605,7 @@ def sale(request, pay_token, item_id, method, quantity=None, check_amount=None, 
             req = start_sale(req)
     audit(request, 'request.sale', req, after={
         'member': member.member_id, 'method': method, 'total': req.total, 'status': req.status,
+        'originalTotal': req.original_total,
         'escalated': escalated, 'duplicateOf': req.duplicate_of or None})
     if escalated:
         services._after_change(req)
@@ -600,7 +617,7 @@ def start_sale(req):
     from apps.catalog.models import PaymentMethod
     req = CashbackRequest.objects.select_related('member', 'created_by').get(pk=req.pk)
     now = timezone.now()
-    if req.points:
+    if req.points or (req.total == 0 and req.method is None):  # скидка 100 % — клиент всё равно подтверждает
         _await(req, RequestStatus.AWAITING_CLIENT, now + timedelta(seconds=CLIENT_CONFIRM_TTL))
         from apps.notifications.services import notify_charge_confirm
         transaction.on_commit(lambda: notify_charge_confirm(req.pk))

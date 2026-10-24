@@ -153,6 +153,8 @@ class PayInput(serializers.Serializer):
     itemId = serializers.CharField(max_length=60)
     quantity = serializers.IntegerField(required=False, allow_null=True, min_value=1)
     checkAmount = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    # итог со скидкой кассира (услуги с ценой за единицу): 0…цена × quantity; нет — по прайсу
+    amount = serializers.IntegerField(required=False, allow_null=True, min_value=0)
 
 
 def _pay_input(request):
@@ -179,7 +181,8 @@ class PayQuoteView(StaffAPIView):
     def post(self, request):
         d = _pay_input(request)
         member = desk.read_pay_token(request.user, d['payToken'])
-        return Response(desk.points_quote(request.user, member, d['itemId'], d.get('quantity'), d.get('checkAmount')))
+        return Response(desk.points_quote(request.user, member, d['itemId'], d.get('quantity'), d.get('checkAmount'),
+                                          d.get('amount')))
 
 
 class PayChargeView(StaffAPIView):
@@ -187,7 +190,8 @@ class PayChargeView(StaffAPIView):
 
     def post(self, request):
         d = _pay_input(request)
-        req = desk.charge_points(request, d['payToken'], d['itemId'], d.get('quantity'), d.get('checkAmount'))
+        req = desk.charge_points(request, d['payToken'], d['itemId'], d.get('quantity'), d.get('checkAmount'),
+                                 d.get('amount'))
         return Response(payload(req), status=201)
 
 
@@ -196,8 +200,9 @@ class ReceiptInput(serializers.Serializer):
     itemId = serializers.CharField()
     receiptQr = serializers.CharField(max_length=2000)
     requestId = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    # сумма с чека, введённая кассиром — только после ошибки receipt_amount_required (в QR чека суммы нет)
-    amount = serializers.IntegerField(required=False, allow_null=True, min_value=1, max_value=10_000_000)
+    # сумма со скидкой, которую вписал кассир: сумма чека должна с ней совпасть (нет — с цена × quantity).
+    # Если в QR чека суммы нет и налоговая не ответила (receipt_amount_required) — она же сумма чека
+    amount = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=10_000_000)
     # сколько единиц выбрал кассир (ночей, сеансов): сумма чека сверяется с цена × quantity
     quantity = serializers.IntegerField(required=False, allow_null=True, min_value=1)
 
@@ -239,7 +244,8 @@ class SaleQuoteView(StaffAPIView):
     def post(self, request):
         d = _pay_input(request)
         member = desk.read_pay_token(request.user, d['payToken'])
-        return Response(desk.sale_quote(request.user, member, d['itemId'], d.get('quantity'), d.get('checkAmount')))
+        return Response(desk.sale_quote(request.user, member, d['itemId'], d.get('quantity'), d.get('checkAmount'),
+                                        d.get('amount')))
 
 
 class SaleView(StaffAPIView):
@@ -253,7 +259,7 @@ class SaleView(StaffAPIView):
         if key and len(key) > 100:
             raise ApiError('validation_error', 400, extra={'fields': {'Idempotency-Key': ['≤ 100 символов']}})
         req, escalated = desk.sale(request, d['payToken'], d['itemId'], d['method'], d.get('quantity'),
-                                   d.get('checkAmount'), idempotency_key=key)
+                                   d.get('checkAmount'), idempotency_key=key, amount=d.get('amount'))
         return Response(payload(req), status=202 if escalated else 201)
 
 

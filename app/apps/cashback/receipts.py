@@ -121,6 +121,13 @@ def fetch_salyk(params, key):
     return details
 
 
+def allowed_tins():
+    """ИНН нашей организации: из настроек в админке, иначе из RECEIPT_ALLOWED_TINS сервера; пусто — любые."""
+    from apps.common.models import ProgramSettings
+    own = [x.strip() for x in (ProgramSettings.get().receipt_tins or '').split(',') if x.strip()]
+    return own or list(getattr(settings, 'RECEIPT_ALLOWED_TINS', []))
+
+
 def _salyk(raw, fields, original, manual_amount=None):
     """
     Чек ГНС КР (tax.salyk.kg): сумма в тыйынах, номер — ИНН + ФМ + ФД; данные — из налоговой.
@@ -141,13 +148,13 @@ def _salyk(raw, fields, original, manual_amount=None):
     if not all(ids):
         raise ApiError('receipt_unreadable', 422)
     key = 'salyk:' + ':'.join(ids)
-    allowed = getattr(settings, 'RECEIPT_ALLOWED_TINS', [])
+    allowed = allowed_tins()
     if allowed and ids[0] not in allowed:
-        raise ApiError('receipt_foreign', 422)
+        raise ApiError('receipt_wrong_seller', 422)
     details = fetch_salyk(original, key) if getattr(settings, 'RECEIPT_VERIFY', True) else None
     if details is not None:
         if allowed and str(details.get('tin') or '') not in allowed:  # ИНН из налоговой, а не из QR
-            raise ApiError('receipt_foreign', 422)
+            raise ApiError('receipt_wrong_seller', 422)
         if details['operationType'] not in (1, None):  # 1 — приход; возврат и прочее не принимаются
             raise ApiError('receipt_not_sale', 422)
         amount = details['total'] or amount
@@ -174,10 +181,10 @@ def parse_receipt(raw, manual_amount=None):
     salyk = _salyk(raw, fields, dict(pairs), manual_amount)
     if salyk is not None:
         return salyk
-    if getattr(settings, 'RECEIPT_ALLOWED_TINS', []):
+    if allowed_tins():
         # принимаются только чеки ГНС (tax.salyk.kg) с ИНН курорта; в QR другого вида ИНН не проверить
         log.warning('receipt not salyk QR: %s', raw[:120])
-        raise ApiError('receipt_foreign', 422)
+        raise ApiError('receipt_wrong_seller', 422)
     amount = next((a for a in (_amount(fields[k]) for k in AMOUNT_KEYS if k in fields) if a), None)
     if amount is None:
         # образец для поддержки новых форматов (банковские слипы и т. п.); цифры длиннее 12 маскируются

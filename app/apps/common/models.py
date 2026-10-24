@@ -22,6 +22,11 @@ class ProgramSettings(models.Model):
                                choices=[('', 'Автоматически по датам'), ('ski', 'Зима — Baytur Ski'),
                                         ('kymyz', 'Лето — Baytur Kymyz')],
                                help_text='Выбранный сезон видят все пользователи приложения, даты не учитываются')
+    # Чеки ККМ: принимаются только чеки этих продавцов
+    receipt_tins = models.CharField(
+        'ИНН продавца в чеке', max_length=500, blank=True, default='',
+        help_text='ИНН нашей организации (по точкам — несколько через запятую). Чек с другим ИНН кассир не примет. '
+                  'Пусто — берётся из настройки сервера RECEIPT_ALLOWED_TINS')
     # Вход в админку
     panel_two_factor = models.BooleanField(
         'Вход в админку: код из приложения-аутентификатора', default=False,

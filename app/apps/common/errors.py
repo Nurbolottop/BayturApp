@@ -68,7 +68,7 @@ MESSAGES = {
     'receipt_amount_required': {'ru': 'В QR этого чека нет суммы — введите сумму с чека', 'ky': 'Бул чектин QR кодунда сумма жок — чектеги сумманы киргизиңиз', 'en': 'This receipt QR has no amount — enter the amount from the receipt'},
     'receipt_not_found': {'ru': 'Налоговая не нашла такой чек — проверьте QR', 'ky': 'Салык кызматы мындай чекти тапкан жок — QR кодду текшериңиз', 'en': 'The tax service could not find this receipt — check the QR'},
     'receipt_not_sale': {'ru': 'Это не чек продажи (например, возврат) — принять нельзя', 'ky': 'Бул сатуу чеги эмес (мисалы, кайтаруу) — кабыл алууга болбойт', 'en': 'This is not a sales receipt (e.g. a refund) and cannot be accepted'},
-    'receipt_foreign': {'ru': 'Чек выдан не курортом BAYTUR', 'ky': 'Чек BAYTUR курорту тарабынан берилген эмес', 'en': 'This receipt was not issued by BAYTUR resort'},
+    'receipt_wrong_seller': {'ru': 'Чек другой организации — его нельзя принять', 'ky': 'Бул башка уюмдун чеги — аны кабыл алууга болбойт', 'en': 'This receipt is from another company and cannot be accepted'},
     'receipt_used': {'ru': 'Этот чек уже принят', 'ky': 'Бул чек мурда кабыл алынган', 'en': 'This receipt has already been accepted'},
     'receipt_amount_mismatch': {'ru': 'Сумма чека не совпадает с ценой услуги', 'ky': 'Чектин суммасы кызматтын баасына дал келбейт', 'en': 'Receipt amount does not match the service price'},
     'qr_invalid': {'ru': 'QR-код недействителен или устарел', 'ky': 'QR-код жараксыз же эскирген', 'en': 'QR code is invalid or expired'},

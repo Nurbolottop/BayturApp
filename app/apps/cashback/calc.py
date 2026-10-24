@@ -144,6 +144,21 @@ def compute_total(item, quantity, check_amount):
     return item.price * quantity, quantity
 
 
+def discounted_total(item, quantity, check_amount, amount):
+    """
+    Сумма со скидкой кассира → (total, quantity, original). amount — итог, который вписал кассир (услуги с ценой
+    за единицу): от 0 до цена × количество; выше прайса — amount_out_of_range с max. original — сумма по прайсу,
+    если кассир дал скидку, иначе None. Без amount — по прайсу, как раньше.
+    """
+    total, quantity = compute_total(item, quantity, check_amount)
+    if amount is None or item.pricing_type == 'check':
+        return total, quantity, None
+    amount = int(amount)
+    if not (0 <= amount <= total):
+        raise ApiError('amount_out_of_range', 422, extra={'min': 0, 'max': total})
+    return amount, quantity, (total if amount < total else None)
+
+
 def balance_som(available, rules):
     return max(0, available) // rules.points_per_som
 

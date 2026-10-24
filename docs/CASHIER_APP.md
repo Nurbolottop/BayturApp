@@ -171,17 +171,23 @@ WebSocket `wss://app.baytur.kg/api/v1/staff/events?token=<accessToken>` — со
 
 Кассир оформляет клиента сам по QR клиента. Способов оплаты два:
 - **наличными** — по QR фискального чека: `/staff/cash/preview` и `/staff/cash/accept`
-  `{payToken, itemId, receiptQr, quantity?, requestId?, amount?}`. `quantity` — сколько единиц выбрал кассир
-  (номер × 6 ночей): сумма чека должна быть цена × quantity, иначе `422 receipt_amount_mismatch
-  {amount, price, quantity, expected}`; без `quantity` количество = сумма чека / цена. В ответе accept — `cancelUntil`;
+  `{payToken, itemId, receiptQr, quantity?, requestId?, amount?}`. `amount` — сумма со скидкой, которую вписал кассир:
+  сумма чека должна совпасть с ней; без `amount` — с цена × `quantity` (номер × 6 ночей). Не совпала → `422
+  receipt_amount_mismatch {amount (из чека), expected, price, quantity}`; без `quantity` и `amount` количество =
+  сумма чека / цена. Принимаются только чеки нашей организации: ИНН продавца из чека сверяется с ИНН из настроек
+  админки («Настройки» → «Чеки», можно несколько), чужой → `422 receipt_wrong_seller` (и в preview, и в accept).
+  В ответе preview и в заявке — `originalTotal` (сумма по прайсу, если была скидка). В ответе accept — `cancelUntil`;
 - **баллами** — списываются, только когда клиент подтвердит у себя в телефоне.
 
 1. `POST /staff/scan` → `payToken`; `GET /staff/points/items` — у услуги есть `receiptRequired`.
-2. `POST /staff/sales/quote` `{payToken, itemId, quantity? | checkAmount?}` →
-   `{itemId, total, quantity, cashback, points, enough, shortSom, duplicate: {requestId, at} | null, …}`.
-   Цена — только из прайса, баланс не раскрывается. `cashback` — сколько клиент получит при оплате наличными.
+2. `POST /staff/sales/quote` `{payToken, itemId, quantity?, amount? | checkAmount?}` →
+   `{itemId, total, originalTotal, quantity, cashback, points, enough, shortSom, duplicate: {requestId, at} | null, …}`.
+   **Скидка кассира:** для услуг с ценой за единицу `amount` — итог со скидкой, от 0 до цена × quantity
+   (выше → `422 amount_out_of_range {min: 0, max}`). Баллы, кешбек и заявка считаются от `amount`, акции не
+   применяются; `originalTotal` — сумма по прайсу (null, если скидки нет). `amount = 0` допустим: баллов 0, клиент
+   всё равно подтверждает. Без `amount` — по прайсу с акциями, как раньше. Баланс не раскрывается. `cashback` — сколько клиент получит при оплате наличными.
    `duplicate` — той же услуге этому клиенту оформляли за последние 10 минут.
-3. `POST /staff/sales` + `Idempotency-Key`, тело `{payToken, itemId, quantity? | checkAmount?}` → `201 StaffRequest`
+3. `POST /staff/sales` + `Idempotency-Key`, тело `{payToken, itemId, quantity?, amount? | checkAmount?}` → `201 StaffRequest`
    в статусе `awaiting_client`, с `confirmUntil` (+2 мин) и `cancelUntil` (+10 мин). Баллы в резерве, не списаны.
    Клиенту — WS `charge.confirm` и push того же `type`: `{requestId, itemTitle, total, points, quantity,
    outletTitle, staffName, expiresAt}` (в push — строки). Клиент: `POST /cashback-requests/{id}/approve`
@@ -194,7 +200,7 @@ WebSocket `wss://app.baytur.kg/api/v1/staff/events?token=<accessToken>` — со
    или наличными по чеку) — до `cancelUntil`, позже — `409 cancel_expired` (отменяет директор в панели). Работает и в
    `awaiting_client`. Баллы возвращаются, кешбек отзывается, наличные выпадают из смены, чек можно принять заново.
    Клиенту — push `type: request.updated` с `requestId`. `cancelUntil` есть и в ответе `/staff/cash/accept`.
-5. Новое в `StaffRequest`: статус `awaiting_client`; поля `cancelUntil`, `confirmUntil`, а также `createdBy`,
+5. Новое в `StaffRequest`: статус `awaiting_client`; поля `originalTotal` (по прайсу при скидке), `cancelUntil`, `confirmUntil`, а также `createdBy`,
    `rejectCode`, `cancelReason`, `cancelledBy`, `cancelledAt`, `duplicateOf`.
 6. Старые `/staff/points/quote` и `/staff/points/charge` (списание без подтверждения клиента) оставлены для старых
    версий приложения и будут отключены.

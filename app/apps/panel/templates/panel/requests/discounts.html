@@ -1,0 +1,46 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Скидки{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div><div class="crumbs"><a href="{% url 'panel:requests' %}">{% icon 'arrow-left' 14 %} Заявки</a></div>
+    <h1 class="page-title">Скидки</h1>
+    <div class="muted" style="margin-top:6px">Продажи ниже прайса: кто дал скидку, кому и сколько · всего {{ discount_total|som }}</div></div>
+</div>
+<form class="filters" method="get" data-autosubmit>
+  <div class="field"><label>Сотрудник</label><select name="staff"><option value="">Все</option>{% for s in staff_users %}<option value="{{ s.pk }}" {% if f.staff == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.full_name }}</option>{% endfor %}</select></div>
+  <div class="field"><label>С</label><input type="date" name="from" value="{{ f.from }}"></div>
+  <div class="field"><label>По</label><input type="date" name="to" value="{{ f.to }}"></div>
+  <a class="btn btn-ghost" href="?">Сбросить</a>
+</form>
+
+{% if by_staff %}
+<div class="card flush appear" style="margin-bottom:18px">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Сотрудник</th><th class="n">Продаж со скидкой</th><th class="n">По прайсу</th><th class="n">Скидка</th></tr></thead>
+    <tbody>{% for s in by_staff %}
+      <tr><td><b>{{ s.name }}</b></td><td class="n tabular">{{ s.count }}</td><td class="n">{{ s.price|som }}</td>
+        <td class="n"><b>−{{ s.discount|som }}</b><div class="small muted">{{ s.percent }}%</div></td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+</div>
+{% endif %}
+
+<div class="card flush appear">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Заявка</th><th>Кто</th><th class="hide-s">Клиент</th><th class="n">По прайсу</th><th class="n">Итог</th><th class="n">Скидка</th></tr></thead>
+    <tbody>
+    {% for r in page %}
+      <tr class="link" data-href="{% url 'panel:request' r.pk %}">
+        <td><div class="title-cell"><div><b>{{ r.item_snapshot.title|tr }}{% if r.quantity > 1 %} × {{ r.quantity }}{% endif %}</b><span class="small muted tabular">{{ r.created_at|local:"d.m.Y H:i" }} · {{ r.outlet.name|tr|default:"—" }}</span></div></div></td>
+        <td class="small">{{ r.discount_by.full_name|default:"—" }}</td>
+        <td class="hide-s">{{ r.member.full_name|default:"—" }}<div class="small muted tabular">{{ r.member.member_id }}</div></td>
+        <td class="n">{{ r.original_total|som }}</td>
+        <td class="n">{{ r.total|som }}</td>
+        <td class="n"><b>−{{ r.discount|som }}</b><div class="small muted">−{{ r.discount_pct }}%</div></td>
+      </tr>
+    {% empty %}<tr><td colspan="6"><div class="empty">Скидок нет</div></td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% include 'panel/components/pager.html' %}
+</div>
+{% endblock %}

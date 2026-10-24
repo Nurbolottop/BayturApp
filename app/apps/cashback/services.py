@@ -30,7 +30,7 @@ from apps.common.realtime import publish_member, publish_outlets
 from apps.loyalty.engine import evaluate
 from apps.loyalty.services import accrue, change_reserved, lock_wallet, publish_wallet, spend_reserved
 
-from .calc import Rules, compute_split, compute_total, resolve_rules
+from .calc import Rules, compute_split, compute_total, discounted_total, resolve_rules
 from .models import OPEN_STATUSES, CashbackRequest, RejectReason, RequestStatus
 
 log = logging.getLogger(__name__)
@@ -124,8 +124,11 @@ def create_request(member, data, idempotency_key=None, created_by=None, extra=No
     ps = ProgramSettings.get()
     now = timezone.now()
     rules = resolve_rules(item, member, ps, now)
-    total, quantity = compute_total(item, data.get('quantity'), data.get('checkAmount'))
-    if not data.get('_noPromotions'):
+    total, quantity, original = discounted_total(item, data.get('quantity'), data.get('checkAmount'),
+                                                 data.get('amount'))
+    if data.get('amount') is not None and item.pricing_type != 'check':
+        promotion = None  # сумму вписал кассир — акции уже учтены им
+    elif not data.get('_noPromotions'):
         total, promotion = _with_promotions(item, total, quantity, member, now)
     else:
         promotion = None
@@ -160,6 +163,7 @@ def create_request(member, data, idempotency_key=None, created_by=None, extra=No
                 requested_points_som=int(data.get('pointsSom') or 0), method=method,
                 total=split.total, points_som=split.points_som, points=split.points, money_som=split.money_som,
                 rate=split.rate, cashback=split.cashback, idempotency_key=idempotency_key or None,
+                original_total=original,  # скидка кассира: сумма по прайсу
                 promotion=promotion, created_by=created_by,
                 is_test=member.is_test, created_at=now, **(extra or {}),
             )

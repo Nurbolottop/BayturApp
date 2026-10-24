@@ -4,6 +4,7 @@
 <div class="topbar">
   <div><h1 class="page-title">Заявки</h1><div class="muted" style="margin-top:6px">Все заявки на кешбек · {{ page.paginator.count }}</div></div>
   <div class="actions">
+    <a class="btn" href="{% url 'panel:discounts' %}">Скидки</a>
     <a class="btn {% if f.duplicate %}btn-dark{% endif %}" href="?duplicate=1">Повторы</a>
     {% if panel_counters.escalated %}<a class="btn {% if f.escalated %}btn-dark{% endif %}" href="?escalated=1">{% icon 'warning' 18 %} Ждут директора <span class="tag">{{ panel_counters.escalated }}</span></a>{% endif %}
   </div>

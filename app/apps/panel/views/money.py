@@ -75,6 +75,48 @@ def requests_list(request):
 
 
 @panel_view('requests')
+def discounts(request):
+    """Скидки кассиров: кто, кому, сколько — заявки, где итог ниже прайса (originalTotal), и сводка по сотрудникам."""
+    from django.db.models import Count, F, Sum
+    g = request.GET
+    qs = scoped_requests(request.user).filter(original_total__isnull=False, total__lt=F('original_total')) \
+        .exclude(status__in=(RequestStatus.REJECTED, RequestStatus.CANCELLED)) \
+        .select_related('member', 'outlet', 'created_by', 'adjusted_by', 'confirmed_by')
+    if _date(g.get('from')):
+        qs = qs.filter(created_at__gte=_date(g['from']))
+    if _date(g.get('to'), True):
+        qs = qs.filter(created_at__lte=_date(g['to'], True))
+    if g.get('staff'):
+        qs = qs.filter(Q(created_by_id=g['staff']) | Q(adjusted_by_id=g['staff']))
+    by_staff = []
+    for r in qs.values('created_by', 'created_by__full_name', 'adjusted_by', 'adjusted_by__full_name') \
+            .annotate(n=Count('pk'), price=Sum('original_total'), paid=Sum('total')):
+        sid = r['adjusted_by'] or r['created_by']
+        name = r['adjusted_by__full_name'] or r['created_by__full_name'] or '—'
+        row = next((x for x in by_staff if x['id'] == sid), None)
+        if row is None:
+            row = {'id': sid, 'name': name, 'count': 0, 'price': 0, 'discount': 0}
+            by_staff.append(row)
+        row['count'] += r['n']
+        row['price'] += r['price'] or 0
+        row['discount'] += (r['price'] or 0) - (r['paid'] or 0)
+    for row in by_staff:
+        row['percent'] = round(row['discount'] * 100 / row['price']) if row['price'] else 0
+    by_staff.sort(key=lambda x: -x['discount'])
+    totals = qs.aggregate(price=Sum('original_total'), paid=Sum('total'))
+    pg = page(request, qs.order_by('-created_at'))
+    for r in pg:
+        r.discount = r.original_total - r.total
+        r.discount_pct = round(r.discount * 100 / r.original_total) if r.original_total else 0
+        r.discount_by = r.adjusted_by or r.created_by or r.confirmed_by
+    return render(request, 'panel/requests/discounts.html', {
+        'page': pg, 'by_staff': by_staff, 'f': g,
+        'discount_total': (totals['price'] or 0) - (totals['paid'] or 0),
+        'staff_users': StaffUser.objects.filter(is_active=True).order_by('full_name'),
+    })
+
+
+@panel_view('requests')
 def request_detail(request, request_id):
     req = scoped_requests(request.user).filter(pk=request_id).select_related('member', 'outlet').first()
     if req is None:

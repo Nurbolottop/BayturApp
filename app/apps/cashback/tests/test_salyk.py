@@ -117,18 +117,18 @@ class SalykTests(BaseAPITestCase):
                         return_value=response(data={**TICKET, 'tin': '99999999999999'})):
             with self.assertRaises(ApiError) as e:
                 parse_receipt(QR)
-        self.assertEqual(e.exception.code, 'receipt_foreign')
+        self.assertEqual(e.exception.code, 'receipt_wrong_seller')
 
     @override_settings(RECEIPT_ALLOWED_TINS=['21804199500937'])
     def test_non_salyk_qr_rejected_when_tins_set(self):
         with self.assertRaises(ApiError) as e:
             parse_receipt('t=20261008T0303&s=240.00&fn=123&i=456&fp=789')
-        self.assertEqual(e.exception.code, 'receipt_foreign')
+        self.assertEqual(e.exception.code, 'receipt_wrong_seller')
 
     @override_settings(RECEIPT_ALLOWED_TINS=['01604199910194'])
     def test_foreign_seller_rejected(self):
         with mock.patch('apps.cashback.receipts.requests.get') as get:
             with self.assertRaises(ApiError) as e:
                 parse_receipt(QR)
-        self.assertEqual(e.exception.code, 'receipt_foreign')
+        self.assertEqual(e.exception.code, 'receipt_wrong_seller')
         get.assert_not_called()
