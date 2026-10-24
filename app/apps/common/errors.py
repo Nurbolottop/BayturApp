@@ -69,6 +69,7 @@ MESSAGES = {
     'receipt_not_found': {'ru': 'Налоговая не нашла такой чек — проверьте QR', 'ky': 'Салык кызматы мындай чекти тапкан жок — QR кодду текшериңиз', 'en': 'The tax service could not find this receipt — check the QR'},
     'receipt_not_sale': {'ru': 'Это не чек продажи (например, возврат) — принять нельзя', 'ky': 'Бул сатуу чеги эмес (мисалы, кайтаруу) — кабыл алууга болбойт', 'en': 'This is not a sales receipt (e.g. a refund) and cannot be accepted'},
     'receipt_wrong_seller': {'ru': 'Чек другой организации — его нельзя принять', 'ky': 'Бул башка уюмдун чеги — аны кабыл алууга болбойт', 'en': 'This receipt is from another company and cannot be accepted'},
+    'client_order_disabled': {'ru': 'Эта услуга оформляется на месте — покажите кассиру QR из приложения', 'ky': 'Бул кызмат жеринде таризделет — кассирге тиркемедеги QR кодду көрсөтүңүз', 'en': 'This service is processed on site — show your app QR to the cashier'},
     'receipt_used': {'ru': 'Этот чек уже принят', 'ky': 'Бул чек мурда кабыл алынган', 'en': 'This receipt has already been accepted'},
     'receipt_amount_mismatch': {'ru': 'Сумма чека не совпадает с ценой услуги', 'ky': 'Чектин суммасы кызматтын баасына дал келбейт', 'en': 'Receipt amount does not match the service price'},
     'qr_invalid': {'ru': 'QR-код недействителен или устарел', 'ky': 'QR-код жараксыз же эскирген', 'en': 'QR code is invalid or expired'},

@@ -13,6 +13,7 @@
     <div class="field full"><span class="label">{{ form.methods.label }}</span><div class="checks">{{ form.methods }}</div>{{ form.methods.errors }}</div>
     {% include 'panel/components/field.html' with f=form.sort_order %}
     {% include 'panel/components/field.html' with f=form.is_active %}
+    {% include 'panel/components/field.html' with f=form.client_orders %}
   </div>
   <div class="lock-note" style="margin-top:14px">{% icon 'info' 16 %} Изменения правил действуют только на новые заявки — отправленные хранят снимок.</div>
   <div class="form-actions"><a class="btn btn-ghost" href="{% url 'panel:catalog' %}">Отмена</a><button class="btn btn-accent">Сохранить</button></div>

@@ -98,6 +98,8 @@ class DeskReceiptTests(BaseAPITestCase):
         self.assertEqual(FiscalReceipt.objects.count(), 1)
 
     def test_attaches_to_client_cash_request(self):
+        from apps.catalog.models import Category
+        Category.objects.filter(pk='food').update(client_orders=True)  # тест клиентской заявки на ресторане
         r = self.auth(self.member)
         r = self.api.post('/api/v1/cashback-requests', {'itemId': self.item.pk, 'checkAmount': 2000, 'method': 'cash'},
                           format='json', HTTP_IDEMPOTENCY_KEY='k-1')

@@ -211,11 +211,11 @@ class CategoryForm(PanelForm, forms.ModelForm):
 
     class Meta:
         model = Category
-        fields = ['title', 'cover', 'sort_order', 'is_active', 'methods']
+        fields = ['title', 'cover', 'sort_order', 'is_active', 'client_orders', 'methods']
         widgets = {'cover': forms.HiddenInput}
         labels = {'sort_order': 'Порядок', 'is_active': 'Показывать в приложении'}
 
-    RULE_FIELDS = ['sort_order', 'is_active', 'methods']
+    RULE_FIELDS = ['sort_order', 'is_active', 'client_orders', 'methods']
 
 
 class VenueForm(PanelForm, forms.ModelForm):

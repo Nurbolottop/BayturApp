@@ -56,6 +56,8 @@ class VenueCatalogTests(BaseAPITestCase):
         self.assertTrue(all(Item.objects.get(pk=i).venue_id == 'resort' for i in ids))
 
     def test_new_venue_item_works_in_cashback_quote(self):
+        from apps.catalog.models import Category
+        Category.objects.filter(pk='food').update(client_orders=True)  # тест клиентской заявки на ресторане
         member = self.make_member('+996555303030')
         self.auth(member)
         r = self.api.post('/api/v1/cashback-requests/quote', {'itemId': 'ski-borsch', 'quantity': 2}, format='json')

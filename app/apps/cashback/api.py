@@ -47,7 +47,7 @@ class RequestsView(MemberAPIView):
         key = request.headers.get('Idempotency-Key') or None
         if key and len(key) > 100:
             raise ApiError('validation_error', 400, extra={'fields': {'Idempotency-Key': ['≤ 100 символов']}})
-        req, created = services.create_request(request.user, _input(request), key)
+        req, created = services.create_request(request.user, _input(request), key, client=True)
         req = CashbackRequest.objects.select_related('payment').get(pk=req.pk)
         return Response(request_payload(req), status=201 if created else 200)
 

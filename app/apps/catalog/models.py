@@ -167,6 +167,10 @@ class Category(models.Model):
         'Показывать в приложении курорта', default=True,
         help_text='Разделы главного экрана курорта. «Бассейны» и «Спорт» скрыты — их услуги в «Развлечениях»; '
                   '«Спорт» остаётся разделом прайса «Тоо-Ашуу» и Суусамыра')
+    client_orders = models.BooleanField(
+        'Заказ и оплата в приложении', default=True,
+        help_text='Выключено (рестораны) — клиент не выбирает сумму и не платит в приложении: в карточке нет цены '
+                  'и кнопки заказа, всё оформляет кассир по QR клиента и чеку')
     # CashbackRules
     rate = models.DecimalField('Доля кешбека', max_digits=5, decimal_places=4, validators=rate_validators)
     max_points_share = models.DecimalField('Доля оплаты баллами', max_digits=5, decimal_places=4,

@@ -38,10 +38,17 @@ log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------- quote
 
+def check_client_order(item):
+    """Раздел без заказа в приложении (рестораны): клиент не создаёт заявку и не платит сам — только кассир."""
+    if not item.category.client_orders:
+        raise ApiError('client_order_disabled', 422)
+
+
 def quote(member, item_id, quantity=None, check_amount=None, points_som=0, method=None, available=None):
     item = Item.objects.active().select_related('category').prefetch_related('promos').filter(pk=item_id).first()
     if item is None:
         raise ApiError('item_not_found', 404)
+    check_client_order(item)
     ps = ProgramSettings.get()
     now = timezone.now()
     rules = resolve_rules(item, member, ps, now)
@@ -102,12 +109,13 @@ def _schedule(req, ps, now):
         req.auto_confirm_at = now + timedelta(milliseconds=ps.confirm_delay_ms)
 
 
-def create_request(member, data, idempotency_key=None, created_by=None, extra=None):
+def create_request(member, data, idempotency_key=None, created_by=None, extra=None, client=False):
     """
     Клиент присылает только ввод; суммы, правила и кешбек пересчитываются здесь.
     Атомарно, с блокировкой кошелька. Повтор с тем же Idempotency-Key → та же заявка.
     created_by — продажа кассира: способ оплаты выбирает кассир (наличные, карта, QR), правила раздела
-    и оплаченный заранее платёж не проверяются; extra — поля заявки (cancel_until, duplicate_of…).
+    и оплаченный заранее платёж не проверяются; extra — поля заявки (cancel_until, duplicate_of…);
+    client — заявку создаёт клиент в приложении (POST /cashback-requests): в ресторанах так нельзя.
     Возвращает (request, created).
     """
     _check_member_can_act(member)
@@ -120,6 +128,8 @@ def create_request(member, data, idempotency_key=None, created_by=None, extra=No
         .filter(pk=data.get('itemId')).first()
     if item is None:
         raise ApiError('item_not_found', 404)
+    if client:
+        check_client_order(item)
 
     ps = ProgramSettings.get()
     now = timezone.now()

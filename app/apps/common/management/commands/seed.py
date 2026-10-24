@@ -51,7 +51,8 @@ class Command(BaseCommand):
             upsert(Category, {'id': cid}, {
                 'title': title, 'sort_order': sort, 'rate': Decimal(rate), 'max_points_share': Decimal(share),
                 'methods': methods, 'cover': f'seed/categories/{cid}.jpg',
-                'in_resort_app': cid not in D.HIDDEN_IN_RESORT})
+                'in_resort_app': cid not in D.HIDDEN_IN_RESORT,
+                'client_orders': cid != 'food'})  # рестораны — только через кассира
 
         promo_end = datetime(2026, 10, 1, tzinfo=ZoneInfo('Asia/Bishkek'))  # «до 30 сентября»
         for i, (iid, cat, outlet, title, meta, price, pricing, promo, tag, desc, features) in enumerate(D.ITEMS):

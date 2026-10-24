@@ -18,6 +18,8 @@ class BillsLiveTests(BaseAPITestCase):
         return self.api.get('/api/v1/services', **SK, HTTP_X_BAYTUR_MODE=mode).json()
 
     def test_bill_in_menus(self):
+        from apps.catalog.models import Category
+        Category.objects.filter(pk='food').update(client_orders=True)  # тест клиентской заявки на ресторане
         for mode, section, bill in (('ski', 'cafe', 'ski-cafe-bill'), ('ski', 'bar', 'ski-bar-bill'),
                                     ('kymyz', 'kymyz', 'kymyz-kymyz-bill')):
             sec = next(s for s in self.services(mode)['sections'] if s['id'] == section)

@@ -111,3 +111,24 @@ class CashierDiscountTests(BaseAPITestCase):
         r = owner.get('/panel/requests/discounts/')
         self.assertContains(r, '−43%')                               # 1 500 из 3 500
         self.assertContains(r, self.cashier.full_name)
+
+
+class RestaurantClientOrderTests(BaseAPITestCase):
+    """Рестораны (food): клиент не создаёт заявку и не платит в приложении — только кассир."""
+
+    def test_client_cannot_order_food(self):
+        member = self.make_member(points=50_000)
+        self.auth(member)
+        item = self.api.get('/api/v1/catalog').json()
+        food = next(c for c in item if c['id'] == 'food')
+        self.assertFalse(food['clientOrders'])
+        self.assertFalse(food['items'][0]['clientOrder'])
+        r = self.api.post('/api/v1/cashback-requests/quote', {'itemId': 'food-davinci', 'checkAmount': 2000},
+                          format='json')
+        self.assertEqual(r.json()['error']['code'], 'client_order_disabled')
+        r = self.api.post('/api/v1/cashback-requests', {'itemId': 'food-davinci', 'checkAmount': 2000,
+                                                        'method': 'cash'}, format='json',
+                          HTTP_IDEMPOTENCY_KEY='f1')
+        self.assertEqual(r.json()['error']['code'], 'client_order_disabled')
+        spa = next(c for c in item if c['id'] == 'spa')
+        self.assertTrue(spa['items'][0]['clientOrder'])
