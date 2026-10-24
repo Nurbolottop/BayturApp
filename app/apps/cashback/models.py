@@ -34,6 +34,15 @@ class RejectReason(models.TextChoices):
     OTHER = 'other', 'Другое'
 
 
+def new_pos_code():
+    """6 цифр — их кассир вводит на клавиатуре R-Keeper; уникален среди всех заявок."""
+    import secrets
+    while True:
+        code = f'{secrets.randbelow(1_000_000):06d}'
+        if not CashbackRequest.objects.filter(pos_code=code).exists():
+            return code
+
+
 class CashbackRequest(models.Model):
     id = models.CharField(primary_key=True, max_length=32, default=new_request_id, editable=False)
     member = models.ForeignKey('members.Member', on_delete=models.PROTECT, related_name='cashback_requests')
@@ -67,6 +76,9 @@ class CashbackRequest(models.Model):
     cashback = models.PositiveBigIntegerField()
 
     original_total = models.PositiveIntegerField(null=True, blank=True)
+    # Код оплаты баллами для кассы ресторана (R-Keeper): кассир вписывает его в комментарий к оплате «Баллы BAYTUR»,
+    # по нему выгрузка из R-Keeper сверяется со списаниями (панель → «Сверка R-Keeper»)
+    pos_code = models.CharField('Код для R-Keeper', max_length=6, null=True, blank=True, unique=True)
     reject_code = models.CharField(max_length=30, blank=True)
     reject_reason = models.TextField(blank=True)
     adjust_reason = models.TextField(blank=True)
@@ -160,3 +172,18 @@ class FiscalReceipt(models.Model):
 
     def __str__(self):
         return f'{self.key} · {self.amount} сом'
+
+
+class PosReconciliation(models.Model):
+    """Загруженная выгрузка оплат «Баллы» из R-Keeper и результат сверки (apps.cashback.pos_reconcile)."""
+
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
+    file_name = models.CharField(max_length=200)
+    period_from = models.DateField()
+    period_to = models.DateField()
+    summary = models.JSONField(default=dict)
+    result = models.JSONField(default=dict, help_text='{rows, missing, byCashier}')
+
+    class Meta:
+        ordering = ['-created_at']

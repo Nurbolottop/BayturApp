@@ -1,0 +1,45 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Сверка {{ rec.file_name }}{% endblock %}
+{% block content %}
+<div class="topbar"><div><div class="crumbs"><a href="{% url 'panel:pos' %}">{% icon 'arrow-left' 14 %} Сверка R-Keeper</a></div>
+  <h1 class="page-title">{{ rec.file_name }}</h1>
+  <div class="muted" style="margin-top:6px">{{ rec.period_from|date:"d.m.Y" }}{% if rec.period_to != rec.period_from %} — {{ rec.period_to|date:"d.m.Y" }}{% endif %} · загрузил {{ rec.uploaded_by.full_name|default:"—" }} {{ rec.created_at|local:"d.m.Y H:i" }}</div></div></div>
+
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:18px">
+  <a class="card appear" href="?show=red"><div class="small muted">🔴 Без списания баллов</div><div class="h2">{{ s.red }}</div>{% if s.redSum %}<div class="small">на {{ s.redSum|som }}</div>{% endif %}</a>
+  <a class="card appear" href="?show=yellow"><div class="small muted">🟡 Расхождения</div><div class="h2">{{ s.yellow }}</div></a>
+  <a class="card appear" href="#missing"><div class="small muted">🟠 Списано, в R-Keeper нет</div><div class="h2">{{ s.orange }}</div></a>
+  <a class="card appear" href="?show=ok"><div class="small muted">✅ Совпало</div><div class="h2">{{ s.ok }}</div></a>
+</div>
+
+{% if by_cashier %}
+<div class="card flush appear" style="margin-bottom:18px"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Кассир R-Keeper</th><th class="n">🔴 Без списания</th><th class="n">🟡 Расхождения</th><th class="n">Сумма</th></tr></thead>
+  <tbody>{% for c in by_cashier %}<tr><td><b>{{ c.name }}</b></td><td class="n tabular">{{ c.red }}</td><td class="n tabular">{{ c.yellow }}</td><td class="n">{{ c.sum|som }}</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endif %}
+
+<div class="row wrap" style="gap:8px;margin-bottom:10px">
+  {% for k, l in tabs %}<a class="btn btn-s {% if show == k %}btn-dark{% endif %}" href="?show={{ k }}">{{ l }}</a>{% endfor %}
+</div>
+<div class="card flush appear"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Строка R-Keeper</th><th class="n">Сумма</th><th>Код</th><th>Итог</th><th class="hide-s">Списание BAYTUR</th></tr></thead>
+  <tbody>{% for r in rows %}
+    <tr>
+      <td><b class="tabular">{% if r.at %}{{ r.at|local:"d.m.Y H:i" }}{% else %}строка {{ r.n }}{% endif %}</b><div class="small muted">{{ r.cashier|default:"—" }}{% if r.check %} · чек {{ r.check }}{% endif %}</div></td>
+      <td class="n">{{ r.amount|som }}</td>
+      <td class="tabular">{{ r.code|default:"—" }}</td>
+      <td>{% if r.status == 'ok' %}<span class="pill pill-success">совпало</span>{% elif r.status == 'red' %}<span class="pill pill-danger">{{ r.reason }}</span>{% else %}<span class="pill pill-warning">{{ r.reason }}</span>{% endif %}</td>
+      <td class="hide-s small">{% if r.request %}<a href="{% url 'panel:request' r.request.id %}">{{ r.request.total|som }}</a> · {{ r.request.staff|default:"—" }}<div class="muted tabular">{{ r.request.at|local:"d.m.Y H:i" }} · {{ r.request.member }}</div>{% else %}—{% endif %}</td>
+    </tr>
+  {% empty %}<tr><td colspan="5"><div class="empty">Нет строк</div></td></tr>{% endfor %}</tbody>
+</table></div></div>
+
+<h2 class="h3" id="missing" style="margin:24px 0 10px">🟠 Баллы списаны, а оплаты в R-Keeper нет</h2>
+<div class="card flush appear"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Списание</th><th>Код</th><th class="n">Сумма</th><th>Кассир</th><th class="hide-s">Клиент</th></tr></thead>
+  <tbody>{% for m in missing %}
+    <tr class="link" data-href="{% url 'panel:request' m.id %}"><td class="tabular">{{ m.at|local:"d.m.Y H:i" }}<div class="small muted">{{ m.outlet|default:"—" }}</div></td><td class="tabular">{{ m.code|default:"—" }}</td><td class="n">{{ m.total|som }}</td><td class="small">{{ m.staff|default:"—" }}</td><td class="hide-s small tabular">{{ m.member }}</td></tr>
+  {% empty %}<tr><td colspan="5"><div class="empty">Все списания за период есть в R-Keeper</div></td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

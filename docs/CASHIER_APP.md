@@ -200,9 +200,14 @@ WebSocket `wss://app.baytur.kg/api/v1/staff/events?token=<accessToken>` — со
    или наличными по чеку) — до `cancelUntil`, позже — `409 cancel_expired` (отменяет директор в панели). Работает и в
    `awaiting_client`. Баллы возвращаются, кешбек отзывается, наличные выпадают из смены, чек можно принять заново.
    Клиенту — push `type: request.updated` с `requestId`. `cancelUntil` есть и в ответе `/staff/cash/accept`.
-5. Новое в `StaffRequest`: статус `awaiting_client`; поля `originalTotal` (по прайсу при скидке), `cancelUntil`, `confirmUntil`, а также `createdBy`,
+5. **Код для R-Keeper.** У заявки, оплаченной баллами, есть `posCode` — 6 цифр (у оплаты деньгами — `null`).
+   Когда клиент подтвердил списание (`confirmed`), покажите кассиру крупно: «Код для R-Keeper: 123 456» с кнопкой
+   «Скопировать». Кассир закрывает чек в R-Keeper оплатой «Баллы BAYTUR» и вписывает код в комментарий. Раз в день
+   выгрузка R-Keeper сверяется с этими кодами в панели («Сверка R-Keeper»): оплата баллами без кода — подозрительная.
+   Код есть и в старом `/staff/points/charge`, и в журнале смены.
+6. Новое в `StaffRequest`: статус `awaiting_client`; поля `posCode`, `originalTotal` (по прайсу при скидке), `cancelUntil`, `confirmUntil`, а также `createdBy`,
    `rejectCode`, `cancelReason`, `cancelledBy`, `cancelledAt`, `duplicateOf`.
-6. Старые `/staff/points/quote` и `/staff/points/charge` (списание без подтверждения клиента) оставлены для старых
+7. Старые `/staff/points/quote` и `/staff/points/charge` (списание без подтверждения клиента) оставлены для старых
    версий приложения и будут отключены.
 
 ---

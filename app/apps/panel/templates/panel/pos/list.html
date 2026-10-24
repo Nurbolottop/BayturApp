@@ -1,0 +1,34 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Сверка R-Keeper{% endblock %}
+{% block content %}
+<div class="topbar"><div><h1 class="page-title">Сверка R-Keeper</h1>
+  <div class="muted" style="margin-top:6px">Каждая оплата «Баллы BAYTUR» в R-Keeper должна иметь списание баллов у нас — по коду из 6 цифр в комментарии к оплате</div></div></div>
+
+<form method="post" enctype="multipart/form-data" class="card stack-s appear">
+  {% csrf_token %}
+  <div class="h3">Загрузить выгрузку</div>
+  <div class="small muted">Отчёт R-Keeper по оплатам типа «Баллы BAYTUR» за день или период — Excel (.xlsx) или CSV. Нужны колонки с датой, суммой, комментарием и кассиром. Старый .xls пересохраните как .xlsx.</div>
+  <div class="form-grid">
+    <div class="field"><label for="pos-file">Файл</label><input id="pos-file" type="file" name="file" accept=".xlsx,.csv" required></div>
+    <div class="field"><label for="pos-from">Период с</label><input id="pos-from" type="date" name="from"><div class="help">Пусто — по датам в файле</div></div>
+    <div class="field"><label for="pos-to">по</label><input id="pos-to" type="date" name="to"></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-accent btn-l">Сверить</button></div>
+</form>
+
+<div class="card flush appear" style="margin-top:18px">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Загрузка</th><th>Период</th><th class="n">Строк</th><th class="n">Без списания</th><th class="n">Расхождения</th><th class="n">Не пробито</th></tr></thead>
+    <tbody>{% for r in items %}
+      <tr class="link" data-href="{% url 'panel:pos-detail' r.pk %}">
+        <td><b>{{ r.file_name }}</b><div class="small muted">{{ r.created_at|local:"d.m.Y H:i" }} · {{ r.uploaded_by.full_name|default:"—" }}</div></td>
+        <td class="small tabular">{{ r.period_from|date:"d.m.Y" }}{% if r.period_to != r.period_from %} — {{ r.period_to|date:"d.m.Y" }}{% endif %}</td>
+        <td class="n tabular">{{ r.summary.rows }}</td>
+        <td class="n">{% if r.summary.red %}<span class="pill pill-danger">{{ r.summary.red }}</span>{% else %}0{% endif %}</td>
+        <td class="n">{% if r.summary.yellow %}<span class="pill pill-warning">{{ r.summary.yellow }}</span>{% else %}0{% endif %}</td>
+        <td class="n">{% if r.summary.orange %}<span class="pill pill-warning">{{ r.summary.orange }}</span>{% else %}0{% endif %}</td>
+      </tr>
+    {% empty %}<tr><td colspan="6"><div class="empty">Сверок ещё не было</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}

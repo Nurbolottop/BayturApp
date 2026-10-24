@@ -197,3 +197,55 @@ def payment_refund(request, payment_id):
             else:
                 messages.error(request, 'Провайдер отклонил возврат')
     return redirect('panel:payment', payment_id=p.pk)
+
+
+# ---------------------------------------------------------------- сверка с R-Keeper
+
+@panel_view('pos')
+def pos_list(request):
+    """Загрузка выгрузки оплат «Баллы» из R-Keeper → сверка по коду и сумме; список прошлых сверок."""
+    from apps.cashback import pos_reconcile
+    from apps.cashback.models import PosReconciliation
+    from apps.common.errors import ApiError
+    if request.method == 'POST':
+        f = request.FILES.get('file')
+        if f is None or f.size > 10 * 1024 * 1024:
+            messages.error(request, 'Выберите файл выгрузки из R-Keeper (XLSX или CSV, до 10 МБ)')
+            return redirect('panel:pos')
+        try:
+            rows = pos_reconcile.read_rows(f, f.name)
+        except ApiError as e:
+            messages.error(request, e.message or 'Не удалось прочитать файл')
+            return redirect('panel:pos')
+        start, end = pos_reconcile.period_of(rows)
+        if _date(request.POST.get('from')):
+            start = timezone.localtime(_date(request.POST['from'])).date()
+        if _date(request.POST.get('to')):
+            end = timezone.localtime(_date(request.POST['to'])).date()
+        if start is None or end is None:
+            messages.error(request, 'В файле нет дат — укажите период выгрузки')
+            return redirect('panel:pos')
+        result = pos_reconcile.reconcile(rows, scoped_requests(request.user), start, end)
+        rec = PosReconciliation.objects.create(
+            uploaded_by=request.user, file_name=f.name[:200], period_from=start, period_to=end,
+            summary=result.pop('summary'), result=result)
+        audit(request, 'pos.reconcile', rec, after={'file': rec.file_name, **rec.summary})
+        return redirect('panel:pos-detail', pk=rec.pk)
+    items = PosReconciliation.objects.select_related('uploaded_by')[:50]
+    return render(request, 'panel/pos/list.html', {'items': items})
+
+
+@panel_view('pos')
+def pos_detail(request, pk):
+    from apps.cashback.models import PosReconciliation
+    rec = get_object_or_404(PosReconciliation.objects.select_related('uploaded_by'), pk=pk)
+    show = request.GET.get('show') or 'problems'
+    rows = rec.result.get('rows', [])
+    if show == 'problems':
+        rows = [r for r in rows if r['status'] != 'ok']
+    elif show in ('red', 'yellow', 'ok'):
+        rows = [r for r in rows if r['status'] == show]
+    return render(request, 'panel/pos/detail.html', {
+        'rec': rec, 'rows': rows, 'show': show, 'missing': rec.result.get('missing', []),
+        'tabs': [('problems', 'Проблемы'), ('red', '🔴'), ('yellow', '🟡'), ('ok', '✅'), ('all', 'Все')],
+        'by_cashier': rec.result.get('byCashier', []), 's': rec.summary})

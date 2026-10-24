@@ -31,7 +31,7 @@ from apps.loyalty.engine import evaluate
 from apps.loyalty.services import accrue, change_reserved, lock_wallet, publish_wallet, spend_reserved
 
 from .calc import Rules, compute_split, compute_total, discounted_total, resolve_rules
-from .models import OPEN_STATUSES, CashbackRequest, RejectReason, RequestStatus
+from .models import OPEN_STATUSES, CashbackRequest, RejectReason, RequestStatus, new_pos_code
 
 log = logging.getLogger(__name__)
 
@@ -164,6 +164,7 @@ def create_request(member, data, idempotency_key=None, created_by=None, extra=No
                 total=split.total, points_som=split.points_som, points=split.points, money_som=split.money_som,
                 rate=split.rate, cashback=split.cashback, idempotency_key=idempotency_key or None,
                 original_total=original,  # скидка кассира: сумма по прайсу
+                pos_code=new_pos_code() if split.money_som == 0 else None,  # оплата баллами — код для R-Keeper
                 promotion=promotion, created_by=created_by,
                 is_test=member.is_test, created_at=now, **(extra or {}),
             )

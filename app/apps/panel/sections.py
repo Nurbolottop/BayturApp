@@ -49,6 +49,7 @@ SECTIONS = [
     Section('desk', 'Очередь', 'panel:desk', 'queue', ('requests.process',), group='work', tab=True, badge='queue'),
     Section('requests', 'Заявки', 'panel:requests', 'receipt', ('requests.view_all',), group='work', tab=True,
             badge='escalated'),
+    Section('pos', 'Сверка R-Keeper', 'panel:pos', 'check', ('requests.view_all',), group='work'),
     Section('payments', 'Платежи', 'panel:payments', 'card', ('payments.view',), group='work'),
     Section('members', 'Клиенты', 'panel:members', 'users', ('members.view',), group='work', tab=True),
     Section('complaints', 'Обращения', 'panel:complaints', 'chat', ('complaints.view',), group='work', tab=True,

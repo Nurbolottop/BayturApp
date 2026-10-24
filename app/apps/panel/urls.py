@@ -34,6 +34,8 @@ urlpatterns = [
     # заявки и платежи
     path('requests/', money.requests_list, name='requests'),
     path('requests/discounts/', money.discounts, name='discounts'),
+    path('pos/', money.pos_list, name='pos'),
+    path('pos/<int:pk>/', money.pos_detail, name='pos-detail'),
     path('requests/<str:request_id>/', money.request_detail, name='request'),
     path('payments/', money.payments_list, name='payments'),
     path('payments/<str:payment_id>/', money.payment_detail, name='payment'),

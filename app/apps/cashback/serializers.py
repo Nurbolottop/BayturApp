@@ -121,6 +121,8 @@ def staff_request_payload(req, lang='ru'):
         'cancelledBy': req.cancelled_by_id,
         'cancelledAt': iso(req.cancelled_at) if req.cancelled_at else None,
         'duplicateOf': req.duplicate_of or None,
+        # оплата баллами: 6 цифр, кассир вписывает их в комментарий к оплате «Баллы BAYTUR» в R-Keeper
+        'posCode': req.pos_code,
     })
     return data
 
