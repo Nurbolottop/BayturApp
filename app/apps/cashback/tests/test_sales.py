@@ -180,6 +180,5 @@ class StaffSaleTests(BaseAPITestCase):
             self.client.post(f'/panel/r/{rid}/cancel/', {'reason': 'ошибка кассира'})
         req = CashbackRequest.objects.get(pk=rid)
         self.assertEqual((req.status, req.cancelled_by_id, req.cancel_reason), ('cancelled', owner.pk, 'ошибка кассира'))
-        page = self.client.get('/panel/requests/shifts/')
-        self.assertEqual((len(page.context['cancelled']), len(page.context['duplicates'])), (1, 1))
+        self.assertContains(self.client.get('/panel/requests/?status=cancelled'), 'ошибка кассира')
         self.assertContains(self.client.get('/panel/requests/?duplicate=1'), 'повтор')
