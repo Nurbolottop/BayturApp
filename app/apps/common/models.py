@@ -35,11 +35,12 @@ class ProgramSettings(models.Model):
         help_text='Включено — баллы идут и в «Нынешние» / «За всё время». Выключено — только на баланс')
     # Курс и кешбек
     points_per_som = models.PositiveIntegerField('Оплата баллами: баллов за 1 сом', default=10,
-                                                 help_text='Курс списания при оплате баллами. На начисление не влияет')
-    base_cashback_rate = models.DecimalField('Начисление: баллов за 1 сом оплаты деньгами (Бронза)', max_digits=6,
+                                                 help_text='Курс и оплаты, и начисления: кешбек в сомах × этот курс')
+    base_cashback_rate = models.DecimalField('Кешбек: доля от оплаты деньгами (Бронза)', max_digits=6,
                                              decimal_places=4, default=Decimal('0.05'),
-                                             help_text='0.05 = 10/200: за 100 000 сом — 5 000 баллов; надбавка '
-                                                       'уровня умножает (Уровни → «Надбавка к кешбеку»)')
+                                             help_text='0.03 = 3 %: за 44 000 сом — 1 320 сом = 13 200 баллов при 10 '
+                                                       'баллах за сом; надбавка уровня умножает (Уровни → «Надбавка к '
+                                                       'кешбеку»)')
     birthday_multiplier = models.DecimalField('Множитель дня рождения', max_digits=4, decimal_places=2, default=2)
     birthday_days_before = models.PositiveSmallIntegerField('Окно ДР: дней до', default=3)
     birthday_days_after = models.PositiveSmallIntegerField('Окно ДР: дней после', default=3)

@@ -6,9 +6,9 @@
   maxPointsSom = total, если баллов хватает на всю сумму (floor(available / pointsPerSom) ≥ total), иначе 0
   pointsSom    = 0 или total
   moneySom     = total − pointsSom;  points = pointsSom × pointsPerSom  (курс ОПЛАТЫ баллами, настройка «Баллов за 1 сом»)
-  cashback     = round(moneySom × rate) — баллы за деньги, курс оплаты на начисление не влияет
-  rate         = max(база 10/200, акция, база × множитель ДР) × (1 + надбавка уровня / 100):
-                 за 100 000 сом на Бронзе — 5 000 баллов, на Амбассадоре — 10 000
+  cashback     = round(moneySom × rate × pointsPerSom) — кешбек в сомах по тому же курсу, что и оплата баллами:
+                 44 000 сом × 3 % = 1 320 сом = 13 200 баллов при 10 баллах за сом (решение владельца 24.10.2026)
+  rate         = max(базовая ставка, акция, база × множитель ДР) × (1 + надбавка уровня / 100)
 """
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -170,6 +170,6 @@ def compute_split(total, rules, available, requested_points_som, strict=False):
                            extra={'maxPointsSom': 0, 'shortSom': total - balance_som(available, rules)})
     points_som = total if requested and limit else 0
     money_som = total - points_som
-    cashback = round_half_up(Decimal(money_som) * rules.rate)
+    cashback = round_half_up(Decimal(money_som) * rules.rate * rules.points_per_som)
     return Split(total=total, max_points_som=limit, points_som=points_som,
                  points=points_som * rules.points_per_som, money_som=money_som, rate=rules.rate, cashback=cashback)

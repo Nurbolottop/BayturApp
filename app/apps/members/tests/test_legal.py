@@ -71,5 +71,5 @@ class TierSettingsAdminTests(BaseAPITestCase):
         Wallet.objects.filter(member=m).update(tier='gold')
         self.auth(m)
         d = self.api.post('/api/v1/cashback-requests/quote', {'itemId': 'spa-stone', 'quantity': 1}, format='json').json()
-        self.assertEqual((d['rate'], d['cashback']), (0.0625, 219))   # 3 500 × 5 % × 1,25 = 218,75 → 219
+        self.assertEqual((d['rate'], d['cashback']), (0.0625, 2188))  # 3 500 × 5 % × 1,25 × 10 = 2 187,5 → 2 188
         self.assertEqual(d['bonuses'][-1], {'kind': 'tier', 'tierId': 'gold', 'percent': 25.0})

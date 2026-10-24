@@ -14,9 +14,9 @@ def rules(rate='0.07', share='1.00', methods=('cash',), pps=100):
 
 class SplitTests(SimpleTestCase):
     def test_money_payment_cashback(self):
-        """Бочка × 2 = 5 000 сом деньгами, promoRate 0.14 → кешбек 700 баллов (курс оплаты баллами на начисление не влияет)."""
+        """Бочка × 2 = 5 000 сом деньгами, promoRate 0.14 → кешбек 700 сом × 100 баллов за сом = 70 000 баллов."""
         s = compute_split(5000, rules('0.14'), available=845_000, requested_points_som=0)
-        self.assertEqual((s.total, s.points_som, s.points, s.money_som, s.cashback), (5000, 0, 0, 5000, 700))
+        self.assertEqual((s.total, s.points_som, s.points, s.money_som, s.cashback), (5000, 0, 0, 5000, 70_000))
         self.assertEqual(s.max_points_som, 5000)
 
     def test_all_or_nothing(self):
@@ -46,8 +46,10 @@ class SplitTests(SimpleTestCase):
     def test_round_half_up(self):
         self.assertEqual(round_half_up(Decimal('0.5')), 1)
         self.assertEqual(round_half_up(Decimal('2.5')), 3)
-        # 335 × 0.07 = 23,45 → 23
-        self.assertEqual(compute_split(335, rules('0.07'), 0, 0).cashback, 23)
+        # 335 × 0.07 × 1 балл за сом = 23,45 → 23
+        self.assertEqual(compute_split(335, rules('0.07', pps=1), 0, 0).cashback, 23)
+        # 44 000 × 3 % = 1 320 сом × 10 = 13 200 баллов
+        self.assertEqual(compute_split(44_000, rules('0.03', pps=10), 0, 0).cashback, 13_200)
 
 
 class BirthdayWindowTests(SimpleTestCase):
