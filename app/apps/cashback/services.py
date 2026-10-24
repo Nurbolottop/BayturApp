@@ -6,7 +6,12 @@
      ├──reject──▶ rejected
      └──cancel──▶ cancelled
 
-Отмена и отказ — только из pending. Каждый переход пишется в timeline.
+Продажа кассира по QR клиента (POST /staff/sales, apps.cashback.desk.sale):
+  баллы — awaiting_client ──клиент approve──▶ confirmed; decline / не успел ──▶ rejected;
+  QR    — awaiting_payment ──оплата прошла──▶ confirmed; истекло ──▶ rejected;
+  кассир отменяет свою продажу до cancel_until из любого статуса, кроме rejected/cancelled (cancel_sale).
+
+Отмена клиентом и отказ — только из pending. Каждый переход пишется в timeline.
 Резерв баллов: pending держит points в reserved; confirm списывает их (spend);
 credit начисляет кешбек (cashback, растит lifetime).
 """
@@ -26,7 +31,7 @@ from apps.loyalty.engine import evaluate
 from apps.loyalty.services import accrue, change_reserved, lock_wallet, publish_wallet, spend_reserved
 
 from .calc import Rules, compute_split, compute_total, resolve_rules
-from .models import CashbackRequest, RejectReason, RequestStatus
+from .models import OPEN_STATUSES, CashbackRequest, RejectReason, RequestStatus
 
 log = logging.getLogger(__name__)
 
@@ -97,10 +102,12 @@ def _schedule(req, ps, now):
         req.auto_confirm_at = now + timedelta(milliseconds=ps.confirm_delay_ms)
 
 
-def create_request(member, data, idempotency_key=None):
+def create_request(member, data, idempotency_key=None, created_by=None, extra=None):
     """
     Клиент присылает только ввод; суммы, правила и кешбек пересчитываются здесь.
     Атомарно, с блокировкой кошелька. Повтор с тем же Idempotency-Key → та же заявка.
+    created_by — продажа кассира: способ оплаты выбирает кассир (наличные, карта, QR), правила раздела
+    и оплаченный заранее платёж не проверяются; extra — поля заявки (cancel_until, duplicate_of…).
     Возвращает (request, created).
     """
     _check_member_can_act(member)
@@ -132,12 +139,13 @@ def create_request(member, data, idempotency_key=None):
 
             if split.money_som == 0:
                 method = None
-            else:
-                if method is None or method not in rules.methods:
-                    raise ApiError('method_not_allowed', 422)
+            elif created_by is None and (method is None or method not in rules.methods):
+                raise ApiError('method_not_allowed', 422)
+            elif method is None:
+                raise ApiError('method_not_allowed', 422)
 
             payment = None
-            if method in ONLINE_METHODS:
+            if method in ONLINE_METHODS and created_by is None:
                 from apps.payments.models import Payment, PaymentStatus
                 payment = Payment.objects.select_for_update().filter(pk=payment_id, member=member).first() \
                     if payment_id else None
@@ -152,8 +160,8 @@ def create_request(member, data, idempotency_key=None):
                 requested_points_som=int(data.get('pointsSom') or 0), method=method,
                 total=split.total, points_som=split.points_som, points=split.points, money_som=split.money_som,
                 rate=split.rate, cashback=split.cashback, idempotency_key=idempotency_key or None,
-                promotion=promotion,
-                is_test=member.is_test, created_at=now,
+                promotion=promotion, created_by=created_by,
+                is_test=member.is_test, created_at=now, **(extra or {}),
             )
             req.mark(RequestStatus.PENDING, now)
             _schedule(req, ps, now)
@@ -176,7 +184,7 @@ def create_request(member, data, idempotency_key=None):
         raise
 
     _after_change(req, 'request.created', wallet)
-    if req.method in ONLINE_METHODS:
+    if req.method in ONLINE_METHODS and created_by is None:
         transaction.on_commit(lambda: _notify_staff_paid_online(req.pk))
     return req, True
 
@@ -210,7 +218,9 @@ def _release_and_refund(req, wallet, reason):
         change_reserved(wallet, -req.points, request=req)
     payment = getattr(req, 'payment', None)
     if payment is not None:
-        from apps.payments.services import refund_payment
+        from apps.payments.services import close_unpaid, refund_payment
+        # QR кассира ещё не оплачен — закрываем, чтобы поздняя оплата не прошла (провайдеру ответим отказом)
+        transaction.on_commit(lambda: close_unpaid(payment.pk))
         transaction.on_commit(lambda: refund_payment(payment.pk, payment.amount - payment.refunded_amount, reason))
 
 
@@ -236,12 +246,13 @@ def _clear_schedule(req):
     req.expires_at = None
 
 
-def reject_request(req_id, staff=None, code=RejectReason.OTHER, comment='', expected_outlets=None):
+def reject_request(req_id, staff=None, code=RejectReason.OTHER, comment='', expected_outlets=None,
+                   statuses=(RequestStatus.PENDING,)):
     with transaction.atomic():
         req = _lock_request(req_id)
         if expected_outlets is not None and req.outlet_id not in expected_outlets:
             raise ApiError('outlet_forbidden', 403)
-        if req.status != RequestStatus.PENDING:
+        if req.status not in statuses:
             raise ApiError('invalid_status', 409, extra={'status': req.status})
         wallet = lock_wallet(req.member)
         req.mark(RequestStatus.REJECTED)
@@ -254,16 +265,17 @@ def reject_request(req_id, staff=None, code=RejectReason.OTHER, comment='', expe
         req.save()
         _release_and_refund(req, wallet, f'rejected:{code}')
     _after_change(req, wallet=wallet)
-    from apps.notifications.services import notify_request_rejected
-    transaction.on_commit(lambda: notify_request_rejected(req.pk))
+    if code != RejectReason.CLIENT_DECLINED:  # отказался сам — сообщать нечего
+        from apps.notifications.services import notify_request_rejected
+        transaction.on_commit(lambda: notify_request_rejected(req.pk))
     return req
 
 
-def confirm_request(req_id, staff=None, cash_received=False):
+def confirm_request(req_id, staff=None, cash_received=False, statuses=(RequestStatus.PENDING,)):
     ps = ProgramSettings.get()
     with transaction.atomic():
         req = _lock_request(req_id)
-        if req.status != RequestStatus.PENDING:
+        if req.status not in statuses:
             raise ApiError('invalid_status', 409, extra={'status': req.status})
         if staff is not None and req.method == PaymentMethod.CASH and req.money_som > 0 and not cash_received:
             raise ApiError('cash_not_received', 422)
@@ -370,6 +382,109 @@ def adjust_request(req_id, new_total, staff=None, reason='', expected_outlets=No
     return req
 
 
+# ---------------------------------------------------------------- продажа кассира: ответ клиента, оплата, отмена
+
+def approve_by_client(member, req_id):
+    """Клиент подтвердил списание баллов (charge.confirm). Повтор после подтверждения — та же заявка."""
+    req = CashbackRequest.objects.filter(pk=req_id, member=member).first()
+    if req is None:
+        raise ApiError('not_found', 404)
+    if req.status in (RequestStatus.CONFIRMED, RequestStatus.CREDITED) and 'clientApproved' in (req.timeline or {}):
+        return req
+    if req.status != RequestStatus.AWAITING_CLIENT or (req.confirm_until and req.confirm_until <= timezone.now()):
+        raise ApiError('invalid_status', 409, extra={'status': req.status})
+    with transaction.atomic():
+        locked = _lock_request(req.pk)
+        timeline = dict(locked.timeline)
+        timeline['clientApproved'] = iso(timezone.now())
+        locked.timeline = timeline
+        locked.save(update_fields=['timeline'])
+        req = confirm_request(req.pk, staff=locked.created_by, cash_received=True,
+                              statuses=(RequestStatus.AWAITING_CLIENT,))
+    return req
+
+
+def decline_by_client(member, req_id):
+    req = CashbackRequest.objects.filter(pk=req_id, member=member).first()
+    if req is None:
+        raise ApiError('not_found', 404)
+    return reject_request(req.pk, code=RejectReason.CLIENT_DECLINED, statuses=(RequestStatus.AWAITING_CLIENT,))
+
+
+def on_payment_status(payment_id):
+    """Оплата QR кассира: прошла → продажа подтверждена; не прошла / истекла → отклонена."""
+    from apps.payments.models import Payment, PaymentStatus
+    p = Payment.objects.filter(pk=payment_id, request__isnull=False).first()
+    if p is None:
+        return None
+    req = CashbackRequest.objects.get(pk=p.request_id)
+    if p.status == PaymentStatus.PAID:
+        if req.status == RequestStatus.AWAITING_PAYMENT:
+            return confirm_request(req.pk, staff=req.created_by, cash_received=True,
+                                   statuses=(RequestStatus.AWAITING_PAYMENT,))
+        if req.status in (RequestStatus.REJECTED, RequestStatus.CANCELLED):
+            from apps.payments.services import refund_payment  # оплатили уже после отмены — деньги назад
+            refund_payment(p.pk, p.amount - p.refunded_amount, f'late:{req.status}')
+    elif p.status in (PaymentStatus.FAILED, PaymentStatus.EXPIRED) and req.status == RequestStatus.AWAITING_PAYMENT:
+        code = RejectReason.EXPIRED if p.status == PaymentStatus.EXPIRED else RejectReason.PAYMENT_FAILED
+        return reject_request(req.pk, code=code, statuses=(RequestStatus.AWAITING_PAYMENT,))
+    return req
+
+
+CANCELLABLE = (*OPEN_STATUSES, RequestStatus.CONFIRMED, RequestStatus.CREDITED)
+
+
+def cancel_sale(req_id, staff, reason, director=False):
+    """
+    Отмена продажи: кассир — только свою и до cancel_until (позже 409 cancel_expired), директор — любую.
+    Кешбек отзывается, списанные баллы возвращаются, резерв снимается, оплата по QR возвращается;
+    наличные и карта выпадают из итога смены (он считается по статусу).
+    """
+    from apps.loyalty.engine import _request_fields, post_operation, reverse_cashback
+    from apps.loyalty.models import OperationKind
+    reason = (reason or '').strip()
+    if not reason:
+        raise ApiError('validation_error', 400, extra={'fields': {'reason': ['обязательно']}})
+    now = timezone.now()
+    with transaction.atomic():
+        req = _lock_request(req_id)
+        if not director:
+            if req.created_by_id != staff.pk:
+                raise ApiError('permission_denied', 403, message='Отменить можно только свою операцию')
+            if req.status in CANCELLABLE and (req.cancel_until is None or req.cancel_until <= now):
+                raise ApiError('cancel_expired', 409, message='Время на отмену вышло — отменяет директор')
+        if req.status not in CANCELLABLE:
+            raise ApiError('invalid_status', 409, extra={'status': req.status})
+        before = req.status
+        wallet = lock_wallet(req.member)
+        if before == RequestStatus.CREDITED and req.cashback:
+            reverse_cashback(req, actor=staff, reason=reason)
+            wallet = lock_wallet(req.member)
+        if before in (RequestStatus.CONFIRMED, RequestStatus.CREDITED):
+            if req.points:  # баллы уже списаны — возвращаем
+                post_operation(wallet, OperationKind.REFUND, req.points, idempotency_key=f'refund:{req.pk}',
+                               reason=reason, author=staff, activity=False, at=now, **_request_fields(req))
+            payment = getattr(req, 'payment', None)
+            if payment is not None:
+                from apps.payments.services import refund_payment
+                transaction.on_commit(lambda: refund_payment(payment.pk, payment.amount - payment.refunded_amount,
+                                                             'cancelled', author=staff))
+        else:
+            _release_and_refund(req, wallet, 'cancelled')
+        req.mark(RequestStatus.CANCELLED, now)
+        req.cancelled_at = req.closed_at = now
+        req.cancelled_by = staff
+        req.cancel_reason = reason
+        req.escalated = False
+        req.credit_due_at = None
+        _clear_schedule(req)
+        req.save()
+    _after_change(req, wallet=wallet)
+    from apps.notifications.services import notify_request_cancelled
+    transaction.on_commit(lambda: notify_request_cancelled(req.pk))
+    return req, before
+
+
 # ---------------------------------------------------------------- фон
 
 def _enqueue(task, req_id, countdown):
@@ -398,6 +513,26 @@ def process_due(now=None):
             .values_list('pk', flat=True)[:500]:
         try:
             reject_request(rid, code=RejectReason.EXPIRED)
+            done['expired'] += 1
+        except ApiError:
+            pass
+    # продажи кассира: клиент не подтвердил баллы / не оплатил QR вовремя
+    for rid in CashbackRequest.objects.filter(status=RequestStatus.AWAITING_CLIENT, confirm_until__lte=now) \
+            .values_list('pk', flat=True)[:500]:
+        try:
+            reject_request(rid, code=RejectReason.CLIENT_TIMEOUT, statuses=(RequestStatus.AWAITING_CLIENT,))
+            done['expired'] += 1
+        except ApiError:
+            pass
+    for req in CashbackRequest.objects.filter(status=RequestStatus.AWAITING_PAYMENT, confirm_until__lte=now) \
+            .select_related('payment')[:100]:
+        payment = getattr(req, 'payment', None)
+        if payment is not None:
+            from apps.payments.services import check_payment
+            if check_payment(payment).status == 'paid':  # вебхук мог не дойти — спрашиваем провайдера
+                continue
+        try:
+            reject_request(req.pk, code=RejectReason.EXPIRED, statuses=(RequestStatus.AWAITING_PAYMENT,))
             done['expired'] += 1
         except ApiError:
             pass

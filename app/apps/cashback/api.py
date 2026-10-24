@@ -67,3 +67,17 @@ class RequestCancelView(MemberAPIView):
         if req is None:
             raise ApiError('not_found', 404)
         return Response(request_payload(CashbackRequest.objects.select_related('payment').get(pk=req.pk)))
+
+
+class RequestApproveView(MemberAPIView):
+    """Клиент подтверждает списание баллов по запросу кассира (charge.confirm). Повтор — та же заявка."""
+
+    def post(self, request, request_id):
+        req = services.approve_by_client(request.user, request_id)
+        return Response(request_payload(CashbackRequest.objects.select_related('payment').get(pk=req.pk)))
+
+
+class RequestDeclineView(MemberAPIView):
+    def post(self, request, request_id):
+        req = services.decline_by_client(request.user, request_id)
+        return Response(request_payload(CashbackRequest.objects.select_related('payment').get(pk=req.pk)))

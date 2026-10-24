@@ -22,12 +22,16 @@ class PaymentMethod(models.TextChoices):
     FINIK = 'finik', 'Finik'
     FREEDOM_PAY = 'freedomPay', 'Freedom Pay'
     ELQR = 'elqr', 'ЭлQR'
+    CARD = 'card', 'Карта (терминал)'
 
 
 # Finik отключён (10.10.2026): остаётся только в старых заявках и отчётах, новых платежей и заявок с ним нет
 DISABLED_METHODS = {PaymentMethod.FINIK}
+# Карту через терминал проводит только кассир (POST /staff/sales) — в правилах разделов её нет
+STAFF_ONLY_METHODS = {PaymentMethod.CARD}
 ONLINE_METHODS = {PaymentMethod.FREEDOM_PAY, PaymentMethod.ELQR}
-ACTIVE_METHOD_CHOICES = [(v, label) for v, label in PaymentMethod.choices if v not in DISABLED_METHODS]
+ACTIVE_METHOD_CHOICES = [(v, label) for v, label in PaymentMethod.choices
+                         if v not in DISABLED_METHODS | STAFF_ONLY_METHODS]
 
 
 class PricingUnit(models.TextChoices):
@@ -137,6 +141,12 @@ class Outlet(models.Model):
     name = models.JSONField('Название', default=dict)
     sort_order = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
+    receipt_required = models.BooleanField(
+        'Нужен фискальный чек', default=False,
+        help_text='Ресторан: кассир принимает деньги только по QR чека, без чека — только баллами')
+    manager_threshold = models.PositiveIntegerField(
+        'Порог суммы для директора, сом', null=True, blank=True,
+        help_text='Продажа кассира дороже порога уходит на решение директору. Пусто — без порога')
 
     class Meta:
         ordering = ['sort_order', 'id']

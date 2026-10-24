@@ -175,12 +175,13 @@ class FreedomPayGateway(Gateway):
     def create(self, payment):
         base = settings.PUBLIC_BASE_URL
         back = f'{base}/api/v1/payments/{payment.pk}/return'
+        lifetime = int((payment.params or {}).get('lifetime') or self.LIFETIME)  # QR кассира живёт меньше
         params = {
             'pg_order_id': payment.pk,
             'pg_amount': payment.amount,
             'pg_currency': 'KGS',
             'pg_description': self._description(payment),
-            'pg_lifetime': self.LIFETIME,
+            'pg_lifetime': lifetime,
             'pg_result_url': f'{base}/api/v1/payments/webhooks/{self.code}',
             'pg_request_method': 'POST',
             'pg_success_url': back,
@@ -199,7 +200,7 @@ class FreedomPayGateway(Gateway):
         if data.get('pg_status') != 'ok' or not data.get('pg_redirect_url'):
             raise GatewayError(data.get('pg_error_description') or 'init_payment failed')
         return CreateResult(provider_ref=data.get('pg_payment_id', ''), redirect_url=data['pg_redirect_url'],
-                            expires_at=timezone.now() + timedelta(seconds=self.LIFETIME) + self.EXPIRE_GRACE)
+                            expires_at=timezone.now() + timedelta(seconds=lifetime) + self.EXPIRE_GRACE)
 
     STATUS_MAP = {'success': 'paid', 'failed': 'failed', 'incomplete': 'expired'}
 

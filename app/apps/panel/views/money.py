@@ -39,7 +39,8 @@ def page(request, qs, per=50):
 @panel_view('requests')
 def requests_list(request):
     g = request.GET
-    qs = scoped_requests(request.user).select_related('member', 'outlet', 'confirmed_by', 'rejected_by')
+    qs = scoped_requests(request.user).select_related('member', 'outlet', 'confirmed_by', 'rejected_by', 'created_by',
+                                                      'cancelled_by')
     if g.get('status'):
         qs = qs.filter(status=g['status'])
     if g.get('escalated'):
@@ -49,7 +50,10 @@ def requests_list(request):
     if g.get('outlet'):
         qs = qs.filter(outlet_id=g['outlet'])
     if g.get('staff'):
-        qs = qs.filter(Q(confirmed_by_id=g['staff']) | Q(rejected_by_id=g['staff']) | Q(adjusted_by_id=g['staff']))
+        qs = qs.filter(Q(confirmed_by_id=g['staff']) | Q(rejected_by_id=g['staff']) | Q(adjusted_by_id=g['staff'])
+                       | Q(created_by_id=g['staff']) | Q(cancelled_by_id=g['staff']))
+    if g.get('duplicate'):
+        qs = qs.exclude(duplicate_of='')
     if _date(g.get('from')):
         qs = qs.filter(created_at__gte=_date(g['from']))
     if _date(g.get('to'), True):
@@ -67,6 +71,41 @@ def requests_list(request):
         'f': g,
     }
     return render(request, 'panel/requests/list.html', ctx)
+
+
+@panel_view('requests')
+def shifts(request):
+    """Отчёт по сменам: наличные и карта каждого кассира за день, отмены с причинами, повторы."""
+    from django.db.models import Count, Sum
+
+    from apps.cashback.desk import DONE_STATUSES
+    g = request.GET
+    day = (_date(g.get('date')) or timezone.now()).astimezone(timezone.get_current_timezone()).date()
+    start, end = _date(day.isoformat()), _date(day.isoformat(), True)
+    base = scoped_requests(request.user)
+    done = base.filter(confirmed_at__range=(start, end), status__in=DONE_STATUSES, confirmed_by__isnull=False)
+    rows = {}
+    for r in done.values('confirmed_by', 'confirmed_by__full_name', 'method').annotate(
+            n=Count('pk'), money=Sum('money_som'), points=Sum('points_som')):
+        row = rows.setdefault(r['confirmed_by'], {'name': r['confirmed_by__full_name'], 'count': 0, 'cash': 0,
+                                                   'card': 0, 'online': 0, 'points': 0, 'cancelled': 0})
+        row['count'] += r['n']
+        row['points'] += r['points'] or 0
+        key = {'cash': 'cash', 'card': 'card'}.get(r['method'], 'online' if r['method'] else None)
+        if key:
+            row[key] += r['money'] or 0
+    cancelled = base.filter(status=RequestStatus.CANCELLED, cancelled_at__range=(start, end)) \
+        .select_related('member', 'outlet', 'created_by', 'cancelled_by').order_by('-cancelled_at')
+    for r in cancelled:
+        if r.created_by_id:
+            rows.setdefault(r.created_by_id, {'name': r.created_by.full_name, 'count': 0, 'cash': 0, 'card': 0,
+                                              'online': 0, 'points': 0, 'cancelled': 0})['cancelled'] += 1
+    duplicates = base.filter(created_at__range=(start, end)).exclude(duplicate_of='') \
+        .select_related('member', 'outlet', 'created_by').order_by('-created_at')
+    totals = {k: sum(r[k] for r in rows.values()) for k in ('count', 'cash', 'card', 'online', 'points')}
+    return render(request, 'panel/requests/shifts.html', {
+        'day': day, 'rows': sorted(rows.values(), key=lambda r: r['name'] or ''), 'totals': totals,
+        'cancelled': cancelled, 'duplicates': duplicates})
 
 
 @panel_view('requests')

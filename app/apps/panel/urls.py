@@ -33,6 +33,7 @@ urlpatterns = [
 
     # заявки и платежи
     path('requests/', money.requests_list, name='requests'),
+    path('requests/shifts/', money.shifts, name='shifts'),
     path('requests/<str:request_id>/', money.request_detail, name='request'),
     path('payments/', money.payments_list, name='payments'),
     path('payments/<str:payment_id>/', money.payment_detail, name='payment'),

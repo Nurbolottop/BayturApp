@@ -1484,11 +1484,167 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/cashback-requests/{request_id}/approve:
+    post:
+      operationId: cashback_requests_approve_create
+      description: Клиент подтверждает списание баллов по запросу кассира (charge.confirm).
+        Повтор — та же заявка.
+      summary: Подтвердить списание баллов по запросу кассира (charge.confirm)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: Повтор с тем же ключом не создаёт вторую заявку
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: request_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Заявки
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashbackRequest'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/cashback-requests/{request_id}/cancel:
     post:
       operationId: cashback_requests_cancel_create
       description: 'Личные эндпоинты: без токена → 401 auth_required.'
       summary: Отменить заявку (только pending)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: request_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Заявки
+      security:
+      - memberBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashbackRequest'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/cashback-requests/{request_id}/decline:
+    post:
+      operationId: cashback_requests_decline_create
+      description: 'Личные эндпоинты: без токена → 401 auth_required.'
+      summary: Отказаться от списания баллов (rejected, client_declined)
       parameters:
       - in: header
         name: Accept-Language
@@ -6434,6 +6590,100 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: ''
+  /api/v1/staff/requests/{request_id}/cancel:
+    post:
+      operationId: staff_requests_cancel_create
+      description: Отмена своей продажи до cancelUntil (позже — 409 cancel_expired,
+        отменяет директор).
+      summary: Отменить свою продажу до cancelUntil (позже — 409 cancel_expired)
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      - in: path
+        name: request_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CancelInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffRequest'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
   /api/v1/staff/requests/{request_id}/confirm:
     post:
       operationId: staff_requests_confirm_create
@@ -6606,6 +6856,196 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: ''
         '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/sales:
+    post:
+      operationId: staff_sales_create
+      description: 'Оформить: 201 — проведено / ждёт клиента или оплату; 202 — выше
+        порога, решает директор.'
+      summary: 'Продажа по QR клиента: cash/card — сразу, points — ждёт клиента, qr
+        — ждёт оплаты; 202 — выше порога, решает директор'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: Повтор с тем же ключом не создаёт вторую заявку
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaleInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SaleInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffRequest'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+  /api/v1/staff/sales/quote:
+    post:
+      operationId: staff_sales_quote_create
+      description: 'Расчёт до оформления: {total, quantity, cashback, points, enough,
+        shortSom, needsManager, duplicate}.'
+      summary: 'Продажа по QR клиента: расчёт (цена из прайса, баланс не раскрывается)'
+      parameters:
+      - in: header
+        name: Accept-Language
+        schema:
+          type: string
+          enum:
+          - en
+          - ky
+          - ru
+        description: Язык контента, fallback ru
+      - in: header
+        name: X-Baytur-App
+        schema:
+          type: string
+          enum:
+          - resort
+          - sk
+        description: Приложение; нет заголовка — resort (bayturapp)
+      - in: header
+        name: X-Baytur-Mode
+        schema:
+          type: string
+          enum:
+          - kymyz
+          - resort
+          - ski
+        description: Явный режим; без него для sk — активный сезон. Недопустимая пара
+          → 400 mode_not_allowed. Режим ответа — в заголовке X-Baytur-Mode
+      - in: header
+        name: X-Device-Id
+        schema:
+          type: string
+        description: Анонимный UUID установки (для аналитики и rate limit)
+      tags:
+      - Сотрудник
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PayInputRequest'
+        required: true
+      security:
+      - staffBearer: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleQuote'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: ''
+        '404':
           content:
             application/json:
               schema:
@@ -7548,6 +7988,14 @@ components:
         * `promo` - promo
         * `birthday` - birthday
         * `tier` - tier
+    CancelInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
     CashbackRequest:
       type: object
       properties:
@@ -8873,12 +9321,16 @@ components:
         outlet:
           type: string
           nullable: true
+        receiptRequired:
+          type: boolean
+          description: 'Точка с фискальным чеком: деньги — только по QR чека'
       required:
       - category
       - id
       - outlet
       - price
       - pricing
+      - receiptRequired
       - title
     PayItems:
       type: object
@@ -8995,12 +9447,14 @@ components:
       - finik
       - freedomPay
       - elqr
+      - card
       type: string
       description: |-
         * `cash` - Наличные
         * `finik` - Finik
         * `freedomPay` - Freedom Pay
         * `elqr` - ЭлQR
+        * `card` - Карта (терминал)
     PaymentSplit:
       type: object
       properties:
@@ -9829,6 +10283,91 @@ components:
         * `none` - none
         * `points` - points
         * `points_and_achievements` - points_and_achievements
+    SaleDuplicate:
+      type: object
+      properties:
+        requestId:
+          type: string
+        at:
+          type: string
+          format: date-time
+      required:
+      - at
+      - requestId
+    SaleInputMethodEnum:
+      enum:
+      - points
+      - cash
+      - card
+      - qr
+      type: string
+      description: |-
+        * `points` - points
+        * `cash` - cash
+        * `card` - card
+        * `qr` - qr
+    SaleInputRequest:
+      type: object
+      properties:
+        payToken:
+          type: string
+          minLength: 1
+        itemId:
+          type: string
+          minLength: 1
+        quantity:
+          type: integer
+        checkAmount:
+          type: integer
+        method:
+          $ref: '#/components/schemas/SaleInputMethodEnum'
+      required:
+      - itemId
+      - method
+      - payToken
+    SaleQuote:
+      type: object
+      properties:
+        itemId:
+          type: string
+        total:
+          type: integer
+        quantity:
+          type: integer
+        cashback:
+          type: integer
+          description: Кешбек при оплате деньгами
+        points:
+          type: integer
+        enough:
+          type: boolean
+        shortSom:
+          type: integer
+        needsManager:
+          type: boolean
+          description: Сумма выше порога точки — решает директор
+        receiptRequired:
+          type: boolean
+        promotion:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        duplicate:
+          allOf:
+          - $ref: '#/components/schemas/SaleDuplicate'
+          nullable: true
+      required:
+      - cashback
+      - duplicate
+      - enough
+      - itemId
+      - needsManager
+      - points
+      - promotion
+      - quantity
+      - receiptRequired
+      - shortSom
+      - total
     ScanInputRequest:
       type: object
       properties:
@@ -10387,12 +10926,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StaffRequest'
+        cancelled:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffRequest'
         adjustedCount:
           type: integer
         cashTotal:
           type: integer
+        cardTotal:
+          type: integer
       required:
       - adjustedCount
+      - cancelled
+      - cardTotal
       - cashTotal
       - confirmed
       - date
@@ -10997,15 +11544,58 @@ components:
           - $ref: '#/components/schemas/FiscalReceipt'
           nullable: true
           description: Чек, по которому принята наличная оплата
+        createdBy:
+          type: integer
+          nullable: true
+          description: Кассир, оформивший продажу (POST /staff/sales)
+        cancelUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: До когда кассир может отменить; null — нельзя
+        confirmUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'awaiting_*: до когда клиент подтверждает / платит'
+        payQr:
+          type: string
+          nullable: true
+          description: 'awaiting_payment: строка для QR (ссылка на оплату / ЭлQR)'
+        rejectCode:
+          type: string
+          nullable: true
+          description: client_timeout, client_declined, expired…
+        cancelReason:
+          type: string
+          nullable: true
+        cancelledBy:
+          type: integer
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        duplicateOf:
+          type: string
+          nullable: true
+          description: 'Повтор: той же услуге этому клиенту оформляли < 10 мин назад'
       required:
       - adjustReason
       - adjustedBy
       - bonuses
+      - cancelReason
+      - cancelUntil
+      - cancelledAt
+      - cancelledBy
       - cashReceived
       - cashToCollect
       - checkAmount
+      - confirmUntil
       - confirmedBy
       - createdAt
+      - createdBy
+      - duplicateOf
       - escalated
       - escalationReason
       - fiscalReceipt
@@ -11017,9 +11607,11 @@ components:
       - originalTotal
       - outlet
       - paidOnline
+      - payQr
       - proposedTotal
       - quantity
       - receipt
+      - rejectCode
       - rejectReason
       - rejectedBy
       - rules

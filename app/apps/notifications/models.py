@@ -10,6 +10,8 @@ class PushKind(models.TextChoices):
     REQUEST_CREDITED = 'request.credited', 'Кешбек начислен'
     REQUEST_REJECTED = 'request.rejected', 'Заявка отклонена'
     REQUEST_PAID = 'request.paid', 'Оплачено баллами'
+    CHARGE_CONFIRM = 'charge.confirm', 'Подтвердите оплату баллами (кассир)'
+    REQUEST_CANCELLED = 'request.cancelled', 'Операция отменена кассиром'
     TIER_UPGRADED = 'tier.upgraded', 'Новый уровень'
     TIER_DOWNGRADED = 'tier.downgraded', 'Уровень понижен'
     TIER_RETAINED = 'tier.retained', 'Уровень подтверждён'
@@ -23,14 +25,14 @@ class PushKind(models.TextChoices):
 
 # Операции с баллами идут и в тихие часы
 POINTS_KINDS = {PushKind.REQUEST_CREDITED, PushKind.REQUEST_REJECTED, PushKind.REQUEST_PAID, PushKind.POINTS_ADJUSTED,
-                PushKind.WELCOME_BONUS}
+                PushKind.WELCOME_BONUS, PushKind.CHARGE_CONFIRM, PushKind.REQUEST_CANCELLED}
 
 
 class PushTemplate(models.Model):
     kind = models.CharField(primary_key=True, max_length=40, choices=PushKind.choices)
     title = models.JSONField(default=dict)
     body = models.JSONField(default=dict, help_text='Плейсхолдеры: {points}, {tier}, {number}, {days}, {item}, {left}, {limit}, {year}, '
-                                                             '{achievement}')
+                                                             '{achievement}, {outlet}, {total}, {reason}')
 
     class Meta:
         verbose_name = 'Шаблон push'

@@ -39,14 +39,16 @@
 
   {% if req.bonuses %}<div class="row wrap">{% for b in req.bonuses %}<span class="tag accent">{% if b.kind == 'birthday' %}День рождения ×{{ b.multiplier }}{% else %}Акция{% if b.title %}: {{ b.title }}{% endif %}{% endif %}</span>{% endfor %}</div>{% endif %}
   {% if req.adjust_reason %}<div class="note"><div class="meta">Причина правки суммы</div>{{ req.adjust_reason }}</div>{% endif %}
+  {% if req.status == 'cancelled' and req.cancel_reason %}<div class="banner neg">{% icon 'close' 18 %}<span>Отменена{% if req.cancelled_by %} · {{ req.cancelled_by.full_name }}{% endif %} — {{ req.cancel_reason }}</span></div>{% endif %}
+  {% if req.duplicate_of %}<div class="banner warn">{% icon 'warning' 18 %}<span>Повтор: той же услуге этому клиенту оформляли меньше 10 минут назад — <a href="{% url 'panel:request' req.duplicate_of %}">{{ req.duplicate_of }}</a></span></div>{% endif %}
   {% if req.status == 'rejected' %}<div class="banner neg">{% icon 'close' 18 %}<span>Отклонена{% if req.reject_code %}: {{ req.get_reject_code_display }}{% endif %}{% if req.reject_reason %} — {{ req.reject_reason }}{% endif %}</span></div>{% endif %}
 
   {% if awaiting_manager %}
-    <div class="banner warn">{% icon 'warning' 18 %}<span>{% if req.escalation_reason == 'adjust_threshold' %}Предложена сумма {{ req.proposed_total|som }} — правка больше порога, ждёт директора{% else %}Кешбек выше лимита — подтверждает директор{% endif %}</span></div>
+    <div class="banner warn">{% icon 'warning' 18 %}<span>{% if req.escalation_reason == 'adjust_threshold' %}Предложена сумма {{ req.proposed_total|som }} — правка больше порога, ждёт директора{% elif req.escalation_reason == 'amount_threshold' %}Продажа кассира {{ req.created_by.full_name|default:"" }} дороже порога точки — решает директор{% else %}Кешбек выше лимита — подтверждает директор{% endif %}</span></div>
     {% if can_approve %}
       <div class="row wrap">
-        <form method="post" action="{% url 'panel:request-action' req.pk 'approve' %}" data-confirm="Утвердить?">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-accent btn-action">{% icon 'check' 18 %} Утвердить{% if req.escalation_reason == 'adjust_threshold' %} сумму{% else %} и подтвердить{% endif %}</button></form>
-        <form method="post" action="{% url 'panel:request-action' req.pk 'decline' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-action">Вернуть в очередь</button></form>
+        <form method="post" action="{% url 'panel:request-action' req.pk 'approve' %}" data-confirm="Утвердить?">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-accent btn-action">{% icon 'check' 18 %} Утвердить{% if req.escalation_reason == 'adjust_threshold' %} сумму{% elif req.escalation_reason == 'amount_threshold' %} продажу{% else %} и подтвердить{% endif %}</button></form>
+        <form method="post" action="{% url 'panel:request-action' req.pk 'decline' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-action">{% if req.escalation_reason == 'amount_threshold' %}Не разрешать{% else %}Вернуть в очередь{% endif %}</button></form>
       </div>
     {% endif %}
   {% endif %}

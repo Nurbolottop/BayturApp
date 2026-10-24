@@ -7,12 +7,12 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         from django.db.models import Sum
 
-        from apps.cashback.models import CashbackRequest, RequestStatus
+        from apps.cashback.models import OPEN_STATUSES, CashbackRequest
         from apps.loyalty.models import Wallet
         from apps.loyalty.services import ledger_mismatches
 
         bad = ledger_mismatches()
-        reserved = dict(CashbackRequest.objects.filter(status=RequestStatus.PENDING).values_list('member_id')
+        reserved = dict(CashbackRequest.objects.filter(status__in=OPEN_STATUSES).values_list('member_id')
                         .annotate(s=Sum('points')))
         bad_reserved = [(w.member_id, w.reserved, reserved.get(w.member_id, 0)) for w in Wallet.objects.all()
                         if w.reserved != reserved.get(w.member_id, 0)]

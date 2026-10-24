@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.audit import audit
+from apps.common.errors import ApiError
 from apps.common.i18n import iso
 from apps.common.models import ProgramSettings
 from apps.members.auth import read_member_qr
@@ -138,8 +139,10 @@ class ShiftView(StaffAPIView):
             'date': s['date'].isoformat(),
             'confirmed': [staff_request_payload(r) for r in s['confirmed']],
             'rejected': [staff_request_payload(r) for r in s['rejected']],
+            'cancelled': [staff_request_payload(r) for r in s['cancelled']],
             'adjustedCount': s['adjusted_count'],
             'cashTotal': s['cash_total'],
+            'cardTotal': s['card_total'],
         })
 
 
@@ -166,7 +169,8 @@ class PayItemsView(StaffAPIView):
         from apps.common.i18n import tr
         return Response({'items': [{
             'id': i.pk, 'category': i.category_id, 'title': tr(i.title, 'ru'), 'price': i.price,
-            'pricing': pricing_payload(i), 'outlet': i.outlet_id} for i in desk.pay_items(request.user)]})
+            'pricing': pricing_payload(i), 'outlet': i.outlet_id,
+            'receiptRequired': desk.receipt_required(i)} for i in desk.pay_items(request.user)]})
 
 
 class PayQuoteView(StaffAPIView):
@@ -219,3 +223,46 @@ class ReceiptAcceptView(StaffAPIView):
         req = desk.receipt_accept(request, d['payToken'], d['itemId'], d['receiptQr'], d.get('requestId') or None,
                                   d.get('amount'))
         return Response(payload(req), status=201)
+
+
+# ---------------------------------------------------------------- продажа по QR клиента: любой способ оплаты
+
+class SaleInput(PayInput):
+    method = serializers.ChoiceField(choices=desk.SALE_METHODS)
+
+
+class SaleQuoteView(StaffAPIView):
+    """Расчёт до оформления: {total, quantity, cashback, points, enough, shortSom, needsManager, duplicate}."""
+
+    def post(self, request):
+        d = _pay_input(request)
+        member = desk.read_pay_token(request.user, d['payToken'])
+        return Response(desk.sale_quote(request.user, member, d['itemId'], d.get('quantity'), d.get('checkAmount')))
+
+
+class SaleView(StaffAPIView):
+    """Оформить: 201 — проведено / ждёт клиента или оплату; 202 — выше порога, решает директор."""
+
+    def post(self, request):
+        s = SaleInput(data=request.data)
+        s.is_valid(raise_exception=True)
+        d = s.validated_data
+        key = request.headers.get('Idempotency-Key') or None
+        if key and len(key) > 100:
+            raise ApiError('validation_error', 400, extra={'fields': {'Idempotency-Key': ['≤ 100 символов']}})
+        req, escalated = desk.sale(request, d['payToken'], d['itemId'], d['method'], d.get('quantity'),
+                                   d.get('checkAmount'), idempotency_key=key)
+        return Response(payload(req), status=202 if escalated else 201)
+
+
+class CancelInput(serializers.Serializer):
+    reason = serializers.CharField(max_length=500)
+
+
+class CancelView(StaffAPIView):
+    """Отмена своей продажи до cancelUntil (позже — 409 cancel_expired, отменяет директор)."""
+
+    def post(self, request, request_id):
+        s = CancelInput(data=request.data)
+        s.is_valid(raise_exception=True)
+        return Response(payload(desk.cancel(request, request_id, s.validated_data['reason'])))

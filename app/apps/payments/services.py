@@ -89,8 +89,59 @@ def set_status(payment_id, status, amount=None):
         elif status in (PaymentStatus.FAILED, PaymentStatus.EXPIRED, PaymentStatus.PENDING):
             p.status = status
         p.save()
+        if p.request_id and p.status != PaymentStatus.PENDING:
+            # QR кассира: оплата подтверждает продажу, неудача — отклоняет
+            transaction.on_commit(lambda: _sale_payment_changed(p.pk))
     _publish(p)
     return p
+
+
+def _sale_payment_changed(payment_id):
+    from apps.cashback.services import on_payment_status
+    on_payment_status(payment_id)
+
+
+def close_unpaid(payment_id):
+    """Продажа отменена/отклонена до оплаты: платёж закрывается (поздняя оплата → отказ провайдеру/возврат)."""
+    with transaction.atomic():
+        p = Payment.objects.select_for_update().get(pk=payment_id)
+        if p.status not in (PaymentStatus.CREATED, PaymentStatus.PENDING):
+            return p
+        p.status = PaymentStatus.EXPIRED
+        p.save(update_fields=['status', 'updated_at'])
+    _publish(p)
+    return p
+
+
+STAFF_QR_LIFETIME = 600  # с: сколько живёт QR оплаты на экране кассира
+
+
+def create_staff_payment(req):
+    """
+    Оплата продажи кассира по QR: платёж на денежную часть заявки, привязан к ней сразу.
+    ЭлQR-провайдер не подключён — в QR ссылка на страницу оплаты Freedom Pay (банковские приложения, карта).
+    """
+    from apps.catalog.models import PaymentMethod
+    payment = Payment.objects.create(
+        member=req.member, method=PaymentMethod.FREEDOM_PAY, amount=req.money_som, is_test=req.is_test,
+        request=req, params={'itemId': req.item_id, 'quantity': req.quantity, 'checkAmount': req.check_amount,
+                             'pointsSom': 0, 'method': PaymentMethod.FREEDOM_PAY, 'staffSale': True,
+                             'lifetime': STAFF_QR_LIFETIME})
+    gateway = gateway_for(PaymentMethod.FREEDOM_PAY)
+    payment.provider = gateway.code
+    try:
+        result = gateway.create(payment)
+    except GatewayError:
+        payment.status = PaymentStatus.FAILED
+        payment.request = None
+        payment.save(update_fields=['provider', 'status', 'request', 'updated_at'])
+        raise ApiError('payment_unavailable', 503)
+    payment.provider_ref = result.provider_ref
+    payment.redirect_url = result.redirect_url
+    payment.qr_payload = result.qr_payload
+    payment.expires_at = result.expires_at
+    payment.save()
+    return payment
 
 
 def handle_webhook(provider, request):

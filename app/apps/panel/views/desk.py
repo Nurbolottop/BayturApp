@@ -4,7 +4,7 @@ from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
-from apps.cashback.serializers import REJECT_LABELS
+from apps.cashback.serializers import CANCELLABLE, REJECT_LABELS
 from apps.cashback import desk as desk_service
 from apps.cashback.desk import get_scoped, needs_manager, scoped_requests
 from apps.catalog.models import Outlet
@@ -39,6 +39,9 @@ def request_card_context(request, req):
         'reasons': [(code, REJECT_LABELS[code]['ru']) for code in actions.STAFF_REJECT_REASONS],
         'payment': getattr(req, 'payment', None) if hasattr(req, 'payment') else None,
         'is_cash': req.method == 'cash' and req.money_som > 0,
+        # продажа кассира: директор отменяет в любой момент (кассир — 10 минут в приложении)
+        'can_cancel': req.created_by_id is not None and req.status in CANCELLABLE
+        and user.can('requests.approve_escalated'),
     }
 
 
@@ -100,8 +103,12 @@ def request_action(request, request_id, action):
             actions.approve_escalated(request, request_id)
             messages.success(request, 'Эскалация утверждена')
         elif action == 'decline':
-            actions.decline_escalation(request, request_id)
-            messages.success(request, 'Эскалация отклонена, заявка вернулась в очередь')
+            req = actions.decline_escalation(request, request_id)
+            messages.success(request, 'Продажа отклонена' if req.status == 'rejected'
+                             else 'Эскалация отклонена, заявка вернулась в очередь')
+        elif action == 'cancel':
+            actions.cancel(request, request_id, request.POST.get('reason'), director=True)
+            messages.success(request, 'Операция отменена: баллы возвращены, кешбек отозван, клиент получил push')
         else:
             raise Http404
     except ApiError as e:

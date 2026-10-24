@@ -9,13 +9,18 @@ from apps.common.ids import new_request_id
 
 class RequestStatus(models.TextChoices):
     PENDING = 'pending', 'Ожидает'
+    AWAITING_CLIENT = 'awaiting_client', 'Ждёт подтверждения клиента'
+    AWAITING_PAYMENT = 'awaiting_payment', 'Ждёт оплаты по QR'
     CONFIRMED = 'confirmed', 'Подтверждена'
     CREDITED = 'credited', 'Кешбек начислен'
     REJECTED = 'rejected', 'Отклонена'
     CANCELLED = 'cancelled', 'Отменена'
 
 
-ACTIVE_STATUSES = (RequestStatus.PENDING, RequestStatus.CONFIRMED)
+# Продажа кассира ждёт клиента: баллы в резерве (awaiting_client) или оплата по QR (awaiting_payment)
+AWAITING_STATUSES = (RequestStatus.AWAITING_CLIENT, RequestStatus.AWAITING_PAYMENT)
+OPEN_STATUSES = (RequestStatus.PENDING, *AWAITING_STATUSES)
+ACTIVE_STATUSES = (*OPEN_STATUSES, RequestStatus.CONFIRMED)
 
 
 class RejectReason(models.TextChoices):
@@ -24,6 +29,8 @@ class RejectReason(models.TextChoices):
     DUPLICATE = 'duplicate', 'Дубль'
     EXPIRED = 'expired', 'Истёк срок подтверждения'
     PAYMENT_FAILED = 'payment_failed', 'Оплата не прошла'
+    CLIENT_TIMEOUT = 'client_timeout', 'Клиент не подтвердил вовремя'
+    CLIENT_DECLINED = 'client_declined', 'Клиент отказался'
     OTHER = 'other', 'Другое'
 
 
@@ -89,6 +96,19 @@ class CashbackRequest(models.Model):
     auto_confirm_at = models.DateTimeField(null=True, blank=True, db_index=True)
     credit_due_at = models.DateTimeField(null=True, blank=True, db_index=True)
     expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    # Продажа кассира по QR клиента (POST /staff/sales): кто оформил, до когда можно отменить,
+    # до когда клиент подтверждает списание баллов / платит по QR
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT,
+                                   related_name='+')
+    cancel_until = models.DateTimeField(null=True, blank=True)
+    confirm_until = models.DateTimeField(null=True, blank=True, db_index=True)
+    duplicate_of = models.CharField('Повтор заявки', max_length=32, blank=True, db_index=True,
+                                    help_text='Той же услуге этому клиенту уже оформляли в последние 10 минут')
+    cancelled_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT,
+                                     related_name='+')
+    cancelled_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    cancel_reason = models.TextField(blank=True)
 
     idempotency_key = models.CharField(max_length=100, null=True, blank=True)
     is_test = models.BooleanField(default=False)

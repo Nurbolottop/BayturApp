@@ -167,6 +167,43 @@ WebSocket `wss://app.baytur.kg/api/v1/staff/events?token=<accessToken>` — со
 
 ---
 
+## 7б. Продажа по QR клиента любым способом (основной сценарий с 24.10.2026)
+
+Кассир сам оформляет клиенту услугу по QR клиента. В точках с фискальным чеком (`receiptRequired: true`,
+ресторан) деньги принимаются только по QR чека (`/staff/cash/*`), без чека — только баллами.
+
+1. `POST /staff/scan` → `payToken`; `GET /staff/points/items` — у каждой услуги `receiptRequired: bool`
+   (галочка «Нужен фискальный чек» у точки в панели: «Настройки» → «Точки»).
+2. `POST /staff/sales/quote` `{payToken, itemId, quantity? | checkAmount?}` →
+   `{itemId, total, quantity, cashback, points, enough, shortSom, needsManager, receiptRequired, promotion,
+   duplicate: {requestId, at} | null}`. Цена — только из прайса. Баланс не раскрывается. `needsManager` — сумма
+   выше порога точки (задаёт директор). `duplicate` — той же услуге этому клиенту оформляли за последние 10 минут.
+3. `POST /staff/sales` + заголовок `Idempotency-Key`, тело `{payToken, itemId, quantity? | checkAmount?, method}`,
+   `method`: `points | cash | card | qr`. Ответ `201 StaffRequest`; выше порога — `202` (`pending`,
+   `escalated: true`, решает директор; после одобрения продажа идёт выбранным способом).
+   - `cash`, `card` → сразу `confirmed`, кешбек начисляется; сумма — в `cashTotal` / `cardTotal` смены.
+   - `points` → `awaiting_client`, `confirmUntil` (+2 мин). Баллы в резерве, не списаны. Клиенту — WS
+     `charge.confirm` и push того же `type`: `{requestId, itemTitle, total, points, quantity, outletTitle,
+     staffName, expiresAt}` (в push — строки). Клиент: `POST /cashback-requests/{id}/approve` (Idempotency-Key) →
+     `confirmed`; `POST /cashback-requests/{id}/decline` → `rejected` (`client_declined`); не успел → `rejected`
+     (`client_timeout`); поздно / уже обработано → `409 invalid_status`.
+   - `qr` → `awaiting_payment`, `payQr` — строка для QR на экране (сейчас ссылка на оплату Freedom Pay, живёт
+     10 мин). Оплата прошла → `confirmed`, `paidOnline: true`; истекло → `rejected` (`expired`).
+   - Ошибки: `qr_invalid`, `insufficient_points {shortSom}`, `own_account`, `outlet_forbidden`,
+     `amount_out_of_range`; `422 method_not_allowed` — деньги в точке с чеком или деньги за услугу «по сумме чека»
+     (вписанную сумму принимаем только баллами — её подтверждает клиент).
+   После каждой продажи клиенту приходит push `type: request.credited` с `requestId` («Сообщить о проблеме»).
+4. Новое в `StaffRequest`: статусы `awaiting_client`, `awaiting_payment`; `method: "card"` (QR — `freedomPay`);
+   `createdBy`, `cancelUntil` (оформление + 10 мин; `null` — отменить нельзя), `confirmUntil`, `payQr`,
+   `rejectCode`, `cancelReason`, `cancelledBy`, `cancelledAt`, `duplicateOf`. Каждое изменение — `request.updated`
+   в WS кассира; приложение дополнительно опрашивает `GET /staff/requests/{id}`.
+5. Отмена: `POST /staff/requests/{id}/cancel` `{reason}` → `StaffRequest` (`cancelled`). Только своя продажа и до
+   `cancelUntil`, позже — `409 cancel_expired` (отменяет директор в панели). Работает и в ожидании (`awaiting_*`).
+   Кешбек отзывается, списанные баллы возвращаются, оплата по QR возвращается, наличные/карта выпадают из смены.
+   Клиенту — push `type: request.updated` с `requestId`.
+
+---
+
 ## 7а. Купон «подарок за регистрацию»
 
 **Основной путь — через QR участника.** `POST /staff/scan` теперь отдаёт и `coupons` — неиспользованные подарки
@@ -205,8 +242,9 @@ WebSocket `wss://app.baytur.kg/api/v1/staff/events?token=<accessToken>` — со
 
 ## 9. Итог смены
 
-`GET /staff/shift` → `{date, confirmed: [StaffRequest], rejected: [StaffRequest], adjustedCount, cashTotal}` —
-за сегодня по этому сотруднику. `cashTotal` — сколько наличных должно быть в кассе.
+`GET /staff/shift` → `{date, confirmed: [StaffRequest], rejected: [StaffRequest], cancelled: [StaffRequest],
+adjustedCount, cashTotal, cardTotal}` — за сегодня по этому сотруднику. `confirmed` — всё оформленное, включая
+`awaiting_*`. `cashTotal` / `cardTotal` — сколько наличных в кассе и по терминалу (без отменённых).
 
 ---
 

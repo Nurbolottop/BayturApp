@@ -494,6 +494,15 @@ class StaffRequest(CashbackRequest):
     adjustedBy = s.IntegerField(allow_null=True)
     isTest = s.BooleanField()
     fiscalReceipt = FiscalReceipt(allow_null=True, help_text='Чек, по которому принята наличная оплата')
+    createdBy = s.IntegerField(allow_null=True, help_text='Кассир, оформивший продажу (POST /staff/sales)')
+    cancelUntil = s.DateTimeField(allow_null=True, help_text='До когда кассир может отменить; null — нельзя')
+    confirmUntil = s.DateTimeField(allow_null=True, help_text='awaiting_*: до когда клиент подтверждает / платит')
+    payQr = s.CharField(allow_null=True, help_text='awaiting_payment: строка для QR (ссылка на оплату / ЭлQR)')
+    rejectCode = s.CharField(allow_null=True, help_text='client_timeout, client_declined, expired…')
+    cancelReason = s.CharField(allow_null=True)
+    cancelledBy = s.IntegerField(allow_null=True)
+    cancelledAt = s.DateTimeField(allow_null=True)
+    duplicateOf = s.CharField(allow_null=True, help_text='Повтор: той же услуге этому клиенту оформляли < 10 мин назад')
 
 
 # ---------------------------------------------------------------- оплата

@@ -1035,7 +1035,7 @@ class OutletForm(forms.ModelForm):
 
     class Meta:
         model = Outlet
-        fields = ['id', 'name', 'sort_order', 'is_active']
+        fields = ['id', 'name', 'sort_order', 'is_active', 'receipt_required', 'manager_threshold']
         labels = {'sort_order': 'Порядок', 'is_active': 'Активна'}
 
     def __init__(self, *args, **kwargs):

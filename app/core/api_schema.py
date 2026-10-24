@@ -166,6 +166,10 @@ def apply():
     doc(cashback.RequestDetailView, 'get', CB, 'Заявка', response=o.CashbackRequest, errors=(401, 404))
     doc(cashback.RequestCancelView, 'post', CB, 'Отменить заявку (только pending)', response=o.CashbackRequest,
         errors=(401, 404, 409))
+    doc(cashback.RequestApproveView, 'post', CB, 'Подтвердить списание баллов по запросу кассира (charge.confirm)',
+        response=o.CashbackRequest, params=[o.IDEMPOTENCY_HEADER], errors=(401, 404, 409, 422))
+    doc(cashback.RequestDeclineView, 'post', CB, 'Отказаться от списания баллов (rejected, client_declined)',
+        response=o.CashbackRequest, errors=(401, 404, 409))
 
     # оплата
     doc(payments.PaymentsView, 'post', PAY, 'Создать онлайн-оплату денежной части', o.PaymentInput, o.Payment,
@@ -260,7 +264,9 @@ def apply():
     doc(staffdesk.PayItemsView, 'get', STAFF, 'Услуги своих точек для оплаты баллами',
         response=inline_serializer('PayItems', {'items': inline_serializer('PayItem', {
             'id': s.CharField(), 'category': s.CharField(), 'title': s.CharField(), 'price': s.IntegerField(),
-            'pricing': o.Pricing(), 'outlet': s.CharField(allow_null=True)}, many=True)}))
+            'pricing': o.Pricing(), 'outlet': s.CharField(allow_null=True),
+            'receiptRequired': s.BooleanField(help_text='Точка с фискальным чеком: деньги — только по QR чека')},
+            many=True)}))
     doc(staffdesk.PayQuoteView, 'post', STAFF, 'Оплата баллами: хватает ли баллов (баланс не раскрывается)', pay_in,
         inline_serializer('PayQuote', {'itemId': s.CharField(), 'total': s.IntegerField(), 'quantity': s.IntegerField(),
                                        'points': s.IntegerField(), 'enough': s.BooleanField(),
@@ -293,8 +299,25 @@ def apply():
         errors=(400, 401, 403, 409))
     doc(staffdesk.ShiftView, 'get', STAFF, 'Итог смены',
         response=inline_serializer('Shift', {'date': s.DateField(), 'confirmed': o.StaffRequest(many=True),
-                                             'rejected': o.StaffRequest(many=True), 'adjustedCount': s.IntegerField(),
-                                             'cashTotal': s.IntegerField()}))
+                                             'rejected': o.StaffRequest(many=True),
+                                             'cancelled': o.StaffRequest(many=True), 'adjustedCount': s.IntegerField(),
+                                             'cashTotal': s.IntegerField(), 'cardTotal': s.IntegerField()}))
+    doc(staffdesk.SaleQuoteView, 'post', STAFF, 'Продажа по QR клиента: расчёт (цена из прайса, баланс не раскрывается)',
+        pay_in, inline_serializer('SaleQuote', {
+            'itemId': s.CharField(), 'total': s.IntegerField(), 'quantity': s.IntegerField(),
+            'cashback': s.IntegerField(help_text='Кешбек при оплате деньгами'), 'points': s.IntegerField(),
+            'enough': s.BooleanField(), 'shortSom': s.IntegerField(),
+            'needsManager': s.BooleanField(help_text='Сумма выше порога точки — решает директор'),
+            'receiptRequired': s.BooleanField(), 'promotion': s.DictField(allow_null=True),
+            'duplicate': inline_serializer('SaleDuplicate', {'requestId': s.CharField(), 'at': s.DateTimeField()},
+                                           allow_null=True)}), errors=(400, 401, 403, 404, 422))
+    doc(staffdesk.SaleView, 'post', STAFF, 'Продажа по QR клиента: cash/card — сразу, points — ждёт клиента, '
+        'qr — ждёт оплаты; 202 — выше порога, решает директор',
+        inline_serializer('SaleInput', {**pay_in.fields, 'method': s.ChoiceField(
+            choices=['points', 'cash', 'card', 'qr'])}),
+        o.StaffRequest, status=201, params=[o.IDEMPOTENCY_HEADER], errors=(400, 401, 403, 404, 422, 503))
+    doc(staffdesk.CancelView, 'post', STAFF, 'Отменить свою продажу до cancelUntil (позже — 409 cancel_expired)',
+        inline_serializer('CancelInput', {'reason': s.CharField()}), o.StaffRequest, errors=staff_err)
 
     # приложение кассира: вход по телефону и PIN
     tokens = inline_serializer('StaffTokens', {'accessToken': s.CharField(), 'refreshToken': s.CharField(),

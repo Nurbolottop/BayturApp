@@ -185,6 +185,7 @@ def can(user, perm):
 STATUS = {
     'request': {
         'pending': ('Ожидает', 'live'), 'confirmed': ('Подтверждена', 'live'),
+        'awaiting_client': ('Ждёт клиента', 'live'), 'awaiting_payment': ('Ждёт оплаты', 'live'),
         'credited': ('Кешбек начислен', 'positive'), 'rejected': ('Отклонена', 'negative'),
         'cancelled': ('Отменена', 'muted'),
     },

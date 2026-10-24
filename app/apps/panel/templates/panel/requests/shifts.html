@@ -1,0 +1,47 @@
+{% extends 'panel/base.html' %}{% load panel %}
+{% block title %}Смены{% endblock %}
+{% block content %}
+<div class="topbar">
+  <div><div class="crumbs"><a href="{% url 'panel:requests' %}">{% icon 'arrow-left' 14 %} Заявки</a></div><h1 class="page-title">Смены</h1><div class="muted" style="margin-top:6px">Наличные и карта каждого кассира — для сверки кассы · {{ day|date:"d.m.Y" }}</div></div>
+</div>
+<form class="filters" method="get" data-autosubmit>
+  <div class="field"><label>День</label><input type="date" name="date" value="{{ day|date:'Y-m-d' }}"></div>
+</form>
+<div class="card flush appear">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Кассир</th><th class="n">Операций</th><th class="n">Наличные</th><th class="n">Карта</th><th class="n hide-s">QR / онлайн</th><th class="n hide-s">Баллами, сом</th><th class="n">Отмен</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr><td><b>{{ r.name|default:"—" }}</b></td><td class="n">{{ r.count }}</td><td class="n">{{ r.cash|som }}</td><td class="n">{{ r.card|som }}</td><td class="n hide-s">{{ r.online|som }}</td><td class="n hide-s">{{ r.points|num }}</td><td class="n">{% if r.cancelled %}<span class="neg">{{ r.cancelled }}</span>{% else %}0{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="7"><div class="empty">За этот день операций нет</div></td></tr>{% endfor %}
+    {% if rows %}<tr><td><b>Итого</b></td><td class="n"><b>{{ totals.count }}</b></td><td class="n"><b>{{ totals.cash|som }}</b></td><td class="n"><b>{{ totals.card|som }}</b></td><td class="n hide-s"><b>{{ totals.online|som }}</b></td><td class="n hide-s"><b>{{ totals.points|num }}</b></td><td></td></tr>{% endif %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="card flush appear" style="margin-top:16px">
+  <div class="card-head"><div class="h3">Отмены · {{ cancelled|length }}</div></div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Операция</th><th class="hide-s">Оформил</th><th>Отменил</th><th>Причина</th><th class="n">Сумма</th></tr></thead>
+    <tbody>
+    {% for r in cancelled %}
+      <tr class="link" data-href="{% url 'panel:request' r.pk %}"><td><b>{{ r.item_snapshot.title|tr }}</b><div class="small muted tabular">{{ r.cancelled_at|local:"H:i" }} · {{ r.member.full_name|default:r.member.member_id }}</div></td>
+        <td class="hide-s">{{ r.created_by.full_name|default:"—" }}</td><td>{{ r.cancelled_by.full_name|default:"—" }}</td><td class="small">{{ r.cancel_reason|default:"—" }}</td><td class="n">{{ r.total|som }}</td></tr>
+    {% empty %}<tr><td colspan="5"><div class="empty">Отмен нет</div></td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="card flush appear" style="margin-top:16px">
+  <div class="card-head"><div class="h3">Повторы · {{ duplicates|length }}</div><div class="small muted">Той же услуге тому же клиенту оформили меньше чем через 10 минут</div></div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Операция</th><th class="hide-s">Кассир</th><th>Первая</th><th>Статус</th></tr></thead>
+    <tbody>
+    {% for r in duplicates %}
+      <tr class="link" data-href="{% url 'panel:request' r.pk %}"><td><b>{{ r.item_snapshot.title|tr }}</b><div class="small muted tabular">{{ r.created_at|local:"H:i" }} · {{ r.member.full_name|default:r.member.member_id }} · {{ r.total|som }}</div></td>
+        <td class="hide-s">{{ r.created_by.full_name|default:"—" }}</td><td><a class="tabular" href="{% url 'panel:request' r.duplicate_of %}">{{ r.duplicate_of }}</a></td><td>{% pill 'request' r.status %}</td></tr>
+    {% empty %}<tr><td colspan="4"><div class="empty">Повторов нет</div></td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

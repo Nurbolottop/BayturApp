@@ -9,6 +9,9 @@ REJECT_LABELS = {
     RejectReason.DUPLICATE: {'ru': 'Повторная заявка', 'ky': 'Кайталанган өтүнмө', 'en': 'Duplicate request'},
     RejectReason.EXPIRED: {'ru': 'Истёк срок подтверждения', 'ky': 'Ырастоо мөөнөтү бүттү', 'en': 'Confirmation time expired'},
     RejectReason.PAYMENT_FAILED: {'ru': 'Оплата не прошла', 'ky': 'Төлөм өткөн жок', 'en': 'Payment failed'},
+    RejectReason.CLIENT_TIMEOUT: {'ru': 'Клиент не подтвердил вовремя', 'ky': 'Кардар убагында ырастаган жок',
+                                  'en': 'Not confirmed in time'},
+    RejectReason.CLIENT_DECLINED: {'ru': 'Клиент отказался', 'ky': 'Кардар баш тартты', 'en': 'Declined by client'},
     RejectReason.OTHER: {'ru': 'Другое', 'ky': 'Башка', 'en': 'Other'},
 }
 
@@ -108,8 +111,40 @@ def staff_request_payload(req, lang='ru'):
         'adjustedBy': req.adjusted_by_id,
         'isTest': req.is_test,
         'fiscalReceipt': fiscal_receipt_payload(req),
+        # продажа кассира (POST /staff/sales)
+        'createdBy': req.created_by_id,
+        'cancelUntil': iso(cancel_until(req)) if cancel_until(req) else None,
+        'confirmUntil': iso(req.confirm_until) if req.confirm_until and req.status in AWAITING else None,
+        'payQr': pay_qr(req),
+        'rejectCode': req.reject_code or None,
+        'cancelReason': req.cancel_reason or None,
+        'cancelledBy': req.cancelled_by_id,
+        'cancelledAt': iso(req.cancelled_at) if req.cancelled_at else None,
+        'duplicateOf': req.duplicate_of or None,
     })
     return data
+
+
+AWAITING = ('awaiting_client', 'awaiting_payment')
+CANCELLABLE = ('pending', *AWAITING, 'confirmed', 'credited')
+
+
+def cancel_until(req):
+    """До когда кассир может отменить; None — отменить нельзя (срок вышел, статус финальный, не продажа кассира)."""
+    from django.utils import timezone
+    if req.cancel_until and req.status in CANCELLABLE and req.cancel_until > timezone.now():
+        return req.cancel_until
+    return None
+
+
+def pay_qr(req):
+    """Строка для QR на экране кассира: ЭлQR провайдера или ссылка на страницу оплаты."""
+    if req.status != 'awaiting_payment':
+        return None
+    payment = getattr(req, 'payment', None)
+    if payment is None:
+        return None
+    return payment.qr_payload or payment.redirect_url or None
 
 
 def fiscal_receipt_payload(req):

@@ -8,7 +8,7 @@
 - повторная обработка → 409 invalid_status с актуальным статусом.
 Каждая функция принимает HTTP-запрос (для аудита: сотрудник + IP).
 """
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 from django.db import transaction
 from django.db.models import Q, Sum
@@ -19,7 +19,7 @@ from apps.common.errors import ApiError
 from apps.common.models import ProgramSettings
 
 from . import services
-from .models import CashbackRequest, RejectReason, RequestStatus
+from .models import AWAITING_STATUSES, CashbackRequest, RejectReason, RequestStatus
 
 STAFF_REJECT_REASONS = [RejectReason.NOT_PROVIDED, RejectReason.WRONG_AMOUNT, RejectReason.DUPLICATE,
                         RejectReason.OTHER]
@@ -111,6 +111,11 @@ def confirm(request, request_id, cash_received=False):
     _pending(req)
     if req.escalated and needs_manager(user):
         raise ApiError('needs_manager', 409)
+    if req.escalation_reason == SALE_THRESHOLD:  # продажа кассира выше порога — дальше выбранным способом
+        req = start_sale(req)
+        audit(request, 'request.approve_escalation', req, before={'status': RequestStatus.PENDING},
+              after={'status': req.status})
+        return req, False
     if needs_manager(user) and req.cashback > ProgramSettings.get().staff_cashback_limit_points:
         return _escalate(request, req, 'cashback_limit', 'request.escalate', cash=cash_received), True
     req = services.confirm_request(req.pk, staff=user, cash_received=cash_received)
@@ -182,7 +187,9 @@ def approve_escalation(request, request_id, confirm_after_adjust=False, cash_rec
     cash = bool(cash_received) or req.cash_received or req.method != 'cash'
     before = {'total': req.total, 'cashback': req.cashback, 'escalationReason': req.escalation_reason,
               'proposedTotal': req.proposed_total, 'proposedBy': req.proposed_by_id}
-    if req.proposed_total:
+    if req.escalation_reason == SALE_THRESHOLD:
+        req = start_sale(req)  # продажа кассира выше порога: дальше — выбранным способом
+    elif req.proposed_total:
         req = services.adjust_request(req.pk, req.proposed_total, staff=user, reason=req.adjust_reason)
         if confirm_after_adjust:
             req = services.confirm_request(req.pk, staff=user, cash_received=cash)
@@ -198,8 +205,16 @@ def decline_escalation(request, request_id, comment=''):
     user = request.user
     if not user.can('requests.approve_escalated'):
         raise ApiError('permission_denied', 403)
+    req = get_scoped(user, request_id)
+    if req.escalation_reason == SALE_THRESHOLD and req.status == RequestStatus.PENDING:
+        # продажа кассира выше порога: директор не разрешил — заявка отклоняется, резерв баллов снимается
+        req = services.reject_request(req.pk, staff=user, code=RejectReason.OTHER,
+                                      comment=(comment or '').strip() or 'Директор не разрешил')
+        audit(request, 'request.decline_escalation', req, before={'escalationReason': SALE_THRESHOLD},
+              after={'status': req.status}, comment=(comment or '').strip())
+        return req
     with transaction.atomic():
-        req = CashbackRequest.objects.select_for_update().get(pk=get_scoped(user, request_id).pk)
+        req = CashbackRequest.objects.select_for_update().get(pk=req.pk)
         if req.status != RequestStatus.PENDING or not req.escalated:
             raise ApiError('invalid_status', 409, extra={'status': req.status, 'escalated': req.escalated})
         before = {'escalationReason': req.escalation_reason, 'proposedTotal': req.proposed_total}
@@ -236,19 +251,37 @@ def search_members(q):
     return list(Member.objects.filter(cond).exclude(status=MemberStatus.PURGED)[:10])
 
 
-def shift(user):
-    """Итог смены: подтверждено / отклонено сегодня, наличные для сверки кассы."""
-    start = timezone.make_aware(datetime.combine(timezone.localdate(), time.min))
-    confirmed = CashbackRequest.objects.filter(confirmed_by=user, confirmed_at__gte=start) \
-        .select_related('member', 'outlet', 'payment').order_by('-confirmed_at')
-    rejected = CashbackRequest.objects.filter(rejected_by=user, rejected_at__gte=start) \
-        .select_related('member', 'outlet', 'payment').order_by('-rejected_at')
+DONE_STATUSES = (RequestStatus.CONFIRMED, RequestStatus.CREDITED)
+
+
+def shift(user, day=None):
+    """
+    Итог смены: оформлено (подтверждено + ждёт клиента/оплату) / отклонено / отменено за день,
+    наличные и карта для сверки кассы — только по проведённым (отменённые выпадают сами).
+    """
+    day = day or timezone.localdate()
+    start = timezone.make_aware(datetime.combine(day, time.min))
+    end = timezone.make_aware(datetime.combine(day, time.max))
+    related = ('member', 'outlet', 'payment')
+    confirmed = CashbackRequest.objects.filter(confirmed_by=user, confirmed_at__range=(start, end),
+                                               status__in=DONE_STATUSES)
+    waiting = CashbackRequest.objects.filter(created_by=user, created_at__range=(start, end),
+                                             status__in=AWAITING_STATUSES)
+    done = (confirmed | waiting).select_related(*related).order_by('-created_at')
+    rejected = CashbackRequest.objects.filter(Q(rejected_by=user) | Q(created_by=user, rejected_by__isnull=True),
+                                              status=RequestStatus.REJECTED, rejected_at__range=(start, end)) \
+        .select_related(*related).order_by('-rejected_at')
+    cancelled = CashbackRequest.objects.filter(Q(created_by=user) | Q(confirmed_by=user), status=RequestStatus.CANCELLED,
+                                               cancelled_at__range=(start, end)) \
+        .select_related(*related).order_by('-cancelled_at')
     return {
-        'date': timezone.localdate(),
-        'confirmed': list(confirmed),
+        'date': day,
+        'confirmed': list(done),
         'rejected': list(rejected),
-        'adjusted_count': CashbackRequest.objects.filter(adjusted_by=user, adjusted_at__gte=start).count(),
+        'cancelled': list(cancelled),
+        'adjusted_count': CashbackRequest.objects.filter(adjusted_by=user, adjusted_at__range=(start, end)).count(),
         'cash_total': confirmed.filter(method='cash').aggregate(s=Sum('money_som'))['s'] or 0,
+        'card_total': confirmed.filter(method='card').aggregate(s=Sum('money_som'))['s'] or 0,
         'cashback_total': confirmed.aggregate(s=Sum('cashback'))['s'] or 0,
     }
 
@@ -437,4 +470,153 @@ def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None, amo
         raise
     audit(request, 'request.receipt_accepted', req,
           after={'member': member.member_id, 'total': req.total, 'receipt': receipt['key'], 'cashback': req.cashback})
+    return req
+
+
+# ---------------------------------------------------------------- продажа кассира по QR клиента (/staff/sales)
+
+SALE_METHODS = ('points', 'cash', 'card', 'qr')
+SALE_THRESHOLD = 'amount_threshold'   # причина эскалации: сумма выше порога точки
+CANCEL_WINDOW = 600                   # с: кассир отменяет свою продажу 10 минут
+CLIENT_CONFIRM_TTL = 120              # с: клиент подтверждает списание баллов
+DUPLICATE_WINDOW = 600                # с: та же услуга тому же клиенту — повтор
+
+
+def receipt_required(item):
+    """Точка с фискальным чеком (ресторан): деньги — только по QR чека (/staff/cash/*)."""
+    return bool(item.outlet and item.outlet.receipt_required)
+
+
+def _check_sale_method(item, method, check_amount):
+    if method == 'points':
+        return
+    if receipt_required(item):
+        raise ApiError('method_not_allowed', 422, message='В этой точке деньги принимаются только по чеку')
+    if item.pricing_type == 'check':
+        # сумму вписал кассир — без чека принимаем её только баллами: клиент подтверждает списание сам
+        raise ApiError('method_not_allowed', 422, message='Услуга по сумме чека — только баллами')
+
+
+def _threshold_exceeded(user, item, total):
+    limit = item.outlet.manager_threshold if item.outlet else None
+    return bool(needs_manager(user) and limit and total > limit)
+
+
+def find_duplicate(member, item, exclude=None):
+    """Та же услуга этому клиенту за последние 10 минут (кроме отклонённых и отменённых)."""
+    since = timezone.now() - timedelta(seconds=DUPLICATE_WINDOW)
+    qs = CashbackRequest.objects.filter(member=member, item=item, created_at__gte=since) \
+        .exclude(status__in=(RequestStatus.REJECTED, RequestStatus.CANCELLED)).order_by('-created_at')
+    if exclude:
+        qs = qs.exclude(pk=exclude)
+    return qs.first()
+
+
+def sale_quote(user, member, item_id, quantity=None, check_amount=None):
+    """Расчёт до оформления: сумма по прайсу, кешбек за деньги, хватает ли баллов, порог, повтор."""
+    from .calc import compute_split, resolve_rules
+    q = points_quote(user, member, item_id, quantity, check_amount)
+    item = _pay_item(user, item_id)
+    rules = resolve_rules(item, member, ProgramSettings.get(), timezone.now())
+    dup = find_duplicate(member, item)
+    from apps.common.i18n import iso
+    return {
+        'itemId': item.pk, 'total': q['total'], 'quantity': q['quantity'],
+        'cashback': compute_split(q['total'], rules, 0, 0).cashback,
+        'points': q['points'], 'enough': q['enough'], 'shortSom': q['shortSom'],
+        'needsManager': _threshold_exceeded(user, item, q['total']),
+        'receiptRequired': receipt_required(item),
+        'promotion': q['promotion'],
+        'duplicate': {'requestId': dup.pk, 'at': iso(dup.created_at)} if dup else None,
+    }
+
+
+def sale(request, pay_token, item_id, method, quantity=None, check_amount=None, idempotency_key=None):
+    """
+    Кассир оформляет услугу по QR клиента. → (req, escalated).
+    cash / card — сразу confirmed; points — awaiting_client (клиент подтверждает за 2 мин);
+    qr — awaiting_payment (клиент платит по QR на экране кассира). Сумма выше порога точки → pending
+    на решение директору (202). Повтор с тем же Idempotency-Key → та же заявка.
+    """
+    from apps.catalog.models import PaymentMethod
+    user = request.user
+    member = read_pay_token(user, pay_token)
+    if idempotency_key:
+        existing = CashbackRequest.objects.filter(member=member, idempotency_key=idempotency_key).first()
+        if existing is not None:
+            return existing, existing.escalated
+    if method not in SALE_METHODS:
+        raise ApiError('validation_error', 400, extra={'fields': {'method': [' | '.join(SALE_METHODS)]}})
+    item = _pay_item(user, item_id)
+    check_not_own_member(user, member)
+    _check_sale_method(item, method, check_amount)
+    q = points_quote(user, member, item_id, quantity, check_amount)
+    if method == 'points' and not q['enough']:
+        raise ApiError('insufficient_points', 422, extra={'shortSom': q['shortSom']})
+    escalated = _threshold_exceeded(user, item, q['total'])
+    dup = find_duplicate(member, item)
+    now = timezone.now()
+    req_method = {'cash': PaymentMethod.CASH, 'card': PaymentMethod.CARD, 'qr': PaymentMethod.FREEDOM_PAY}.get(method)
+    extra = {'cancel_until': now + timedelta(seconds=CANCEL_WINDOW), 'duplicate_of': dup.pk if dup else ''}
+    if escalated:
+        extra.update(escalated=True, escalation_reason=SALE_THRESHOLD, proposed_by=user)
+    with transaction.atomic():
+        req, created = services.create_request(member, {
+            'itemId': item.pk, 'quantity': q['quantity'],
+            'checkAmount': q['total'] if item.pricing_type == 'check' else None,
+            'pointsSom': q['total'] if method == 'points' else 0, 'method': req_method,
+        }, idempotency_key=idempotency_key, created_by=user, extra=extra)
+        if not created:
+            return req, req.escalated
+        # продажа кассира сама не подтверждается — подтверждают кассир, клиент или оплата
+        CashbackRequest.objects.filter(pk=req.pk).update(auto_confirm_at=None)
+        if not escalated:
+            req = start_sale(req)
+    audit(request, 'request.sale', req, after={
+        'member': member.member_id, 'method': method, 'total': req.total, 'status': req.status,
+        'escalated': escalated, 'duplicateOf': req.duplicate_of or None})
+    if escalated:
+        services._after_change(req)
+    return req, escalated
+
+
+def start_sale(req):
+    """Провести продажу выбранным способом (сразу или после одобрения директора)."""
+    from apps.catalog.models import PaymentMethod
+    req = CashbackRequest.objects.select_related('member', 'created_by').get(pk=req.pk)
+    now = timezone.now()
+    if req.points:
+        _await(req, RequestStatus.AWAITING_CLIENT, now + timedelta(seconds=CLIENT_CONFIRM_TTL))
+        from apps.notifications.services import notify_charge_confirm
+        transaction.on_commit(lambda: notify_charge_confirm(req.pk))
+        return req
+    if req.method == PaymentMethod.FREEDOM_PAY:
+        from apps.payments.services import STAFF_QR_LIFETIME, create_staff_payment
+        create_staff_payment(req)
+        _await(req, RequestStatus.AWAITING_PAYMENT, now + timedelta(seconds=STAFF_QR_LIFETIME))
+        return req
+    return services.confirm_request(req.pk, staff=req.created_by, cash_received=True)
+
+
+def _await(req, status, until):
+    with transaction.atomic():
+        locked = CashbackRequest.objects.select_for_update().get(pk=req.pk)
+        locked.mark(status)
+        locked.confirm_until = until
+        locked.escalated = False
+        locked.auto_confirm_at = locked.expires_at = None
+        locked.save()
+    req.refresh_from_db()
+    services._after_change(req)
+
+
+def cancel(request, request_id, reason, director=False):
+    """Кассир отменяет свою продажу до cancel_until; позже — только директор (панель, director=True)."""
+    user = request.user
+    req = get_scoped(user, request_id)
+    if director and not user.can('requests.approve_escalated'):
+        raise ApiError('permission_denied', 403)
+    req, before = services.cancel_sale(req.pk, user, reason, director=director)
+    audit(request, 'request.cancel', req, before={'status': before}, after={'status': req.status},
+          comment=req.cancel_reason)
     return req

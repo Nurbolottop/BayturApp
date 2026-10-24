@@ -34,6 +34,13 @@ DEFAULT_TEMPLATES = {
     PushKind.REQUEST_PAID: (
         {'ru': 'Оплачено баллами', 'ky': 'Упай менен төлөндү', 'en': 'Paid with points'},
         {'ru': '−{points} баллов за «{item}»', 'ky': '«{item}» үчүн −{points} упай', 'en': '−{points} points for “{item}”'}),
+    PushKind.CHARGE_CONFIRM: (
+        {'ru': 'Подтвердите оплату баллами', 'ky': 'Упай менен төлөмдү ырастаңыз', 'en': 'Confirm payment with points'},
+        {'ru': '«{item}» — {points} баллов. {outlet}', 'ky': '«{item}» — {points} упай. {outlet}',
+         'en': '“{item}” — {points} points. {outlet}'}),
+    PushKind.REQUEST_CANCELLED: (
+        {'ru': 'Операция отменена', 'ky': 'Операция жокко чыгарылды', 'en': 'Operation cancelled'},
+        {'ru': '«{item}»: {reason}', 'ky': '«{item}»: {reason}', 'en': '“{item}”: {reason}'}),
     PushKind.TIER_UPGRADED: (
         {'ru': 'Новый уровень!', 'ky': 'Жаңы деңгээл!', 'en': 'New tier!'},
         {'ru': 'Вам открыт уровень «{tier}»', 'ky': 'Сизге «{tier}» деңгээли ачылды', 'en': 'You reached the {tier} tier'}),
@@ -194,16 +201,52 @@ def notify_request_credited(req_id):
     req = CashbackRequest.objects.select_related('member').get(pk=req_id)
     m = req.member
     if not req.cashback:
-        # оплачено целиком баллами — кешбека нет, сообщаем о списании
+        # оплачено целиком баллами — кешбека нет, сообщаем о списании. Продажа кассира — type request.credited:
+        # клиент открывает операцию и может «Сообщить о проблеме»
         title, body = render(PushKind.REQUEST_PAID, m.language, points=req.points,
                              item=tr(req.item_snapshot.get('title'), m.language))
-        notify(m, PushKind.REQUEST_PAID, title, body, {'requestId': req.pk, 'points': -req.points},
-               push=m.notify_cashback)
+        data = {'requestId': req.pk, 'points': -req.points}
+        if req.created_by_id:
+            data['type'] = PushKind.REQUEST_CREDITED
+        notify(m, PushKind.REQUEST_PAID, title, body, data, push=m.notify_cashback or bool(req.created_by_id))
         return
     title, body = render(PushKind.REQUEST_CREDITED, m.language, points=req.cashback,
                          item=tr(req.item_snapshot.get('title'), m.language))
     notify(m, PushKind.REQUEST_CREDITED, title, body, {'requestId': req.pk, 'points': req.cashback},
            push=m.notify_cashback)
+
+
+def charge_confirm_payload(req):
+    """Запрос кассира на списание баллов: экран подтверждения у клиента (WS charge.confirm и push)."""
+    lang = req.member.language
+    outlet = req.outlet
+    return {'requestId': req.pk, 'itemTitle': tr(req.item_snapshot.get('title'), lang), 'total': req.total,
+            'points': req.points, 'quantity': req.quantity,
+            'outletTitle': tr(outlet.name, lang) if outlet else '',
+            'staffName': getattr(req.created_by, 'full_name', '') or '',
+            'expiresAt': iso(req.confirm_until) if req.confirm_until else None}
+
+
+def notify_charge_confirm(req_id):
+    from apps.cashback.models import CashbackRequest
+    req = CashbackRequest.objects.select_related('member', 'outlet', 'created_by').get(pk=req_id)
+    m = req.member
+    data = charge_confirm_payload(req)
+    publish_member(m.pk, PushKind.CHARGE_CONFIRM, data)
+    title, body = render(PushKind.CHARGE_CONFIRM, m.language, item=data['itemTitle'], points=req.points,
+                         outlet=data['outletTitle'], total=req.total)
+    # в ленту не пишем — экран подтверждения живёт 2 минуты; push всегда (это операция с баллами)
+    notify(m, PushKind.CHARGE_CONFIRM, title, body, data, store=False)
+
+
+def notify_request_cancelled(req_id):
+    """Кассир/директор отменил продажу: клиенту push request.updated с requestId."""
+    from apps.cashback.models import CashbackRequest
+    req = CashbackRequest.objects.select_related('member').get(pk=req_id)
+    m = req.member
+    title, body = render(PushKind.REQUEST_CANCELLED, m.language, item=tr(req.item_snapshot.get('title'), m.language),
+                         reason=req.cancel_reason)
+    notify(m, PushKind.REQUEST_CANCELLED, title, body, {'type': 'request.updated', 'requestId': req.pk})
 
 
 def notify_staff_paid_online(req_id):

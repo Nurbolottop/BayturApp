@@ -75,6 +75,8 @@ client = [
     path('cashback-requests/quote', cashback.QuoteView.as_view()),
     path('cashback-requests/<str:request_id>', cashback.RequestDetailView.as_view()),
     path('cashback-requests/<str:request_id>/cancel', cashback.RequestCancelView.as_view()),
+    path('cashback-requests/<str:request_id>/approve', cashback.RequestApproveView.as_view()),
+    path('cashback-requests/<str:request_id>/decline', cashback.RequestDeclineView.as_view()),
     # оплата
     path('payments', payments.PaymentsView.as_view()),
     path('payments/webhooks/<slug:provider>', payments.WebhookView.as_view()),
@@ -112,6 +114,7 @@ staff = [
     path('staff/requests/<str:request_id>/adjust/preview', staffdesk.AdjustPreviewView.as_view()),
     path('staff/requests/<str:request_id>/adjust', staffdesk.AdjustView.as_view()),
     path('staff/requests/<str:request_id>/reject', staffdesk.RejectView.as_view()),
+    path('staff/requests/<str:request_id>/cancel', staffdesk.CancelView.as_view()),
     path('staff/members', staffdesk.MemberSearchView.as_view()),
     path('staff/scan', staffdesk.ScanView.as_view()),
     path('staff/shift', staffdesk.ShiftView.as_view()),
@@ -122,6 +125,9 @@ staff = [
     path('staff/points/charge', staffdesk.PayChargeView.as_view()),
     path('staff/cash/preview', staffdesk.ReceiptPreviewView.as_view()),
     path('staff/cash/accept', staffdesk.ReceiptAcceptView.as_view()),
+    # продажа по QR клиента любым способом: баллы (подтверждает клиент), наличные, карта, QR оплаты
+    path('staff/sales/quote', staffdesk.SaleQuoteView.as_view()),
+    path('staff/sales', staffdesk.SaleView.as_view()),
 ]
 
 admin_auth = [
