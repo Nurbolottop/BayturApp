@@ -228,7 +228,7 @@ class ReceiptAcceptView(StaffAPIView):
 # ---------------------------------------------------------------- продажа по QR клиента: любой способ оплаты
 
 class SaleInput(PayInput):
-    method = serializers.ChoiceField(choices=desk.SALE_METHODS)
+    method = serializers.ChoiceField(choices=desk.SALE_METHODS, required=False, default='points')
 
 
 class SaleQuoteView(StaffAPIView):

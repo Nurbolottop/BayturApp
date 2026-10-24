@@ -479,6 +479,11 @@ def cancel_sale(req_id, staff, reason, director=False):
         req.credit_due_at = None
         _clear_schedule(req)
         req.save()
+        from .models import FiscalReceipt
+        receipt = FiscalReceipt.objects.filter(request=req).first()
+        if receipt is not None:  # чек освобождается: кассир может принять его заново (с верной услугой)
+            receipt.key = f'{receipt.key}#cancelled-{req.pk}'[:200]
+            receipt.save(update_fields=['key'])
     _after_change(req, wallet=wallet)
     from apps.notifications.services import notify_request_cancelled
     transaction.on_commit(lambda: notify_request_cancelled(req.pk))

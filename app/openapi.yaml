@@ -6872,8 +6872,8 @@ paths:
       operationId: staff_sales_create
       description: 'Оформить: 201 — проведено / ждёт клиента или оплату; 202 — выше
         порога, решает директор.'
-      summary: 'Продажа по QR клиента: cash/card — сразу, points — ждёт клиента, qr
-        — ждёт оплаты; 202 — выше порога, решает директор'
+      summary: 'Оплата баллами по QR клиента: awaiting_client, списание — после подтверждения
+        клиента (деньги — только по чеку, /staff/cash/*)'
       parameters:
       - in: header
         name: Accept-Language
@@ -6918,10 +6918,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SaleInputRequest'
+              $ref: '#/components/schemas/PayInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SaleInputRequest'
+              $ref: '#/components/schemas/PayInputRequest'
         required: true
       security:
       - staffBearer: []
@@ -6957,12 +6957,6 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: ''
         '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: ''
-        '503':
           content:
             application/json:
               schema:
@@ -10294,37 +10288,6 @@ components:
       required:
       - at
       - requestId
-    SaleInputMethodEnum:
-      enum:
-      - points
-      - cash
-      - card
-      - qr
-      type: string
-      description: |-
-        * `points` - points
-        * `cash` - cash
-        * `card` - card
-        * `qr` - qr
-    SaleInputRequest:
-      type: object
-      properties:
-        payToken:
-          type: string
-          minLength: 1
-        itemId:
-          type: string
-          minLength: 1
-        quantity:
-          type: integer
-        checkAmount:
-          type: integer
-        method:
-          $ref: '#/components/schemas/SaleInputMethodEnum'
-      required:
-      - itemId
-      - method
-      - payToken
     SaleQuote:
       type: object
       properties:

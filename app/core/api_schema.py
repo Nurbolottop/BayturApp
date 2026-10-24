@@ -311,11 +311,9 @@ def apply():
             'receiptRequired': s.BooleanField(), 'promotion': s.DictField(allow_null=True),
             'duplicate': inline_serializer('SaleDuplicate', {'requestId': s.CharField(), 'at': s.DateTimeField()},
                                            allow_null=True)}), errors=(400, 401, 403, 404, 422))
-    doc(staffdesk.SaleView, 'post', STAFF, 'Продажа по QR клиента: cash/card — сразу, points — ждёт клиента, '
-        'qr — ждёт оплаты; 202 — выше порога, решает директор',
-        inline_serializer('SaleInput', {**pay_in.fields, 'method': s.ChoiceField(
-            choices=['points', 'cash', 'card', 'qr'])}),
-        o.StaffRequest, status=201, params=[o.IDEMPOTENCY_HEADER], errors=(400, 401, 403, 404, 422, 503))
+    doc(staffdesk.SaleView, 'post', STAFF, 'Оплата баллами по QR клиента: awaiting_client, списание — после '
+        'подтверждения клиента (деньги — только по чеку, /staff/cash/*)', pay_in,
+        o.StaffRequest, status=201, params=[o.IDEMPOTENCY_HEADER], errors=(400, 401, 403, 404, 422))
     doc(staffdesk.CancelView, 'post', STAFF, 'Отменить свою продажу до cancelUntil (позже — 409 cancel_expired)',
         inline_serializer('CancelInput', {'reason': s.CharField()}), o.StaffRequest, errors=staff_err)
 

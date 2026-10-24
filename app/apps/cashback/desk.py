@@ -464,6 +464,9 @@ def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None, amo
                     'pointsSom': 0, 'method': PaymentMethod.CASH, '_noPromotions': True})
             FiscalReceipt.objects.create(key=receipt['key'], raw=receipt['raw'], amount=receipt['amount'],
                                          fields=receipt['fields'], request=req, outlet=req.outlet, accepted_by=user)
+            # приём по чеку — оформление кассира: отменить его можно 10 минут (POST /staff/requests/{id}/cancel)
+            CashbackRequest.objects.filter(pk=req.pk).update(
+                created_by=user, cancel_until=timezone.now() + timedelta(seconds=CANCEL_WINDOW))
             req = services.confirm_request(req.pk, staff=user, cash_received=True)
     except IntegrityError:
         _receipt_used(receipt['key'])  # параллельный приём того же чека
@@ -475,7 +478,9 @@ def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None, amo
 
 # ---------------------------------------------------------------- продажа кассира по QR клиента (/staff/sales)
 
-SALE_METHODS = ('points', 'cash', 'card', 'qr')
+# Деньги кассир принимает только по QR фискального чека (/staff/cash/*), по QR клиента — только баллы.
+# Ветки cash / card / qr в sale() и start_sale() сейчас не вызываются из API (письмо мобилки 24.10).
+SALE_METHODS = ('points',)
 SALE_THRESHOLD = 'amount_threshold'   # причина эскалации: сумма выше порога точки
 CANCEL_WINDOW = 600                   # с: кассир отменяет свою продажу 10 минут
 CLIENT_CONFIRM_TTL = 120              # с: клиент подтверждает списание баллов
