@@ -17,6 +17,13 @@
           {% for v, l in kinds %}<option value="{{ v }}" {% if kind == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
         </select>
         {% if errors.kind %}<div class="err">{{ errors.kind }}</div>{% endif %}</div>
+      <div class="field{% if errors.department %} has-error{% endif %}"><label for="role-dept">Отдел</label>
+        <select id="role-dept" name="department" {% if locked %}disabled{% endif %}>
+          <option value="">Все разделы</option>
+          {% for v, l in departments %}<option value="{{ v }}" {% if department == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select>
+        <div class="help">С отделом сотрудник видит заявки, платежи, услуги, акции и обращения только своих разделов</div>
+        {% if errors.department %}<div class="err">{{ errors.department }}</div>{% endif %}</div>
     </div>
     {% if errors.perm %}<div class="banner warn">{% icon 'warning' 18 %}<span>{{ errors.perm }}</span></div>{% endif %}
   </div>

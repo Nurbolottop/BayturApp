@@ -33,10 +33,13 @@ def outlet_scope(user):
 
 
 def scoped_requests(user):
+    """Заявки, которые видит сотрудник: своих точек (кассир) и своих разделов (админ отдела)."""
     qs = CashbackRequest.objects.select_related('member', 'payment', 'item')
     scope = outlet_scope(user)
     if scope is not None:
         qs = qs.filter(outlet_id__in=scope)
+    if user.category_ids is not None:
+        qs = qs.filter(item__category_id__in=user.category_ids)
     return qs
 
 
@@ -319,6 +322,8 @@ def pay_items(user):
     from apps.catalog.models import Item
     qs = Item.objects.active().select_related('category', 'outlet').order_by('category__sort_order', 'sort_order')
     scope = outlet_scope(user)
+    if user.category_ids is not None:
+        qs = qs.filter(category_id__in=user.category_ids)
     return qs.filter(outlet_id__in=scope) if scope is not None else qs
 
 

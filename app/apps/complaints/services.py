@@ -126,8 +126,8 @@ def _publish_client(c):
 def _publish_admin(c, event):
     data = {'id': c.pk, 'number': c.number, 'status': c.status, 'outletId': c.outlet_id}
     publish(ADMIN_GROUP, event, data)
-    if c.outlet_id:
-        publish_outlets([c.outlet_id], event, data, include_admins=False)
+    category_id = c.request.item.category_id if c.request_id else None
+    publish_outlets([c.outlet_id], event, data, include_admins=False, category_id=category_id)
 
 
 # ---------------------------------------------------------------- клиент
@@ -229,11 +229,31 @@ def rate(member, complaint_id, rating, comment=''):
 
 # ---------------------------------------------------------------- курорт
 
+def _department_q(cats):
+    """Обращение отдела: по заявке — раздел её услуги; без заявки — точка, где есть услуги раздела."""
+    from django.db.models import Q
+    return (Q(request__item__category_id__in=cats)
+            | Q(request__isnull=True, outlet__items__category_id__in=cats))
+
+
+def scoped_complaints(user):
+    """Обращения, которые видит сотрудник: своих точек (кассир) и своих разделов (админ отдела)."""
+    from .models import Complaint
+    qs = Complaint.objects.select_related('member', 'category', 'outlet', 'assignee')
+    if user.is_outlet_bound:
+        qs = qs.filter(outlet_id__in=user.outlet_ids)
+    if user.category_ids is not None:
+        qs = qs.filter(pk__in=Complaint.objects.filter(_department_q(user.category_ids)).values('pk'))
+    return qs
+
+
 def staff_can_see(user, c):
     if not user.can('complaints.view'):
         return False
-    if user.is_outlet_bound:
-        return c.outlet_id is not None and c.outlet_id in user.outlet_ids
+    if user.is_outlet_bound and not (c.outlet_id is not None and c.outlet_id in user.outlet_ids):
+        return False
+    if user.category_ids is not None:
+        return scoped_complaints(user).filter(pk=c.pk).exists()
     return True
 
 

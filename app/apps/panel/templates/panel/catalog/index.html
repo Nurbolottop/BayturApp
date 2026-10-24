@@ -5,7 +5,7 @@
   <div><h1 class="page-title">Услуги</h1><div class="muted" style="margin-top:6px">{{ venue.name|tr }}: разделы, правила кешбека и позиции</div></div>
   <div class="actions">
     <form method="get" class="search field" style="width:260px">{% if venue %}<input type="hidden" name="venue" value="{{ venue.pk }}">{% endif %}{% icon 'search' 18 %}<input type="search" name="q" value="{{ q }}" placeholder="Найти услугу"></form>
-        {% if can_edit and venue and venue.pk != 'resort' %}<a class="btn" href="{% url 'panel:section-new' %}?venue={{ venue.pk }}">{% icon 'plus' 18 %} Подраздел</a>{% endif %}
+        {% if can_edit and structure and venue and venue.pk != 'resort' %}<a class="btn" href="{% url 'panel:section-new' %}?venue={{ venue.pk }}">{% icon 'plus' 18 %} Подраздел</a>{% endif %}
     {% if can_edit %}<a class="btn btn-accent" href="{% url 'panel:item-new' %}">{% icon 'plus' 18 %} Услуга</a>{% endif %}
   </div>
 </div>
@@ -16,7 +16,7 @@
       <div>{% if g.section.parent %}<div class="small muted">{{ g.section.parent.title|tr }}</div>{% endif %}
         <div class="{% if g.is_parent %}h2{% else %}h3{% endif %}">{{ g.section.title|tr }} {% if not g.section.is_active %}<span class="pill pill-muted">скрыт</span>{% endif %}</div>
         {% if g.section.note|tr %}<div class="small muted" style="margin-top:4px">{{ g.section.note|tr }}</div>{% endif %}</div>
-      <div class="row">{% if can_edit and not g.is_parent %}<a class="btn btn-s" href="{% url 'panel:item-new' %}?section={{ g.section.pk }}">{% icon 'plus' 16 %}</a>{% endif %}<a class="btn btn-s" href="{% url 'panel:section' g.section.pk %}">{% icon 'edit' 16 %}</a></div>
+      <div class="row">{% if can_edit and not g.is_parent %}<a class="btn btn-s" href="{% url 'panel:item-new' %}?section={{ g.section.pk }}">{% icon 'plus' 16 %}</a>{% endif %}{% if structure %}<a class="btn btn-s" href="{% url 'panel:section' g.section.pk %}">{% icon 'edit' 16 %}</a>{% endif %}</div>
     </div>
     {% if not g.is_parent %}<div class="table-wrap"><table class="table"><tbody>
       {% for i in g.items %}
@@ -39,7 +39,7 @@
         <div><div class="h3">{{ g.cat.title|tr }} {% if not g.cat.is_active %}<span class="pill pill-muted">скрыт</span>{% endif %}</div>
           <div class="row wrap small muted tabular" style="margin-top:4px"><span>{{ g.cat.methods|join:" · " }}</span></div></div>
       </div>
-      <div class="row">{% if can_edit %}<a class="btn btn-s" href="{% url 'panel:item-new' %}?category={{ g.cat.pk }}">{% icon 'plus' 16 %}</a>{% endif %}<a class="btn btn-s" href="{% url 'panel:category' g.cat.pk %}">{% icon 'edit' 16 %} Правила</a></div>
+      <div class="row">{% if can_edit %}<a class="btn btn-s" href="{% url 'panel:item-new' %}?category={{ g.cat.pk }}">{% icon 'plus' 16 %}</a>{% endif %}{% if structure %}<a class="btn btn-s" href="{% url 'panel:category' g.cat.pk %}">{% icon 'edit' 16 %} Правила</a>{% endif %}</div>
     </div>
     <div class="table-wrap"><table class="table"><tbody data-sortable-items="{{ g.cat.pk }}">
       {% for i in g.items %}

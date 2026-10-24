@@ -1,7 +1,7 @@
 """Каталог: разделы с правилами кешбека, услуги (редактор с галереей, «что входит», акциями), загрузка фото."""
 from django.contrib import messages
 from django.core.files.base import ContentFile
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -21,6 +21,22 @@ def _editor_only(user):
     return not user.can('catalog.edit')
 
 
+def _department_only(request):
+    """Разделы, объекты и подразделы меняет только сотрудник без отдела."""
+    from ..access import forbidden
+    if request.user.category_ids is not None:
+        return forbidden(request, 'Админ отдела меняет только услуги своих разделов')
+    return None
+
+
+def _limit_to_department(form, user):
+    cats = user.category_ids
+    if cats is None:
+        return
+    form.fields['category'].queryset = Category.objects.filter(pk__in=cats)
+    form.fields['section'].queryset = form.fields['section'].queryset.filter(category_id__in=cats)
+
+
 def _match(item, q):
     return not q or q in (item.title.get('ru') or '').lower() or q in item.id
 
@@ -32,8 +48,11 @@ def catalog(request):
     now = timezone.now()
     q = (request.GET.get('q') or '').strip().lower()
     groups, sections = [], []
+    dept = request.user.category_ids
     if venue is None or venue.pk == DEFAULT_VENUE:
         cats = Category.objects.all().prefetch_related('items__promos', 'items__outlet')
+        if dept is not None:
+            cats = cats.filter(pk__in=dept)
         for c in cats:
             items = [i for i in c.items.all() if i.venue_id == DEFAULT_VENUE and _match(i, q)]
             groups.append({'cat': c, 'items': [{'obj': i, 'promo': i.active_promo(now)} for i in items]})
@@ -43,19 +62,26 @@ def catalog(request):
         parents = {s.parent_id for s in all_sections if s.parent_id}
         order = {s.pk: (s.parent.sort_order if s.parent else s.sort_order, 0 if not s.parent else 1, s.sort_order)
                  for s in all_sections}
+        if dept is not None:  # админ отдела: подразделы своих разделов и их родители
+            leaves = {s.pk for s in all_sections if s.pk not in parents and s.category_id in dept}
+            keep = leaves | {s.parent_id for s in all_sections if s.pk in leaves and s.parent_id}
+            all_sections = [s for s in all_sections if s.pk in keep]
         for s in sorted(all_sections, key=lambda s: order[s.pk]):
-            items = [i for i in s.items.all() if _match(i, q)] if s.pk not in parents else []
+            items = [i for i in s.items.all() if _match(i, q) and (dept is None or i.category_id in dept)] \
+                if s.pk not in parents else []
             if q and not items:
                 continue
             sections.append({'section': s, 'is_parent': s.pk in parents,
                              'items': [{'obj': i, 'promo': i.active_promo(now)} for i in items]})
     return render(request, 'panel/catalog/index.html', {
         'groups': groups, 'sections': sections, 'venue': venue, 'q': q,
-        'can_edit': request.user.can('catalog.edit')})
+        'can_edit': request.user.can('catalog.edit'), 'structure': dept is None})
 
 
 @panel_view('catalog')
 def section_edit(request, section_id=None):
+    if (denied := _department_only(request)) is not None:
+        return denied
     section = get_object_or_404(Section, pk=section_id) if section_id else None
     if section is None and not request.user.can('catalog.edit'):
         from ..access import forbidden
@@ -76,6 +102,8 @@ def section_edit(request, section_id=None):
 
 @panel_view('catalog')
 def category_edit(request, category_id):
+    if (denied := _department_only(request)) is not None:
+        return denied
     cat = get_object_or_404(Category, pk=category_id)
     form = CategoryForm(request.POST or None, instance=cat)
     if _editor_only(request.user):
@@ -93,6 +121,8 @@ def category_edit(request, category_id):
 def item_edit(request, item_id=None):
     user = request.user
     item = get_object_or_404(Item.objects.select_related('category'), pk=item_id) if item_id else None
+    if item is not None and not user.sees_category(item.category_id):
+        raise Http404
     if item is None and not user.can('catalog.edit'):
         from ..access import forbidden
         return forbidden(request, 'Создавать услуги может директор')
@@ -104,6 +134,7 @@ def item_edit(request, item_id=None):
         if sec:
             initial.update(section=sec.pk, venue=sec.venue_id, category=sec.category_id)
     form = ItemForm(request.POST or None, instance=item, initial=initial)
+    _limit_to_department(form, user)
     if _editor_only(user):
         form.lock(ItemForm.RULE_FIELDS)
     if request.method == 'POST' and form.is_valid():
@@ -131,6 +162,8 @@ def item_edit(request, item_id=None):
 @panel_view(perm='catalog.edit')
 def item_action(request, item_id, action):
     item = get_object_or_404(Item, pk=item_id)
+    if not request.user.sees_category(item.category_id):
+        raise Http404
     if action in ('hide', 'show'):
         before = {'is_active': item.is_active}
         item.is_active = action == 'show'

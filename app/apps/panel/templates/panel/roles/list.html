@@ -7,7 +7,7 @@
   <thead><tr><th>Роль</th><th>Где работает</th><th class="n">Прав</th><th class="n">Сотрудников</th></tr></thead>
   <tbody>{% for r in rows %}
     <tr class="link" data-href="{% url 'panel:role' r.role.pk %}">
-      <td><div class="title-cell"><span class="ic-bubble s">{% icon 'key' 16 %}</span><div><b>{{ r.role.name }}</b><span class="small muted">{% if r.role.is_system %}системная{% else %}своя роль{% endif %}</span></div></div></td>
+      <td><div class="title-cell"><span class="ic-bubble s">{% icon 'key' 16 %}</span><div><b>{{ r.role.name }}</b><span class="small muted">{% if r.role.is_system %}системная{% else %}своя роль{% endif %}{% if r.dept %} · отдел «{{ r.dept }}»{% endif %}</span></div></div></td>
       <td class="small">{% if r.role.kind == 'app' %}Приложение кассира{% else %}Веб-панель{% endif %}</td>
       <td class="n tabular">{{ r.perms }} из {{ total }}</td>
       <td class="n tabular">{{ r.users }}</td>

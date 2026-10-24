@@ -65,7 +65,8 @@ def requests_list(request):
     ctx = {
         'page': page(request, qs.order_by('-created_at')),
         'statuses': RequestStatus.choices,
-        'categories': Category.objects.all(),
+        'categories': (Category.objects.filter(pk__in=request.user.category_ids)
+                       if request.user.category_ids is not None else Category.objects.all()),
         'outlets': Outlet.objects.all(),
         'staff_users': StaffUser.objects.filter(role__in=['staff', 'owner']).order_by('full_name'),
         'f': g,
@@ -122,10 +123,18 @@ def request_detail(request, request_id):
 
 # ---------------------------------------------------------------- платежи
 
+def scoped_payments(user):
+    """Админ отдела видит только платежи по заявкам своих разделов."""
+    qs = Payment.objects.select_related('member', 'request')
+    if user.category_ids is not None:
+        qs = qs.filter(request__item__category_id__in=user.category_ids)
+    return qs
+
+
 @panel_view('payments')
 def payments_list(request):
     g = request.GET
-    qs = Payment.objects.select_related('member', 'request')
+    qs = scoped_payments(request.user)
     if g.get('status'):
         qs = qs.filter(status=g['status'])
     if g.get('method'):
@@ -139,7 +148,7 @@ def payments_list(request):
     if g.get('q'):
         q = g['q'].strip()
         qs = qs.filter(Q(pk__iexact=q) | Q(provider_ref__iexact=q) | Q(member__member_id__iexact=q))
-    orphan_count = Payment.objects.filter(status=PaymentStatus.PAID, request__isnull=True).count()
+    orphan_count = scoped_payments(request.user).filter(status=PaymentStatus.PAID, request__isnull=True).count()
     return render(request, 'panel/payments/list.html', {
         'page': page(request, qs.order_by('-created_at')), 'statuses': PaymentStatus.choices, 'f': g,
         'orphan_count': orphan_count,
@@ -149,7 +158,7 @@ def payments_list(request):
 
 @panel_view('payments')
 def payment_detail(request, payment_id):
-    p = get_object_or_404(Payment.objects.select_related('member', 'request'), pk=payment_id)
+    p = get_object_or_404(scoped_payments(request.user), pk=payment_id)
     return render(request, 'panel/payments/detail.html', {'p': p, 'refunds': p.refunds.select_related('author'),
                                                           'left': p.amount - p.refunded_amount})
 
@@ -158,7 +167,7 @@ def payment_detail(request, payment_id):
 @panel_view(perm='payments.refund')
 def payment_refund(request, payment_id):
     from apps.payments.services import refund_payment
-    p = get_object_or_404(Payment, pk=payment_id)
+    p = get_object_or_404(scoped_payments(request.user), pk=payment_id)
     try:
         amount = int(request.POST.get('amount') or 0)
     except ValueError:

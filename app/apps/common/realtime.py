@@ -19,6 +19,11 @@ def outlet_group(outlet_id):
     return f'outlet.{outlet_id}'
 
 
+def department_group(category_id):
+    """Админы отдела, в который входит раздел каталога."""
+    return f'dept.{category_id}'
+
+
 ADMIN_GROUP = 'admins'
 
 
@@ -40,8 +45,10 @@ def publish_member(member_pk, event_type, data):
     publish(member_group(member_pk), event_type, data)
 
 
-def publish_outlets(outlet_ids, event_type, data, include_admins=True):
+def publish_outlets(outlet_ids, event_type, data, include_admins=True, category_id=None):
     for oid in set(filter(None, outlet_ids)):
         publish(outlet_group(oid), event_type, data)
     if include_admins:
         publish(ADMIN_GROUP, event_type, data)
+    if category_id:
+        publish(department_group(category_id), event_type, data)

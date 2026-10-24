@@ -40,6 +40,8 @@ def scoped(user):
                                                 'adjusted_by', 'proposed_by')
     if user.is_outlet_bound or not user.can('requests.view_all'):
         qs = qs.filter(outlet_id__in=user.outlet_ids)
+    if user.category_ids is not None:
+        qs = qs.filter(item__category_id__in=user.category_ids)
     return qs
 
 

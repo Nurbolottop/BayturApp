@@ -28,10 +28,7 @@ PRIORITIES = ('low', 'normal', 'high')
 
 
 def scoped(user):
-    qs = Complaint.objects.select_related('category', 'member', 'assignee')
-    if user.is_outlet_bound:
-        qs = qs.filter(outlet_id__in=user.outlet_ids)
-    return qs
+    return services.scoped_complaints(user)
 
 
 def overdue_q(now=None):

@@ -104,6 +104,18 @@ class StaffUser(AbstractBaseUser, PermissionsMixin):
         return self._outlet_ids
 
     @property
+    def category_ids(self):
+        """Разделы каталога отдела сотрудника; None — все."""
+        if self.is_superuser:
+            return None
+        from .roles import role_categories
+        return role_categories(self.role)
+
+    def sees_category(self, category_id):
+        cats = self.category_ids
+        return cats is None or category_id in cats
+
+    @property
     def is_outlet_bound(self):
         """Сотрудник видит только свои точки; остальные роли — все."""
         return not self.uses_panel
@@ -157,6 +169,8 @@ class StaffRole(models.Model):
     name = models.CharField('Название', max_length=60)
     kind = models.CharField('Где работает', max_length=10, choices=RoleKind.choices, default=RoleKind.PANEL)
     permissions = models.JSONField('Права', default=list, blank=True)
+    department = models.CharField('Отдел', max_length=20, blank=True, default='',
+                                  help_text='Пусто — все разделы; иначе только разделы отдела (roles.DEPARTMENTS)')
     is_system = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
 

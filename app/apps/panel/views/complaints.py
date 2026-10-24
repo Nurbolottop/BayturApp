@@ -20,10 +20,7 @@ from .money import page
 
 
 def scoped(user):
-    qs = Complaint.objects.select_related('member', 'category', 'outlet', 'assignee')
-    if user.is_outlet_bound:
-        qs = qs.filter(outlet_id__in=user.outlet_ids)
-    return qs
+    return cs.scoped_complaints(user)
 
 
 def assignees():

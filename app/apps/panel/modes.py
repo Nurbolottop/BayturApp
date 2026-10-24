@@ -57,9 +57,8 @@ def modes_context(request):
     venues = request._panel_venues
     queue = {}
     if request.user.can('requests.process'):
-        qs = CashbackRequest.objects.filter(status=RequestStatus.PENDING)
-        if request.user.is_outlet_bound:
-            qs = qs.filter(outlet_id__in=request.user.outlet_ids)
+        from apps.cashback.desk import scoped_requests
+        qs = scoped_requests(request.user).filter(status=RequestStatus.PENDING)
         for venue_id in qs.values_list('item__venue_id', flat=True):
             queue[venue_id] = queue.get(venue_id, 0) + 1
     current = next((v for v in venues if v.pk == mode), None)
@@ -67,7 +66,7 @@ def modes_context(request):
     forced = ProgramSettings.get().sk_mode or ''
     return {
         'panel_sk_mode': forced,
-        'panel_can_season': request.user.can('catalog.edit') and any(v.app == 'sk' for v in venues),
+        'panel_can_season': request.user.can('catalog.edit') and request.user.category_ids is None and any(v.app == 'sk' for v in venues),
         'panel_mode': mode,
         'panel_mode_venue': current,
         'panel_accent': current.accent if current else '#C6F24E',

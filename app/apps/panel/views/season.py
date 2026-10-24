@@ -15,6 +15,9 @@ LABELS = {'': 'автоматически по датам', 'ski': 'зима —
 @require_POST
 @panel_view(perm='catalog.edit')
 def sk_season(request):
+    if request.user.category_ids is not None:
+        from ..access import forbidden
+        return forbidden(request, 'Сезон переключает сотрудник без отдела')
     value = request.POST.get('sk_mode', '')
     if value in LABELS:
         ps = ProgramSettings.get()

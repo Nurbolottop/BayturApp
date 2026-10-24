@@ -164,7 +164,8 @@ def _role_rows():
 
     from apps.staff.models import StaffRole
     counts = dict(StaffUser.objects.values_list('role').annotate(n=Count('id')))
-    return [{'role': r, 'users': counts.get(r.pk, 0),
+    from apps.staff.roles import DEPARTMENTS
+    return [{'role': r, 'users': counts.get(r.pk, 0), 'dept': DEPARTMENTS.get(r.department, ('',))[0],
              'perms': len(PERMISSIONS) if r.pk == Role.OWNER else len(r.permissions or [])}
             for r in sorted(StaffRole.objects.all(),
                             key=lambda r: ({Role.OWNER: 0, Role.STAFF: 1}.get(r.pk, 2), r.name))]
@@ -180,7 +181,7 @@ def role_edit(request, role_id=None):
     """Роль и её права галочками. Директор — все права всегда; у системных ролей нельзя менять код и вход."""
     from apps.common.text import slug_from_title
     from apps.staff.models import StaffRole
-    from apps.staff.roles import PERMISSION_GROUPS
+    from apps.staff.roles import DEPARTMENTS, PERMISSION_GROUPS
     role = get_object_or_404(StaffRole, pk=role_id) if role_id else None
     locked = role is not None and role.pk == Role.OWNER
     known = set(PERMISSIONS)
@@ -189,6 +190,11 @@ def role_edit(request, role_id=None):
         name = (request.POST.get('name') or '').strip()[:60]
         kind = request.POST.get('kind') if role is None or not role.is_system else role.kind
         perms = sorted(p for p in request.POST.getlist('perm') if p in known)
+        department = request.POST.get('department') or ''
+        if department and department not in DEPARTMENTS:
+            errors['department'] = 'Неизвестный отдел'
+        if department and any(p in perms for p in ('staff.manage', 'settings.edit')):
+            errors['perm'] = 'Роли с отделом нельзя давать управление сотрудниками и настройками'
         if not name:
             errors['name'] = 'Укажите название'
         if kind not in RoleKind.values:
@@ -199,7 +205,7 @@ def role_edit(request, role_id=None):
             before = model_snapshot(role) if role else None
             if role is None:
                 role = StaffRole(id=slug_from_title(name, StaffRole, max_length=30, fallback='role'))
-            role.name, role.kind, role.permissions = name, kind, perms
+            role.name, role.kind, role.permissions, role.department = name, kind, perms, department
             role.save()
             audit(request, 'role.update' if before else 'role.create', role, before=before,
                   after=model_snapshot(role))
@@ -212,7 +218,9 @@ def role_edit(request, role_id=None):
     return render(request, 'panel/roles/edit.html', {
         'role': role, 'locked': locked, 'groups': groups, 'errors': errors, 'kinds': RoleKind.choices,
         'name': request.POST.get('name', role.name if role else ''),
-        'kind': request.POST.get('kind', role.kind if role else RoleKind.PANEL), 'users': users})
+        'kind': request.POST.get('kind', role.kind if role else RoleKind.PANEL), 'users': users,
+        'departments': [(k, v[0]) for k, v in DEPARTMENTS.items()],
+        'department': request.POST.get('department', role.department if role else '')})
 
 
 @require_POST

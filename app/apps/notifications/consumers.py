@@ -10,7 +10,7 @@ from urllib.parse import parse_qs
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
-from apps.common.realtime import ADMIN_GROUP, member_group, outlet_group
+from apps.common.realtime import ADMIN_GROUP, department_group, member_group, outlet_group
 from apps.common.tokens import decode_access
 
 
@@ -61,6 +61,8 @@ def _staff_groups(token, session_user):
         return None
     if user.is_outlet_bound:
         return [outlet_group(o) for o in user.outlet_ids]
+    if user.category_ids is not None:  # админ отдела — только события своих разделов
+        return [department_group(c) for c in sorted(user.category_ids)]
     return [ADMIN_GROUP]
 
 

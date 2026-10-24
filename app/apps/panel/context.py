@@ -5,18 +5,14 @@ def _counters(user):
     from apps.cashback.models import CashbackRequest, RequestStatus
     from apps.complaints.models import Complaint, ComplaintStatus
     out = {}
+    from apps.cashback.desk import scoped_requests
+    from apps.complaints.services import scoped_complaints
     if user.can('requests.process'):
-        qs = CashbackRequest.objects.filter(status=RequestStatus.PENDING)
-        if user.is_outlet_bound:
-            qs = qs.filter(outlet_id__in=user.outlet_ids)
-        out['queue'] = qs.count()
+        out['queue'] = scoped_requests(user).filter(status=RequestStatus.PENDING).count()
     if user.can('requests.approve_escalated'):
         out['escalated'] = CashbackRequest.objects.filter(status=RequestStatus.PENDING, escalated=True).count()
     if user.can('complaints.view'):
-        qs = Complaint.objects.filter(status=ComplaintStatus.NEW)
-        if user.is_outlet_bound:
-            qs = qs.filter(outlet_id__in=user.outlet_ids)
-        out['complaints'] = qs.count()
+        out['complaints'] = scoped_complaints(user).filter(status=ComplaintStatus.NEW).count()
     return out
 
 

@@ -71,6 +71,8 @@ def scoped_requests(user, member):
     qs = CashbackRequest.objects.filter(member=member).select_related('member', 'payment', 'item')
     if user.is_outlet_bound:
         qs = qs.filter(outlet_id__in=user.outlet_ids)
+    if user.category_ids is not None:
+        qs = qs.filter(item__category_id__in=user.category_ids)
     return qs
 
 

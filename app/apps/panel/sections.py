@@ -18,10 +18,12 @@ class Section:
     tab: bool = False       # показывать во вкладках на планшете / телефоне
     badge: str = ''         # ключ счётчика из context processor
     children: tuple = field(default=())
+    whole: bool = False     # настройка всего курорта — не для админа отдела (роль с отделом)
 
     def allowed(self, user):
         return bool(user and user.is_authenticated and getattr(user, 'is_staff_user', False)
-                    and any(user.can(p) for p in self.perms))
+                    and any(user.can(p) for p in self.perms)
+                    and not (self.whole and user.category_ids is not None))
 
     @property
     def url(self):
@@ -52,9 +54,11 @@ SECTIONS = [
     Section('complaints', 'Обращения', 'panel:complaints', 'chat', ('complaints.view',), group='work', tab=True,
             badge='complaints'),
     Section('catalog', 'Услуги', 'panel:catalog', 'grid', ('catalog.edit', 'catalog.texts'), group='program'),
-    Section('showcase', 'Главная', 'panel:showcase', 'view', ('catalog.edit', 'content.edit'), group='program'),
+    Section('showcase', 'Главная', 'panel:showcase', 'view', ('catalog.edit', 'content.edit'), group='program',
+            whole=True),
     Section('eternal', '«Вечная новость»', 'panel:eternal', 'news', ('content.edit',), group='program'),
-    Section('venue', 'Объект', 'panel:venue-current', 'location', ('catalog.edit', 'catalog.texts'), group='program'),
+    Section('venue', 'Объект', 'panel:venue-current', 'location', ('catalog.edit', 'catalog.texts'), group='program',
+            whole=True),
     Section('promotions', 'Акции', 'panel:promotions', 'gift', ('promotions.edit',), group='program'),
     Section('welcome', 'Подарок новичку', 'panel:welcome', 'gift', ('coupons.manage',), group='program'),
     Section('tiers', 'Уровни', 'panel:tiers', 'medal', ('tiers.edit', 'tiers.texts'), group='program'),

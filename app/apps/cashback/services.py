@@ -210,7 +210,7 @@ def _after_change(req, staff_event='request.updated', wallet=None):
     publish_member(req.member_id, 'request.updated', request_payload(req, lang=req.member.language))
     if wallet is not None:
         publish_wallet(req.member, wallet)
-    publish_outlets([req.outlet_id], staff_event, staff_request_payload(req))
+    publish_outlets([req.outlet_id], staff_event, staff_request_payload(req), category_id=req.item.category_id)
 
 
 def _release_and_refund(req, wallet, reason):

@@ -127,7 +127,18 @@ PERMISSION_GROUPS = [
 MARKETING_DEFAULT = ['promotions.edit', 'content.edit', 'campaigns.draft', 'campaigns.send', 'coupons.manage',
                      'analytics.content', 'analytics.catalog', 'audit.view_own']
 
-ROLES_CACHE_KEY = 'staff_roles:v1'
+# Отделы: роль с отделом видит в панели только заявки, платежи, услуги, акции и обращения своих разделов
+# каталога. Пусто — все разделы. pools/sport — старые разделы, их услуги перенесены в «Развлечения».
+DEPARTMENTS = {
+    'rooms': ('Номера (ресепшен)', ['rooms']),
+    'food': ('Рестораны', ['food']),
+    'entertainment': ('Развлечения (SPA, пляж, бассейн…)', ['entertainment', 'spa', 'beach', 'pools', 'sport']),
+}
+# Права админа отдела по умолчанию
+DEPARTMENT_DEFAULT = ['requests.process', 'requests.view_all', 'payments.view', 'members.view', 'catalog.edit',
+                      'promotions.edit', 'complaints.view', 'complaints.reply', 'complaints.notes', 'audit.view_own']
+
+ROLES_CACHE_KEY = 'staff_roles:v2'
 
 
 def default_permissions(role):
@@ -140,8 +151,8 @@ def roles_map():
     data = cache.get(ROLES_CACHE_KEY)
     if data is None:
         from .models import StaffRole
-        data = {r.pk: {'name': r.name, 'kind': r.kind, 'perms': set(r.permissions or [])}
-                for r in StaffRole.objects.all()}
+        data = {r.pk: {'name': r.name, 'kind': r.kind, 'perms': set(r.permissions or []),
+                       'department': r.department} for r in StaffRole.objects.all()}
         if not data:  # до миграции с ролями — системные по умолчанию
             data = {Role.OWNER: {'name': Role.OWNER.label, 'kind': RoleKind.PANEL, 'perms': set(PERMISSIONS)},
                     Role.STAFF: {'name': Role.STAFF.label, 'kind': RoleKind.APP,
@@ -172,6 +183,15 @@ def role_choices():
     order = {Role.OWNER: 0, Role.STAFF: 1}
     items = sorted(roles_map().items(), key=lambda kv: (order.get(kv[0], 2), kv[1]['name']))
     return [(k, v['name']) for k, v in items]
+
+
+def role_categories(role):
+    """Разделы каталога отдела роли; None — все (директор и роли без отдела)."""
+    if role == Role.OWNER:
+        return None
+    info = roles_map().get(role) or {}
+    dept = DEPARTMENTS.get(info.get('department') or '')
+    return set(dept[1]) if dept else None
 
 
 def role_has(role, perm):

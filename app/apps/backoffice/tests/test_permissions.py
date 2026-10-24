@@ -31,7 +31,7 @@ class DirectorTests(AdminTestCase):
     def test_roles_list(self):
         r = self.get(self.owner, '/staff/roles')
         roles = {x['id']: x for x in r.data['items']}
-        self.assertEqual(set(roles), {'owner', 'staff', 'marketing'})
+        self.assertEqual(set(roles), {'owner', 'staff', 'marketing', 'admin-rooms', 'admin-food', 'admin-entertainment'})
         self.assertEqual(roles['owner']['label'], 'Директор')
         self.assertEqual(roles['staff']['kind'], 'app')
         self.assertIn('promotions.edit', roles['marketing']['permissions'])
