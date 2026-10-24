@@ -280,6 +280,8 @@ class Item(models.Model):
     title = models.JSONField('Название', default=dict)
     meta = models.JSONField('Короткая строка', default=dict, blank=True)
     image = models.CharField('Главное фото', max_length=500, blank=True)
+    # меню ресторана PDF: загружает куратор ресторанов, приложение открывает по ссылке menuPdf
+    menu_pdf = models.CharField('Меню (PDF)', max_length=255, blank=True)
     gallery = models.JSONField('Галерея', default=list, blank=True)
     price = models.PositiveIntegerField('Цена, сом')
     pricing = models.JSONField('Тип цены', default=dict)

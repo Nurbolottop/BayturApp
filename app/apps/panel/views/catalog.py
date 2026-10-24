@@ -17,6 +17,9 @@ from ..forms import CategoryForm, ItemForm, PromoRateForm, SectionForm
 from ..modes import current_mode
 
 
+MENU_MAX_BYTES = 20 * 1024 * 1024
+
+
 def _editor_only(user):
     return not user.can('catalog.edit')
 
@@ -209,6 +212,27 @@ def item_action(request, item_id, action):
         audit(request, 'item.promo_off', item, before={'promo': promo.pk, 'is_active': True},
               after={'is_active': False})
         messages.success(request, 'Акция выключена')
+    elif action == 'menu':  # меню ресторана PDF — куратор ресторанов
+        f = request.FILES.get('menu')
+        head = f.read(5) if f else b''
+        if f is None or f.size > MENU_MAX_BYTES or head != b'%PDF-':
+            messages.error(request, 'Нужен PDF-файл до 20 МБ')
+            return redirect('panel:item', item_id=item.pk)
+        f.seek(0)
+        up = Upload(kind=Upload.KIND_PDF, staff=request.user)
+        up.file.save('menu.pdf', ContentFile(f.read()), save=False)
+        up.save()
+        before = {'menu_pdf': item.menu_pdf}
+        item.menu_pdf = up.file.name
+        item.save(update_fields=['menu_pdf', 'updated_at'])
+        audit(request, 'item.menu', item, before=before, after={'menu_pdf': item.menu_pdf})
+        messages.success(request, 'Меню загружено — в приложении откроется по кнопке «Меню»')
+    elif action == 'menu-off':
+        before = {'menu_pdf': item.menu_pdf}
+        item.menu_pdf = ''
+        item.save(update_fields=['menu_pdf', 'updated_at'])
+        audit(request, 'item.menu_off', item, before=before, after={'menu_pdf': ''})
+        messages.success(request, 'Меню убрано')
     elif action == 'sort':
         for i, pk in enumerate(request.POST.getlist('order')):
             Item.objects.filter(pk=pk, category_id=item.category_id).update(sort_order=i + 1)

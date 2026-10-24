@@ -76,3 +76,27 @@ class DepartmentAdminTests(PanelBase):
                                              'perm': ['staff.manage']})
         self.assertEqual(r.status_code, 200)
         self.assertFalse(StaffRole.objects.filter(name='Плохая').exists())
+
+
+class RestaurantMenuTests(PanelBase):
+    """Куратор ресторанов загружает меню PDF — приложение получает ссылку menuPdf."""
+
+    def test_upload_menu(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        c = self.login(self.make_staff('admin-food', email='food2@b.kg'))
+        bad = SimpleUploadedFile('menu.pdf', b'not a pdf')
+        c.post('/panel/catalog/items/food-davinci/menu/', {'menu': bad})
+        self.assertEqual(Item.objects.get(pk='food-davinci').menu_pdf, '')
+        pdf = SimpleUploadedFile('menu.pdf', b'%PDF-1.4\n%test\n', content_type='application/pdf')
+        r = c.post('/panel/catalog/items/food-davinci/menu/', {'menu': pdf})
+        self.assertEqual(r.status_code, 302)
+        path = Item.objects.get(pk='food-davinci').menu_pdf
+        self.assertTrue(path.startswith('uploads/pdf/') and path.endswith('.pdf'), path)
+        food = next(cat for cat in self.api.get('/api/v1/catalog').json() if cat['id'] == 'food')
+        item = next(i for i in food['items'] if i['id'] == 'food-davinci')
+        self.assertTrue(item['menuPdf'].endswith('.pdf'))
+        # чужой отдел не может
+        spa = self.login(self.make_staff('admin-entertainment', email='ent@b.kg'))
+        self.assertEqual(spa.post('/panel/catalog/items/food-davinci/menu-off/').status_code, 404)
+        c.post('/panel/catalog/items/food-davinci/menu-off/')
+        self.assertEqual(Item.objects.get(pk='food-davinci').menu_pdf, '')

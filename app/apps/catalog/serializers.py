@@ -57,6 +57,7 @@ def item_payload(item, now=None, ps=None, promotions=None):
         'isActive': item.is_active,
         # false (рестораны) — без цены и кнопки заказа: клиент только показывает QR кассиру
         'clientOrder': item.category.client_orders,
+        'menuPdf': absolute_media_url(item.menu_pdf) if item.menu_pdf else None,  # меню ресторана — открыть PDF
         'cashbackPreview': cashback_preview(item, now, ps),
         # акция на цену: {basePrice, price, promotionId} — цена за единицу для всех гостей; null — без скидки
         'promo': promo_price,
@@ -221,6 +222,7 @@ def service_payload(item, kind='', promotions=None, now=None, ps=None):
         'action': item.action,
         'methods': service_methods(item),
         'clientOrder': item.category.client_orders,  # false — рестораны: без суммы и оплаты, только у кассира
+        'menuPdf': absolute_media_url(item.menu_pdf) if item.menu_pdf else None,
         'availableFrom': item.season_from.isoformat() if item.season_from else None,
         'availableTo': item.season_to.isoformat() if item.season_to else None,
         'available': available,

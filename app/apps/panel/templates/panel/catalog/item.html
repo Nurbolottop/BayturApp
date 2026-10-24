@@ -73,6 +73,22 @@
       </div>
     </form>
 
+    {% if item and item.category_id == 'food' %}
+    <div class="card appear stack-s">
+      <div class="card-head"><div class="h3">{% bubble 'news' 18 %} Меню (PDF)</div><span class="small muted">Откроется в приложении по кнопке «Меню»</span></div>
+      {% if item.menu_pdf %}<div class="row wrap" style="gap:10px"><a class="btn btn-s" href="{{ item.menu_pdf|media }}" target="_blank" rel="noopener">{% icon 'view' 16 %} Открыть текущее меню</a>
+        {% if can_edit %}<form method="post" action="{% url 'panel:item-action' item.pk 'menu-off' %}" data-confirm="Убрать меню из приложения?">{% csrf_token %}<button class="btn btn-s btn-ghost">Убрать</button></form>{% endif %}</div>
+      {% else %}<div class="small muted">Меню ещё не загружено</div>{% endif %}
+      {% if can_edit %}
+      <form method="post" enctype="multipart/form-data" action="{% url 'panel:item-action' item.pk 'menu' %}" class="row wrap" style="gap:10px">
+        {% csrf_token %}<input type="file" name="menu" accept="application/pdf,.pdf" required>
+        <button class="btn btn-dark">{% icon 'upload' 16 %} {% if item.menu_pdf %}Заменить меню{% else %}Загрузить меню{% endif %}</button>
+      </form>
+      <div class="help">PDF до 20 МБ. Новый файл сразу заменит старый в приложении.</div>
+      {% endif %}
+    </div>
+    {% endif %}
+
     {% if item %}
     <div class="card appear">
       <div class="card-head"><div class="h3">{% bubble 'sparkle' 18 %} Акции</div><span class="small muted">Повышенная ставка с датами — по окончании снимается сама</span></div>
