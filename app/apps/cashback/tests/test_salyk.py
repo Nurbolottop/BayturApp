@@ -110,6 +110,21 @@ class SalykTests(BaseAPITestCase):
             parse_receipt('https://evil.example/tax-web-control/client/api/v1/ticket?tin=1&fn_number=2&fd_number=3&sum=100')
         get.assert_not_called()
 
+    @override_settings(RECEIPT_ALLOWED_TINS=['21804199500937'])
+    def test_tin_from_tax_service_checked(self):
+        # в QR подставлен «наш» ИНН, а налоговая знает чек другого продавца
+        with mock.patch('apps.cashback.receipts.requests.get',
+                        return_value=response(data={**TICKET, 'tin': '99999999999999'})):
+            with self.assertRaises(ApiError) as e:
+                parse_receipt(QR)
+        self.assertEqual(e.exception.code, 'receipt_foreign')
+
+    @override_settings(RECEIPT_ALLOWED_TINS=['21804199500937'])
+    def test_non_salyk_qr_rejected_when_tins_set(self):
+        with self.assertRaises(ApiError) as e:
+            parse_receipt('t=20261008T0303&s=240.00&fn=123&i=456&fp=789')
+        self.assertEqual(e.exception.code, 'receipt_foreign')
+
     @override_settings(RECEIPT_ALLOWED_TINS=['01604199910194'])
     def test_foreign_seller_rejected(self):
         with mock.patch('apps.cashback.receipts.requests.get') as get:

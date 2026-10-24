@@ -146,6 +146,8 @@ def _salyk(raw, fields, original, manual_amount=None):
         raise ApiError('receipt_foreign', 422)
     details = fetch_salyk(original, key) if getattr(settings, 'RECEIPT_VERIFY', True) else None
     if details is not None:
+        if allowed and str(details.get('tin') or '') not in allowed:  # ИНН из налоговой, а не из QR
+            raise ApiError('receipt_foreign', 422)
         if details['operationType'] not in (1, None):  # 1 — приход; возврат и прочее не принимаются
             raise ApiError('receipt_not_sale', 422)
         amount = details['total'] or amount
@@ -172,6 +174,10 @@ def parse_receipt(raw, manual_amount=None):
     salyk = _salyk(raw, fields, dict(pairs), manual_amount)
     if salyk is not None:
         return salyk
+    if getattr(settings, 'RECEIPT_ALLOWED_TINS', []):
+        # принимаются только чеки ГНС (tax.salyk.kg) с ИНН курорта; в QR другого вида ИНН не проверить
+        log.warning('receipt not salyk QR: %s', raw[:120])
+        raise ApiError('receipt_foreign', 422)
     amount = next((a for a in (_amount(fields[k]) for k in AMOUNT_KEYS if k in fields) if a), None)
     if amount is None:
         # образец для поддержки новых форматов (банковские слипы и т. п.); цифры длиннее 12 маскируются
