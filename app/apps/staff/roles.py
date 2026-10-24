@@ -1,6 +1,8 @@
 """
 Роли сотрудников и права. Системные роли:
-- Директор — полный доступ, работает в веб-панели (email + пароль + 2FA), создаёт точки, сотрудников и роли;
+- Директор — условия программы (уровни, курс, кешбек, настройки), заявки, клиенты, отчёты, сотрудники и роли;
+  услуги, тексты и фото приложения, контент, акции, push и «Подарок новичку» — не его (OWNER_EXCLUDED):
+  тексты и медиа ведёт маркетолог, цены и условия услуг — кураторы отделов;
 - Администратор кассы — привязан к точкам (ресепшен, бассейн, баня, спортзал…), работает в приложении
   кассира (телефон + 6-значный PIN): заявки, оплата баллами по QR, поиск клиента, обращения своих точек.
 Остальные роли (например, «Маркетинг») директор создаёт и настраивает в панели: набор прав — галочками
@@ -17,6 +19,11 @@ class Role(models.TextChoices):
 
 O, S = Role.OWNER, Role.STAFF
 
+# Чего у директора нет (решение 25.10.2026): услуги — у кураторов отделов (catalog.edit), тексты и фото,
+# контент, акции, push и подарок новичку — у маркетолога
+OWNER_EXCLUDED = {'catalog.edit', 'catalog.texts', 'tiers.texts', 'content.edit', 'promotions.edit',
+                  'coupons.manage', 'campaigns.draft', 'campaigns.send'}
+
 PERMISSIONS = {
     # Заявки
     'requests.process': {O, S},        # администратор — только своих точек
@@ -28,16 +35,16 @@ PERMISSIONS = {
     'members.manage': {O},             # блокировка, корректировки, ДР, телефон, экспорт
     'members.restore': {O},            # удалённые аккаунты
     # Каталог и правила
-    'catalog.edit': {O},
-    'catalog.texts': {O},
+    'catalog.edit': set(),
+    'catalog.texts': set(),
     'tiers.edit': {O},
-    'tiers.texts': {O},
+    'tiers.texts': set(),
     # Контент и рассылки
-    'content.edit': {O},
-    'promotions.edit': {O},            # акции на цену
-    'coupons.manage': {O},             # приветственный купон: настройка и выданные купоны
-    'campaigns.send': {O},
-    'campaigns.draft': {O},
+    'content.edit': set(),
+    'promotions.edit': set(),            # акции на цену
+    'coupons.manage': set(),             # приветственный купон: настройка и выданные купоны
+    'campaigns.send': set(),
+    'campaigns.draft': set(),
     # Деньги
     'payments.view': {O},
     'payments.refund': {O},
@@ -124,8 +131,8 @@ PERMISSION_GROUPS = [
 ]
 
 # Права новой роли «Маркетинг» по умолчанию (директор меняет их в панели)
-MARKETING_DEFAULT = ['promotions.edit', 'content.edit', 'campaigns.draft', 'campaigns.send', 'coupons.manage',
-                     'analytics.content', 'analytics.catalog', 'audit.view_own']
+MARKETING_DEFAULT = ['catalog.texts', 'tiers.texts', 'content.edit', 'promotions.edit', 'coupons.manage',
+                     'campaigns.draft', 'campaigns.send', 'analytics.content', 'analytics.catalog', 'audit.view_own']
 
 # Отделы: роль с отделом видит в панели только заявки, платежи, услуги, акции и обращения своих разделов
 # каталога. Пусто — все разделы. pools/sport — старые разделы, их услуги перенесены в «Развлечения».
@@ -136,9 +143,13 @@ DEPARTMENTS = {
 }
 # Права админа отдела по умолчанию
 DEPARTMENT_DEFAULT = ['requests.process', 'requests.view_all', 'payments.view', 'members.view', 'catalog.edit',
-                      'promotions.edit', 'complaints.view', 'complaints.reply', 'complaints.notes', 'audit.view_own']
+                      'complaints.view', 'complaints.reply', 'complaints.notes', 'audit.view_own']
 
 ROLES_CACHE_KEY = 'staff_roles:v2'
+
+
+def owner_permissions():
+    return sorted(set(PERMISSIONS) - OWNER_EXCLUDED)
 
 
 def default_permissions(role):
@@ -154,7 +165,7 @@ def roles_map():
         data = {r.pk: {'name': r.name, 'kind': r.kind, 'perms': set(r.permissions or []),
                        'department': r.department} for r in StaffRole.objects.all()}
         if not data:  # до миграции с ролями — системные по умолчанию
-            data = {Role.OWNER: {'name': Role.OWNER.label, 'kind': RoleKind.PANEL, 'perms': set(PERMISSIONS)},
+            data = {Role.OWNER: {'name': Role.OWNER.label, 'kind': RoleKind.PANEL, 'perms': set(owner_permissions())},
                     Role.STAFF: {'name': Role.STAFF.label, 'kind': RoleKind.APP,
                                  'perms': set(default_permissions(Role.STAFF))}}
         cache.set(ROLES_CACHE_KEY, data, 300)
@@ -195,7 +206,7 @@ def role_categories(role):
 
 
 def role_has(role, perm):
-    if role == Role.OWNER:  # директор — всегда все права
-        return perm in PERMISSIONS
+    if role == Role.OWNER:  # директор — все права, кроме услуг и контента
+        return perm in PERMISSIONS and perm not in OWNER_EXCLUDED
     info = roles_map().get(role)
     return bool(info) and perm in info['perms']

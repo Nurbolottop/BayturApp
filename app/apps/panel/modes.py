@@ -66,7 +66,7 @@ def modes_context(request):
     forced = ProgramSettings.get().sk_mode or ''
     return {
         'panel_sk_mode': forced,
-        'panel_can_season': request.user.can('catalog.edit') and request.user.category_ids is None and any(v.app == 'sk' for v in venues),
+        'panel_can_season': request.user.can('settings.edit') and any(v.app == 'sk' for v in venues),
         'panel_mode': mode,
         'panel_mode_venue': current,
         'panel_accent': current.accent if current else '#C6F24E',

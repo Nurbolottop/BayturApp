@@ -23,7 +23,7 @@
         <div class="shine"></div>
         <div class="row-between"><div><div class="small" style="opacity:.8">{% if r.tier.threshold %}<span class="tabular">{{ r.tier.threshold|num }}</span> за год{% else %}стартовый{% endif %}</div><div class="h2">{{ r.tier.name|tr }}</div></div>{% medal r.tier.pk 52 %}</div>
         <div class="row-between"><div class="small" style="opacity:.85">{{ r.privileges|length }} привилегий</div>
-          {% if can_edit %}<a class="btn btn-s tier-edit" href="{% url 'panel:tier' r.tier.pk %}">{% icon 'edit' 14 %} Изменить</a>{% endif %}</div>
+          {% if can_edit or can_style %}<a class="btn btn-s tier-edit" href="{% url 'panel:tier' r.tier.pk %}">{% icon 'edit' 14 %} Изменить</a>{% endif %}</div>
       </div>
       <div class="card stack-s">
         {% include 'panel/components/field.html' with f=r.form.name %}

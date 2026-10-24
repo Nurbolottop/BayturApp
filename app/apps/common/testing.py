@@ -49,10 +49,12 @@ class BaseAPITestCase(TestCase):
 
     # ---------------------------------------------------------------- сотрудники
 
-    def make_staff(self, role='staff', outlets=(), email=None, phone=''):
+    def make_staff(self, role='staff', outlets=(), email=None, phone='', superuser=False):
+        """superuser=True — все права (директор без услуг и контента, см. roles.OWNER_EXCLUDED)."""
         from apps.staff.models import StaffUser
         user = StaffUser.objects.create_user(email or f'{role}{StaffUser.objects.count()}@baytur.kg', 'Passw0rd!x',
-                                             full_name=f'{role} user', role=role, phone=phone)
+                                             full_name=f'{role} user', role=role, phone=phone,
+                                             is_superuser=superuser)
         if outlets:
             user.outlets.set(outlets)
         return user

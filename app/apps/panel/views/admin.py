@@ -10,7 +10,7 @@ from apps.common.audit import audit, model_snapshot
 from apps.common.models import AuditLog, ProgramSettings
 from apps.members.models import LegalDocument
 from apps.staff.models import StaffUser
-from apps.staff.roles import PERMISSIONS, Role, RoleKind, role_choices, role_kind
+from apps.staff.roles import PERMISSIONS, Role, RoleKind, owner_permissions, role_choices, role_kind
 
 from ..access import panel_view
 from ..forms import ContactsForm, LegalForm, OutletForm, ProgramSettingsForm, StaffUserForm, StoreTestForm
@@ -166,7 +166,7 @@ def _role_rows():
     counts = dict(StaffUser.objects.values_list('role').annotate(n=Count('id')))
     from apps.staff.roles import DEPARTMENTS
     return [{'role': r, 'users': counts.get(r.pk, 0), 'dept': DEPARTMENTS.get(r.department, ('',))[0],
-             'perms': len(PERMISSIONS) if r.pk == Role.OWNER else len(r.permissions or [])}
+             'perms': len(owner_permissions()) if r.pk == Role.OWNER else len(r.permissions or [])}
             for r in sorted(StaffRole.objects.all(),
                             key=lambda r: ({Role.OWNER: 0, Role.STAFF: 1}.get(r.pk, 2), r.name))]
 
@@ -211,7 +211,7 @@ def role_edit(request, role_id=None):
                   after=model_snapshot(role))
             messages.success(request, f'Роль «{role.name}» сохранена')
             return redirect('panel:roles')
-    current = set(PERMISSIONS) if locked else set(request.POST.getlist('perm') if request.method == 'POST'
+    current = set(owner_permissions()) if locked else set(request.POST.getlist('perm') if request.method == 'POST'
                                                   else (role.permissions if role else []))
     groups = [(title, [(p, label, p in current) for p, label in items]) for title, items in PERMISSION_GROUPS]
     users = StaffUser.objects.filter(role=role.pk).order_by('full_name') if role else []

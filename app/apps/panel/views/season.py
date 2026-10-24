@@ -13,7 +13,7 @@ LABELS = {'': 'автоматически по датам', 'ski': 'зима —
 
 
 @require_POST
-@panel_view(perm='catalog.edit')
+@panel_view(perm='settings.edit')
 def sk_season(request):
     if request.user.category_ids is not None:
         from ..access import forbidden

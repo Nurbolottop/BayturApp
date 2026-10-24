@@ -139,8 +139,8 @@ class PermissionTests(PanelBase):
         self.assertNotIn('data-nav="settings"', html)
         self.assertNotIn('data-nav="dashboard"', html)
 
-    def test_all_pages_render_for_owner(self):
-        c = self.login(self.make_staff('owner'))
+    def test_all_pages_render_for_admin(self):
+        c = self.login(self.make_staff('owner', superuser=True))
         member = self.make_member(points=100_000)
         req = self.make_request(member)
         for url in ['/panel/dashboard/', '/panel/analytics/', '/panel/desk/', f'/panel/desk/r/{req.pk}/',
@@ -258,7 +258,7 @@ class MemberActionTests(PanelBase):
 
 class ContentTests(PanelBase):
     def test_publish_blocked_without_translations(self):
-        c = self.login(self.make_staff('owner'))
+        c = self.login(self.make_staff('owner', superuser=True))
         data = {'id': 'new-article', 'title_ru': 'Заголовок', 'title_ky': '', 'title_en': '', 'date': '2026-09-01',
                 'minutes': 3, 'then': 'publish'}
         r = c.post('/panel/content/articles/new/', data, follow=True)
@@ -273,7 +273,7 @@ class ContentTests(PanelBase):
         self.assertEqual(a.status, PublishStatus.PUBLISHED)
 
     def test_publish_with_all_translations(self):
-        c = self.login(self.make_staff('owner'))
+        c = self.login(self.make_staff('owner', superuser=True))
         c.post('/panel/content/articles/new/', {'id': 'full', 'title_ru': 'А', 'title_ky': 'Б', 'title_en': 'C',
                                                 'date': '2026-09-01', 'minutes': 3})
         c.post('/panel/content/articles/full/publish/')

@@ -35,7 +35,7 @@ class ForcedSeasonTests(BaseAPITestCase):
 
     def test_panel_switch(self):
         c = Client()
-        c.force_login(self.make_staff('owner'))
+        c.force_login(self.make_staff('owner', superuser=True))
         self.assertContains(c.get('/panel/catalog/'), 'Сезон для всех пользователей')
         r = c.post('/panel/sk-season/', {'sk_mode': 'ski', 'next': '/panel/catalog/'})
         self.assertEqual((r.status_code, r['Location']), (302, '/panel/catalog/'))
@@ -64,7 +64,7 @@ class ModePrivilegesTests(BaseAPITestCase):
         row = next(p for p in program if p['modes'] == ['kymyz'])
         self.assertTrue(row['modeTitle'].startswith('Только '))
         c = Client()
-        c.force_login(self.make_staff('owner'))
+        c.force_login(self.make_staff('owner', superuser=True))
         for url in ('/panel/tiers/', '/panel/tiers/?obj=all', '/panel/tiers/?obj=ski',
                     '/panel/tiers/privileges/new/?tier=gold&mode=kymyz'):
             self.assertEqual(c.get(url).status_code, 200, url)

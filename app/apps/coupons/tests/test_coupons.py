@@ -115,7 +115,7 @@ class WelcomeCouponTests(BaseAPITestCase):
 
     def test_panel_settings_and_desk_redeem(self):
         owner = self.client
-        owner.force_login(self.make_staff('owner', email='d@b.kg'))
+        owner.force_login(self.make_staff('owner', email='d@b.kg', superuser=True))
         r = owner.post('/panel/welcome/', {'enabled': 'on', 'kind': 'gift', 'value': 0, 'title_ru': 'Бесплатный ужин',
                                            'title_ky': '', 'title_en': '', 'description_ru': '', 'description_ky': '',
                                            'description_en': '', 'terms_ru': '', 'terms_ky': '', 'terms_en': '',

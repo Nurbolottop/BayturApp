@@ -1,7 +1,7 @@
 {% extends 'panel/base.html' %}{% load panel %}
 {% block title %}Роли{% endblock %}
 {% block content %}
-<div class="topbar"><div><h1 class="page-title">Роли</h1><div class="muted" style="margin-top:6px">Что может каждая роль. Директор — все права всегда.</div></div>
+<div class="topbar"><div><h1 class="page-title">Роли</h1><div class="muted" style="margin-top:6px">Что может каждая роль. Права директора постоянные: условия программы, заявки, клиенты, сотрудники; услуги, тексты, фото, контент, акции и push — у маркетолога и кураторов отделов.</div></div>
   <div class="actions"><a class="btn btn-accent" href="{% url 'panel:role-new' %}">{% icon 'plus' 18 %} Роль</a></div></div>
 <div class="card flush appear"><div class="table-wrap"><table class="table">
   <thead><tr><th>Роль</th><th>Где работает</th><th class="n">Прав</th><th class="n">Сотрудников</th></tr></thead>

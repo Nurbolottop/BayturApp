@@ -173,7 +173,7 @@ class PromotionEngineTests(BaseAPITestCase):
     def test_panel_and_admin_api(self):
         p = self.promo(kind='percent', value=20, scope='items', items=[self.ski])
         c = Client()
-        c.force_login(self.make_staff('owner'))
+        c.force_login(self.make_staff('owner', superuser=True))
         for url in ('/panel/promotions/', '/panel/promotions/?venue=ski', '/panel/promotions/new/',
                     f'/panel/promotions/{p.pk}/'):
             self.assertEqual(c.get(url).status_code, 200, url)
@@ -182,7 +182,7 @@ class PromotionEngineTests(BaseAPITestCase):
                                                                                                'ski-skipass'],
             'bundle_price': '2200', 'audience': 'all', 'sort_order': '0', 'is_active': 'on'})
         self.assertEqual(r.status_code, 302, r.content.decode()[:2000])
-        api = self.staff_client(self.make_staff('owner'))
+        api = self.staff_client(self.make_staff('owner', superuser=True))
         r = api.get('/api/v1/admin/promotions?venue=ski')
         self.assertEqual(r.status_code, 200, r.content)
         r = api.patch(f'/api/v1/admin/promotions/{p.pk}', {'value': 150}, format='json')

@@ -18,13 +18,23 @@ class AuthTests(AdminTestCase):
 
 
 class DirectorTests(AdminTestCase):
-    """Директор — полный доступ (бывшие менеджер, редактор, бухгалтер, служба заботы — тоже директоры)."""
+    """
+    Директор — условия программы, заявки, клиенты, сотрудники. Услуги — у кураторов отделов, тексты, фото,
+    контент, акции и push — у маркетолога (roles.OWNER_EXCLUDED, 25.10.2026).
+    """
 
-    def test_director_edits_prices_rules_and_promos(self):
-        self.assertStatus(self.patch(self.owner, '/items/massage', {'price': 1200}), 200)
-        r = self.patch(self.owner, '/categories/spa', {'rules': {'rate': 0.07, 'methods': ['cash']}})
+    def test_director_without_catalog_and_content(self):
+        self.assertStatus(self.patch(self.owner, '/items/massage', {'price': 1200}), 403)
+        self.assertStatus(self.get(self.owner, '/articles'), 403)
+        self.assertStatus(self.get(self.owner, '/campaigns'), 403)
+        self.assertStatus(self.get(self.owner, '/tiers'), 200)
+        self.assertStatus(self.get(self.owner, '/settings'), 200)
+
+    def test_full_admin_edits_prices_rules_and_promos(self):
+        self.assertStatus(self.patch(self.admin, '/items/massage', {'price': 1200}), 200)
+        r = self.patch(self.admin, '/categories/spa', {'rules': {'rate': 0.07, 'methods': ['cash']}})
         self.assertStatus(r, 200)
-        r = self.post(self.owner, '/items/massage/promos', {'rate': 0.1, 'tag': {'ru': '×2'},
+        r = self.post(self.admin, '/items/massage/promos', {'rate': 0.1, 'tag': {'ru': '×2'},
                                                             'startsAt': '2026-09-01', 'endsAt': '2026-09-30'})
         self.assertStatus(r, 201)
 
@@ -63,7 +73,7 @@ class StaffRoleTests(AdminTestCase):
 
 
 class OwnerSmokeTests(AdminTestCase):
-    def test_all_lists_open_for_owner(self):
+    def test_all_lists_open_for_admin(self):
         urls = ['/outlets', '/categories', '/items', '/items/massage', '/items/massage/promos', '/tiers',
                 '/privileges', '/articles', '/promos', '/events', '/stories', '/members',
                 f'/members/{self.member.pk}', f'/members/{self.member.pk}/requests',
@@ -73,7 +83,7 @@ class OwnerSmokeTests(AdminTestCase):
                 '/complaint-categories', '/reply-templates']
         for url in urls:
             with self.subTest(url=url):
-                self.assertStatus(self.get(self.owner, url), 200)
+                self.assertStatus(self.get(self.admin, url), 200)
 
     def test_settings_update_is_audited(self):
         r = self.patch(self.owner, '/settings', {'pointsPerSom': 50, 'purgeDays': 14})

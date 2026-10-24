@@ -19,8 +19,10 @@ def _tier_forms(request, tiers, data=None):
     forms = []
     for t in tiers:
         f = TierForm(data, instance=t, prefix=t.pk)
-        if not request.user.can('tiers.edit'):
-            f.lock(['threshold'])
+        if not request.user.can('tiers.edit'):     # условия — директор
+            f.lock(['threshold', 'cashback_bonus', 'permanent_lifetime', 'permanent_years'])
+        if not request.user.can('tiers.texts'):    # название — маркетолог
+            f.lock(['name'])
         forms.append(f)
     return forms
 
@@ -73,6 +75,7 @@ def tiers(request):
         rows.append({'tier': t, 'form': f, 'privileges': privileges, 'sections': sections})
     return render(request, 'panel/tiers/index.html', {
         'rows': rows, 'preview': preview, 'can_edit': request.user.can('tiers.edit'),
+        'can_style': request.user.can('tiers.texts'),
         'venues': venues, 'shown': shown,
         'perks': {r['tier'].pk: [p.short for p in r['privileges']] for r in rows}})
 
@@ -90,6 +93,8 @@ def privilege_edit(request, privilege_id=None):
         form.initial['modes'] = [request.GET['mode']]
     if not user.can('tiers.edit'):
         form.lock(PrivilegeForm.RULE_FIELDS)
+    if obj is not None and not user.can('tiers.texts'):  # тексты привилегии — маркетолог
+        form.lock([n for n in form.fields if n not in PrivilegeForm.RULE_FIELDS])
     if request.method == 'POST' and form.is_valid():
         before = model_snapshot(obj) if obj else None
         saved = form.save()
@@ -122,11 +127,17 @@ def _medal_path(value):
     return value
 
 
-@panel_view(perm='tiers.edit')
+@panel_view('tiers')
 def tier_edit(request, tier_id=None):
-    """Новый уровень или оформление существующего (название, градиент, медаль) + удаление."""
+    """
+    Новый уровень (директор, tiers.edit) или оформление существующего — название, градиент, медаль
+    (маркетолог, tiers.texts) + удаление (директор).
+    """
     tier = get_object_or_404(Tier.objects.live(), pk=tier_id) if tier_id else None
     creating = tier is None
+    if creating and not request.user.can('tiers.edit'):
+        from ..access import forbidden
+        return forbidden(request, 'Уровень добавляет директор')
     initial = {}
     if tier:
         c = tier.gradient
@@ -134,7 +145,10 @@ def tier_edit(request, tier_id=None):
     else:
         initial = {'color0': '#232C38', 'color1': '#627488', 'color2': '#B4C2D3'}
     form = TierStyleForm(request.POST or None, initial=initial, creating=creating)
-    if request.method == 'POST' and form.is_valid():
+    can_style = creating or request.user.can('tiers.texts')
+    if not can_style:  # директор: оформление (название, цвета, медаль) — у маркетолога, здесь только удаление
+        form.lock(list(form.fields))
+    if request.method == 'POST' and can_style and form.is_valid():
         d = form.cleaned_data
         try:
             if creating:
@@ -150,7 +164,8 @@ def tier_edit(request, tier_id=None):
             return redirect('panel:tiers')
         except ApiError as e:
             messages.error(request, e.message or message_for(e.code, 'ru'))
-    ctx = {'form': form, 'tier': tier, 'creating': creating,
+    ctx = {'form': form, 'tier': tier, 'creating': creating, 'can_style': can_style,
+           'can_delete': request.user.can('tiers.edit'),
            'existing': list(Tier.objects.live().order_by('order'))}
     if tier:
         ctx['deletion'] = delete_tier_preview(tier)

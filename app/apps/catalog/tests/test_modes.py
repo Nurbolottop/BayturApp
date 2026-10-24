@@ -121,7 +121,7 @@ class ModesPanelTests(BaseAPITestCase):
         super().setUp()
         call_command('load_venues', stdout=StringIO())
         self.c = Client()
-        self.c.force_login(self.make_staff('owner'))
+        self.c.force_login(self.make_staff('owner', superuser=True))
 
     def test_switcher_and_pages(self):
         r = self.c.get('/panel/catalog/')

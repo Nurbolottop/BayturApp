@@ -111,7 +111,7 @@ from apps.common.testing import BaseAPITestCase  # noqa: E402
 
 class TemporaryPasswordTests(BaseAPITestCase):
     def test_temp_password_must_be_changed(self):
-        owner = self.staff_client(self.make_staff('owner'))
+        owner = self.staff_client(self.make_staff('owner', superuser=True))
         r = owner.post('/api/v1/admin/staff', {'email': 'new@baytur.kg', 'fullName': 'Новый', 'role': 'owner'},
                        format='json')
         self.assertEqual(r.status_code, 201, r.content)

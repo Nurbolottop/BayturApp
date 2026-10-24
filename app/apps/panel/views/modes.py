@@ -47,11 +47,15 @@ def venue_edit(request, venue_id):
     venue = get_object_or_404(Venue, pk=venue_id)
     if venue_id not in {v.pk for v in allowed_modes(request.user)}:
         return forbidden(request, 'Этот режим вам недоступен')
-    can_edit = request.user.can('catalog.edit')
+    # «открыт», сезоны, версии приложения — директор (settings.edit); тексты и фото объекта — маркетолог
+    can_edit = request.user.can('settings.edit')
     data = request.POST or None
     form = VenueForm(data, instance=venue)
+    rules = ['sort_order', 'is_active', 'is_open', 'early_booking_enabled', 'accent']
     if not can_edit:
-        form.lock(['sort_order', 'is_active', 'is_open', 'early_booking_enabled', 'accent'])
+        form.lock(rules)
+    if not request.user.can('catalog.texts'):
+        form.lock([n for n in form.fields if n not in rules])
     is_sk = venue.app == 'sk'
     seasons = SeasonFormSet(data if can_edit else None, instance=venue, prefix='seasons') if is_sk else None
     release = AppReleaseForm(data if can_edit else None, instance=AppRelease.objects.get_or_create(app='sk')[0],

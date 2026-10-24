@@ -31,9 +31,11 @@ class AdminTestCase(APITestCase):
             Tier.objects.create(id=tid, order=order, name=l10n(tid.title(), tid.title(), tid.title()),
                                 threshold=threshold)
         cls.owner = cls.make_staff(Role.OWNER)
+        # все права: услуги и контент директору недоступны (roles.OWNER_EXCLUDED)
+        cls.admin = cls.make_staff(Role.OWNER, superuser=True)
         # Ролей две: директор и администратор кассы. Бывшие офисные роли — тоже директоры
-        cls.manager = cls.make_staff(Role.OWNER)
-        cls.editor = cls.make_staff(Role.OWNER)
+        cls.manager = cls.make_staff(Role.OWNER, superuser=True)
+        cls.editor = cls.make_staff(Role.OWNER, superuser=True)
         cls.accountant = cls.make_staff(Role.OWNER)
         cls.care = cls.make_staff(Role.OWNER)
         cls.staff = cls.make_staff(Role.STAFF, outlets=[cls.reception])
@@ -43,10 +45,10 @@ class AdminTestCase(APITestCase):
         get_wallet(cls.member)
 
     @classmethod
-    def make_staff(cls, role, outlets=(), phone=''):
+    def make_staff(cls, role, outlets=(), phone='', superuser=False):
         n = StaffUser.objects.count() + 1
         user = StaffUser.objects.create_user(f'{role}{n}@baytur.kg', 'pass-12345', full_name=f'{role} {n}',
-                                             role=role, phone=phone, totp_enabled=True)
+                                             role=role, phone=phone, totp_enabled=True, is_superuser=superuser)
         user.outlets.set(outlets)
         return user
 

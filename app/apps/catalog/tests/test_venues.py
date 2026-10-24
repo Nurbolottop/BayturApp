@@ -65,7 +65,7 @@ class VenueCatalogTests(BaseAPITestCase):
     def test_panel_pages(self):
         from django.test import Client
         c = Client()
-        c.force_login(self.make_staff('owner'))
+        c.force_login(self.make_staff('owner', superuser=True))
         for url in ('/panel/catalog/', '/panel/catalog/?venue=ski', '/panel/catalog/venues/ski/',
                     '/panel/catalog/sections/ski-cafe-soups/', '/panel/catalog/sections/new/?venue=ski',
                     '/panel/catalog/items/ski-borsch/', '/panel/catalog/items/new/?section=ski-cafe-soups'):
@@ -74,7 +74,7 @@ class VenueCatalogTests(BaseAPITestCase):
         self.assertContains(c.get('/panel/catalog/?venue=ski'), 'Борщ')
 
     def test_admin_api(self):
-        api = self.staff_client(self.make_staff('owner'))
+        api = self.staff_client(self.make_staff('owner', superuser=True))
         r = api.get('/api/v1/admin/sections?venue=ski&parent=root')
         self.assertEqual(r.status_code, 200, r.content)
         r = api.get('/api/v1/admin/items?venue=ski')

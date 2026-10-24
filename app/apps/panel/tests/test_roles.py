@@ -63,3 +63,54 @@ class ConfigurableRolesTests(BaseAPITestCase):
         client = self.staff_client(self.marketer)
         self.assertEqual(client.get('/api/v1/admin/promotions').status_code, 200)
         self.assertEqual(client.get('/api/v1/admin/members').status_code, 403)
+
+
+class SplitDutiesTests(BaseAPITestCase):
+    """25.10.2026: директор — условия программы; услуги — кураторы отделов; тексты, фото, контент, акции, push — маркетолог."""
+
+    def panel(self, user):
+        from django.test import Client
+        c = Client()
+        c.force_login(user)
+        return c
+
+    def test_director_has_no_catalog_and_content(self):
+        c = self.panel(self.make_staff('owner', email='o@b.kg'))
+        for url in ('/panel/tiers/', '/panel/settings/', '/panel/requests/', '/panel/staff/', '/panel/roles/'):
+            self.assertEqual(c.get(url).status_code, 200, url)
+        for url in ('/panel/catalog/', '/panel/catalog/items/spa-bochka/', '/panel/content/articles/',
+                    '/panel/campaigns/', '/panel/promotions/', '/panel/welcome/', '/panel/showcase/'):
+            self.assertEqual(c.get(url).status_code, 403, url)
+
+    def test_marketing_edits_texts_not_prices(self):
+        from apps.catalog.models import Item
+        c = self.panel(self.make_staff('marketing', email='m@b.kg'))
+        r = c.get('/panel/catalog/items/spa-bochka/')
+        self.assertEqual(r.status_code, 200)
+        form = r.context['form']
+        self.assertTrue(form.fields['price'].disabled)
+        self.assertFalse(form.fields['title'].disabled)
+        for url in ('/panel/promotions/', '/panel/welcome/', '/panel/campaigns/', '/panel/content/articles/'):
+            self.assertEqual(c.get(url).status_code, 200, url)
+        self.assertEqual(c.get('/panel/catalog/items/new/').status_code, 403)   # новую услугу заводит куратор
+        self.assertTrue(Item.objects.filter(pk='spa-bochka').exists())
+
+    def test_curator_edits_prices_not_texts(self):
+        c = self.panel(self.make_staff('admin-entertainment', email='c@b.kg'))
+        form = c.get('/panel/catalog/items/spa-bochka/').context['form']
+        self.assertFalse(form.fields['price'].disabled)
+        self.assertTrue(form.fields['title'].disabled)
+        self.assertTrue(form.fields['image'].disabled)
+        self.assertEqual(c.get('/panel/promotions/').status_code, 403)
+
+    def test_tier_texts_vs_rules(self):
+        owner = self.panel(self.make_staff('owner', email='o3@b.kg'))
+        forms = owner.get('/panel/tiers/').context['rows']
+        f = forms[1]['form']
+        self.assertFalse(f.fields['threshold'].disabled)
+        self.assertTrue(f.fields['name'].disabled)
+        mk = self.panel(self.make_staff('marketing', email='m3@b.kg'))
+        f = mk.get('/panel/tiers/').context['rows'][1]['form']
+        self.assertTrue(f.fields['threshold'].disabled)
+        self.assertTrue(f.fields['cashback_bonus'].disabled)
+        self.assertFalse(f.fields['name'].disabled)

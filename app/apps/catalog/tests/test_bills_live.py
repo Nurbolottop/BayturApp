@@ -42,7 +42,7 @@ class BillsLiveTests(BaseAPITestCase):
         d = self.api.get('/api/v1/showcase', **SK, HTTP_X_BAYTUR_MODE='ski').json()
         self.assertEqual((d['live'], d['liveUpdatedAt']), ([], None))
         c = Client()
-        c.force_login(self.make_staff('owner'))
+        c.force_login(self.make_staff('owner', superuser=True))
         page = c.get('/panel/catalog/venues/ski/')
         self.assertContains(page, 'Живая сводка')
         form = page.context['form']

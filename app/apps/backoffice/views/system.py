@@ -19,7 +19,7 @@ from apps.common.pagination import paginate
 from apps.members.models import LegalDocument, LegalKind, Member, MemberStatus
 from apps.staff.auth import validate_pin
 from apps.staff.models import StaffRefreshToken, StaffUser
-from apps.staff.roles import PERMISSIONS, Role, RoleKind, role_kind, roles_map
+from apps.staff.roles import Role, RoleKind, owner_permissions, role_kind, roles_map
 
 from ..base import (ANY_STAFF, AdminAPIView, CollectionView, DetailView, ObjectView, body, field_error,
                     parse_moment, period_filter)
@@ -273,7 +273,7 @@ class RolesView(AdminAPIView):
 
     def get(self, request):
         return Response({'items': [{'id': role, 'label': info['name'], 'kind': info['kind'],
-                                    'permissions': sorted(PERMISSIONS) if role == Role.OWNER
+                                    'permissions': owner_permissions() if role == Role.OWNER
                                     else sorted(info['perms'])}
                                    for role, info in roles_map().items()]})
 

@@ -21,6 +21,13 @@ def _editor_only(user):
     return not user.can('catalog.edit')
 
 
+def _lock_texts(form, rule_fields, user, existing=True):
+    """Тексты и фото меняет маркетолог (catalog.texts); куратор (catalog.edit) — только цены и условия.
+    Новую запись куратор заполняет целиком — без названия её не создать."""
+    if existing and not user.can('catalog.texts'):
+        form.lock([n for n in form.fields if n not in rule_fields])
+
+
 def _department_only(request):
     """Разделы, объекты и подразделы меняет только сотрудник без отдела."""
     from ..access import forbidden
@@ -90,6 +97,8 @@ def section_edit(request, section_id=None):
     form = SectionForm(request.POST or None, instance=section, initial=initial)
     if _editor_only(request.user):
         form.lock(['id', 'venue', 'parent', 'category', 'sort_order', 'is_active'])
+    _lock_texts(form, ['id', 'venue', 'parent', 'category', 'sort_order', 'is_active'], request.user,
+                existing=section is not None)
     if request.method == 'POST' and form.is_valid():
         before = model_snapshot(section) if section else None
         obj = form.save()
@@ -108,6 +117,7 @@ def category_edit(request, category_id):
     form = CategoryForm(request.POST or None, instance=cat)
     if _editor_only(request.user):
         form.lock(CategoryForm.RULE_FIELDS)
+    _lock_texts(form, CategoryForm.RULE_FIELDS, request.user)
     if request.method == 'POST' and form.is_valid():
         before = model_snapshot(cat)
         obj = form.save()
@@ -137,6 +147,7 @@ def item_edit(request, item_id=None):
     _limit_to_department(form, user)
     if _editor_only(user):
         form.lock(ItemForm.RULE_FIELDS)
+    _lock_texts(form, ItemForm.RULE_FIELDS, user, existing=item is not None)
     if request.method == 'POST' and form.is_valid():
         before = model_snapshot(item) if item else None
         obj = form.save()

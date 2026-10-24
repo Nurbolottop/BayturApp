@@ -87,7 +87,7 @@ class ImagesAndPlaceTests(BaseAPITestCase):
 
     def test_panel_section_cover_and_promotion_image(self):
         c = Client()
-        c.force_login(self.make_staff('owner'))
+        c.force_login(self.make_staff('owner', superuser=True))
         group = Section.objects.filter(venue_id='kymyz', parent__isnull=False).first()
         r = c.get(f'/panel/catalog/sections/{group.pk}/')
         self.assertContains(r, 'id_cover')

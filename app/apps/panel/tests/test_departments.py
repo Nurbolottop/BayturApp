@@ -48,6 +48,10 @@ class DepartmentAdminTests(PanelBase):
         self.assertEqual(c.get('/panel/showcase/').status_code, 403)
 
     def test_promotions_only_own(self):
+        # акции по умолчанию ведёт маркетолог; если директор выдаст их куратору — только своего отдела
+        role = StaffRole.objects.get(pk='admin-food')
+        role.permissions = sorted(set(role.permissions) | {'promotions.edit'})
+        role.save()
         own = Promotion.objects.create(title={'ru': 'Еда −10%'}, kind='percent', value=10, scope='items')
         own.items.set([self.food_item])
         other = Promotion.objects.create(title={'ru': 'SPA −10%'}, kind='percent', value=10, scope='items')
