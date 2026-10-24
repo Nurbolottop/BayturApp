@@ -7,7 +7,8 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 TIERS = ['bronze', 'silver', 'gold', 'platinum', 'titanium', 'ambassador']
-GENERAL = {'birthday'}  # группы, которые действуют во всех объектах
+# группы, которые действуют во всех объектах; поздний выезд — одна привилегия на уровень для всех объектов
+GENERAL = {'birthday', 'late-checkout'}
 
 
 def L(ru, ky, en):
@@ -41,13 +42,6 @@ SKI = [
             L('Отдельный проход на подъёмник без очереди.', 'Көтөргүчкө кезексиз өзүнчө өтүү.',
               'Separate lift entrance with no queue.'))
         for t in TIERS[2:]}),
-    ('ski-late-checkout', 'lateCheckOut', L('Поздний выезд', 'Кеч чыгуу', 'Late check-out'), {
-        t: (L(f'Поздний выезд из коттеджа до {h}:00', f'Коттедждан саат {h}:00гө чейин чыгуу',
-              f'Cottage check-out until {h}:00'),
-            L(f'Выезд до {h}:00', f'{h}:00гө чейин', f'Until {h}:00'),
-            L(f'Коттедж можно освободить до {h}:00.', f'Коттеджди саат {h}:00гө чейин бошотсо болот.',
-              f'You can leave the cottage by {h}:00.'))
-        for t, h in (('gold', 13), ('platinum', 14), ('titanium', 16), ('ambassador', 18))}),
     ('ski-instructor', 'gym', L('Инструктор', 'Инструктор', 'Instructor'), {
         t: (L(f'Занятия с инструктором: {n}', f'Инструктор менен сабак: {n}', f'Lessons with an instructor: {n}'),
             L(f'Инструктор ×{n}', f'Инструктор ×{n}', f'Instructor ×{n}'),
@@ -113,12 +107,6 @@ KYMYZ = [
                               ('platinum', '+1 категория', '+1 категория', '+1 category'),
                               ('titanium', '+2 категории', '+2 категория', '+2 categories'),
                               ('ambassador', 'лучший коттедж', 'эң жакшы коттедж', 'best cottage'))}),
-    ('kymyz-late-checkout', 'lateCheckOut', L('Поздний выезд', 'Кеч чыгуу', 'Late check-out'), {
-        t: (L(f'Поздний выезд до {h}:00', f'Саат {h}:00гө чейин чыгуу', f'Late check-out until {h}:00'),
-            L(f'Выезд до {h}:00', f'{h}:00гө чейин', f'Until {h}:00'),
-            L(f'Номер можно освободить до {h}:00.', f'Бөлмөнү саат {h}:00гө чейин бошотсо болот.',
-              f'You can leave your room by {h}:00.'))
-        for t, h in (('gold', 13), ('platinum', 14), ('titanium', 16), ('ambassador', 18))}),
     ('kymyz-horse', 'excursion', L('Конная прогулка', 'Ат менен сейил', 'Horse ride'), {
         'platinum': (L('Конная прогулка 1 час', 'Ат менен 1 саат сейил', '1-hour horse ride'),
                      L('Кони 1 ч', 'Ат 1 с', 'Horses 1 h'),

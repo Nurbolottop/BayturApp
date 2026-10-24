@@ -167,7 +167,7 @@ def _late(tier, time):
     return {'id': f'late-checkout-{tier}', 'tier': tier, 'group': 'late-checkout', 'group_title': L('Поздний выезд', 'Кеч чыгуу', 'Late check-out'),
             'icon': 'lateCheckOut',
             'title': L(f'Поздний выезд до {time}', f'{time} чейин кеч чыгуу', f'Late check-out until {time}'),
-            'short': L(f'Выезд до {time}', f'{time} чейин', f'Until {time}'),
+            'short': L('Поздний выезд', 'Кеч чыгуу', 'Late check-out'),
             'description': L(f'Номер можно освободить до {time}.', f'Бөлмөнү {time} чейин бошотсо болот.',
                              f'You can keep your room until {time}.'),
             'footnote': _LATE_NOTE}
