@@ -122,6 +122,48 @@ class DeskReceiptTests(BaseAPITestCase):
         self.assertEqual(r.json()['error']['code'], 'qr_invalid')
 
 
+class ReceiptQuantityTests(BaseAPITestCase):
+    """Номер 23 000 × 2 ночи: кассир выбрал количество, сумма чека сверяется с цена × количество."""
+
+    def setUp(self):
+        super().setUp()
+        self.item = Item.objects.select_related('category').get(pk='room-deluxe')
+        cats = self.item.category
+        if 'cash' not in cats.methods:
+            cats.methods = list(cats.methods) + ['cash']
+            cats.save()
+        self.cashier = self.make_staff('staff', outlets=[self.item.outlet])
+        self.desk = self.staff_client(self.cashier)
+        member = self.make_member('+996555303030')
+        token, _ = make_member_qr(member)
+        self.pay = self.desk.post(f'{S}/scan', {'token': token}, format='json').json()['payToken']
+
+    def qr(self, som, fd):
+        return GNS_QR.replace('fd_number=99340', f'fd_number={fd}').replace('sum=250000', f'sum={som * 100}')
+
+    def post(self, url, som, fd, **extra):
+        return self.desk.post(f'{S}/cash/{url}', {'payToken': self.pay, 'itemId': self.item.pk,
+                                                  'receiptQr': self.qr(som, fd), **extra}, format='json')
+
+    def test_quantity_checked_against_price_times_quantity(self):
+        r = self.post('preview', 46_000, 1, quantity=2)
+        self.assertEqual((r.status_code, r.json()['quantity'], r.json()['total']), (200, 2, 46_000), r.content)
+        r = self.post('preview', 46_000, 2, quantity=3)
+        err = r.json()['error']
+        self.assertEqual((r.status_code, err['code']), (422, 'receipt_amount_mismatch'))
+        self.assertEqual((err['amount'], err['price'], err['quantity'], err['expected']), (46_000, 23_000, 3, 69_000))
+        with self.captureOnCommitCallbacks(execute=True):
+            r = self.post('accept', 46_000, 3, quantity=2)
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(r.json()['quantity'], 2)
+        self.assertIsNotNone(r.json()['cancelUntil'])
+
+    def test_without_quantity_as_before(self):
+        self.assertEqual(self.post('preview', 46_000, 4).json()['quantity'], 2)
+        err = self.post('preview', 30_000, 5).json()['error']
+        self.assertEqual((err['code'], err['quantity'], err['expected']), ('receipt_amount_mismatch', None, None))
+
+
 class StaffPushTests(BaseAPITestCase):
     def test_device_register_and_online_payment_push(self):
         from apps.notifications.services import notify_staff_paid_online

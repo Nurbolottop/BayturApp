@@ -170,7 +170,10 @@ WebSocket `wss://app.baytur.kg/api/v1/staff/events?token=<accessToken>` — со
 ## 7б. Оформление по QR клиента (с 24.10.2026)
 
 Кассир оформляет клиента сам по QR клиента. Способов оплаты два:
-- **наличными** — по QR фискального чека: `/staff/cash/preview` и `/staff/cash/accept` (раздел 7, без изменений);
+- **наличными** — по QR фискального чека: `/staff/cash/preview` и `/staff/cash/accept`
+  `{payToken, itemId, receiptQr, quantity?, requestId?, amount?}`. `quantity` — сколько единиц выбрал кассир
+  (номер × 6 ночей): сумма чека должна быть цена × quantity, иначе `422 receipt_amount_mismatch
+  {amount, price, quantity, expected}`; без `quantity` количество = сумма чека / цена. В ответе accept — `cancelUntil`;
 - **баллами** — списываются, только когда клиент подтвердит у себя в телефоне.
 
 1. `POST /staff/scan` → `payToken`; `GET /staff/points/items` — у услуги есть `receiptRequired`.

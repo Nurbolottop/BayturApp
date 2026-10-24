@@ -9999,6 +9999,10 @@ components:
           type: string
           minLength: 1
           description: Заявка клиента «наличными», к которой привязать чек
+        quantity:
+          type: integer
+          description: 'Сколько единиц выбрал кассир: сумма чека = цена × quantity,
+            иначе 422 receipt_amount_mismatch {amount, price, quantity, expected}'
       required:
       - itemId
       - payToken

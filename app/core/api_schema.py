@@ -277,7 +277,9 @@ def apply():
         o.StaffRequest, status=201, errors=(400, 401, 403, 404, 422))
     receipt_in = inline_serializer('ReceiptInput', {
         'payToken': s.CharField(), 'itemId': s.CharField(), 'receiptQr': s.CharField(help_text='Текст QR чека'),
-        'requestId': s.CharField(required=False, help_text='Заявка клиента «наличными», к которой привязать чек')})
+        'requestId': s.CharField(required=False, help_text='Заявка клиента «наличными», к которой привязать чек'),
+        'quantity': s.IntegerField(required=False, help_text='Сколько единиц выбрал кассир: сумма чека = цена × '
+                                   'quantity, иначе 422 receipt_amount_mismatch {amount, price, quantity, expected}')})
     doc(staffdesk.ReceiptPreviewView, 'post', STAFF, 'Наличные: скан QR чека → сумма и кешбек (ничего не сохраняет)',
         receipt_in, inline_serializer('ReceiptPreview', {
             'itemId': s.CharField(), 'amount': s.IntegerField(), 'total': s.IntegerField(),

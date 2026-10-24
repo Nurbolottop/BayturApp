@@ -388,13 +388,18 @@ def _receipt_used(key):
             'outlet': used.outlet_id})
 
 
-def _cash_input(item, amount):
-    """Сумма чека → ввод заявки: «по сумме чека» — сумма; фиксированная цена — количество, сумма должна делиться."""
+def _cash_input(item, amount, quantity=None):
+    """
+    Сумма чека → ввод заявки: «по сумме чека» — сумма; фиксированная цена — количество. Кассир указал
+    количество (номер 3 040 × 6 ночей) — сумма чека должна быть цена × количество; не указал — сумма должна делиться.
+    """
     if item.pricing_type == 'check':
         return {'checkAmount': amount, 'quantity': None}
-    if not item.price or amount % item.price:
-        raise ApiError('receipt_amount_mismatch', 422, extra={'price': item.price, 'amount': amount})
-    return {'checkAmount': None, 'quantity': amount // item.price}
+    expected = item.price * quantity if quantity else None
+    if not item.price or (amount != expected if quantity else amount % item.price):
+        raise ApiError('receipt_amount_mismatch', 422, extra={'price': item.price, 'amount': amount,
+                                                              'quantity': quantity, 'expected': expected})
+    return {'checkAmount': None, 'quantity': quantity or amount // item.price}
 
 
 def _client_cash_request(user, member, request_id, item_id):
@@ -407,7 +412,7 @@ def _client_cash_request(user, member, request_id, item_id):
     return req
 
 
-def receipt_preview(user, pay_token, item_id, receipt_qr, request_id=None, amount=None):
+def receipt_preview(user, pay_token, item_id, receipt_qr, request_id=None, amount=None, quantity=None):
     """Что увидит сотрудник после скана чека: сумма, кешбек клиенту; чек ещё не принят."""
     from django.utils import timezone as tz
 
@@ -422,7 +427,7 @@ def receipt_preview(user, pay_token, item_id, receipt_qr, request_id=None, amoun
     rules = resolve_rules(item, member, ProgramSettings.get(), tz.now())
     if 'cash' not in rules.methods:
         raise ApiError('method_not_allowed', 422)
-    data = _cash_input(item, receipt['amount'])
+    data = _cash_input(item, receipt['amount'], quantity)
     total, quantity = compute_total(item, data['quantity'], data['checkAmount'])
     split = compute_split(total, rules, 0, 0)
     return {'itemId': item.pk, 'amount': receipt['amount'], 'total': total, 'quantity': quantity,
@@ -433,7 +438,7 @@ def receipt_preview(user, pay_token, item_id, receipt_qr, request_id=None, amoun
             'receipt': receipt.get('details')}
 
 
-def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None, amount=None):
+def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None, amount=None, quantity=None):
     """
     «Принять оплату» по чеку: операция проводится сразу (без очереди подтверждения), кешбек начисляется
     клиенту. Чек запоминается — повторный скан даёт receipt_used.
@@ -450,7 +455,7 @@ def receipt_accept(request, pay_token, item_id, receipt_qr, request_id=None, amo
     _receipt_used(receipt['key'])
     item = _pay_item(user, item_id)
     check_not_own_member(user, member)
-    data = _cash_input(item, receipt['amount'])
+    data = _cash_input(item, receipt['amount'], quantity)
     try:
         with transaction.atomic():
             if request_id:
