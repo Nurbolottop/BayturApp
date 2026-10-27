@@ -93,6 +93,7 @@ class SplitDutiesTests(BaseAPITestCase):
         for url in ('/panel/promotions/', '/panel/welcome/', '/panel/campaigns/', '/panel/content/articles/'):
             self.assertEqual(c.get(url).status_code, 200, url)
         self.assertEqual(c.get('/panel/catalog/items/new/').status_code, 403)   # новую услугу заводит куратор
+        self.assertEqual(c.get('/panel/analytics/').status_code, 403)          # аналитика маркетингу не нужна
         self.assertTrue(Item.objects.filter(pk='spa-bochka').exists())
 
     def test_curator_edits_prices_not_texts(self):

@@ -132,7 +132,7 @@ PERMISSION_GROUPS = [
 
 # Права новой роли «Маркетинг» по умолчанию (директор меняет их в панели)
 MARKETING_DEFAULT = ['catalog.texts', 'tiers.texts', 'content.edit', 'promotions.edit', 'coupons.manage',
-                     'campaigns.draft', 'campaigns.send', 'analytics.content', 'analytics.catalog', 'audit.view_own']
+                     'campaigns.draft', 'campaigns.send', 'audit.view_own']  # аналитики у маркетинга нет (27.10)
 
 # Отделы: роль с отделом видит в панели только заявки, платежи, услуги, акции и обращения своих разделов
 # каталога. Пусто — все разделы. pools/sport — старые разделы, их услуги перенесены в «Развлечения».
