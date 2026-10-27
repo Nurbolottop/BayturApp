@@ -37,6 +37,12 @@ class DepartmentAdminTests(PanelBase):
         self.spa_req.refresh_from_db()
         self.assertEqual(self.spa_req.status, 'pending')
 
+    def test_pos_reconcile_only_restaurants(self):
+        self.assertEqual(self.login(self.food_admin).get('/panel/pos/').status_code, 200)
+        fun = self.login(self.make_staff('admin-entertainment', email='fun@b.kg'))
+        self.assertEqual(fun.get('/panel/pos/').status_code, 403)
+        self.assertEqual(StaffRole.objects.get(pk='admin-food').name, 'Куратор ресторанов')
+
     def test_catalog_only_own_items(self):
         c = self.login(self.food_admin)
         self.assertEqual(c.get(f'/panel/catalog/items/{self.food_item.pk}/').status_code, 200)

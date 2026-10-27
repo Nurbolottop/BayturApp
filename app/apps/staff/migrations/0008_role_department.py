@@ -2,9 +2,9 @@
 from django.db import migrations, models
 
 ROLES = [
-    ('admin-rooms', 'Админ номеров (ресепшен)', 'rooms'),
-    ('admin-food', 'Админ ресторанов', 'food'),
-    ('admin-entertainment', 'Админ развлечений', 'entertainment'),
+    ('admin-rooms', 'Куратор номеров (ресепшен)', 'rooms'),
+    ('admin-food', 'Куратор ресторанов', 'food'),
+    ('admin-entertainment', 'Куратор развлечений', 'entertainment'),
 ]
 
 

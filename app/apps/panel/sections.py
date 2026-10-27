@@ -19,11 +19,14 @@ class Section:
     badge: str = ''         # ключ счётчика из context processor
     children: tuple = field(default=())
     whole: bool = False     # настройка всего курорта — не для админа отдела (роль с отделом)
+    categories: tuple = ()  # только для этих отделов (по разделам каталога); сотрудник без отдела видит всегда
 
     def allowed(self, user):
+        cats = user.category_ids if user and user.is_authenticated and getattr(user, 'is_staff_user', False) else None
         return bool(user and user.is_authenticated and getattr(user, 'is_staff_user', False)
                     and any(user.can(p) for p in self.perms)
-                    and not (self.whole and user.category_ids is not None))
+                    and not (self.whole and cats is not None)
+                    and not (self.categories and cats is not None and not cats & set(self.categories)))
 
     @property
     def url(self):
@@ -49,7 +52,8 @@ SECTIONS = [
     Section('desk', 'Очередь', 'panel:desk', 'queue', ('requests.process',), group='work', tab=True, badge='queue'),
     Section('requests', 'Заявки', 'panel:requests', 'receipt', ('requests.view_all',), group='work', tab=True,
             badge='escalated'),
-    Section('pos', 'Сверка R-Keeper', 'panel:pos', 'check', ('requests.view_all',), group='work'),
+    Section('pos', 'Сверка R-Keeper', 'panel:pos', 'check', ('requests.view_all',), group='work',
+            categories=('food',)),  # R-Keeper — только рестораны: куратор ресторанов и директор
     Section('payments', 'Платежи', 'panel:payments', 'card', ('payments.view',), group='work'),
     Section('members', 'Клиенты', 'panel:members', 'users', ('members.view',), group='work', tab=True),
     Section('complaints', 'Обращения', 'panel:complaints', 'chat', ('complaints.view',), group='work', tab=True,
