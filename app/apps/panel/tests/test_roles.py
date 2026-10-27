@@ -104,14 +104,12 @@ class SplitDutiesTests(BaseAPITestCase):
         self.assertTrue(form.fields['image'].disabled)
         self.assertEqual(c.get('/panel/promotions/').status_code, 403)
 
-    def test_tier_texts_vs_rules(self):
+    def test_tiers_only_director(self):
         owner = self.panel(self.make_staff('owner', email='o3@b.kg'))
-        forms = owner.get('/panel/tiers/').context['rows']
-        f = forms[1]['form']
+        f = owner.get('/panel/tiers/').context['rows'][1]['form']
         self.assertFalse(f.fields['threshold'].disabled)
-        self.assertTrue(f.fields['name'].disabled)
-        mk = self.panel(self.make_staff('marketing', email='m3@b.kg'))
-        f = mk.get('/panel/tiers/').context['rows'][1]['form']
-        self.assertTrue(f.fields['threshold'].disabled)
-        self.assertTrue(f.fields['cashback_bonus'].disabled)
         self.assertFalse(f.fields['name'].disabled)
+        self.assertEqual(owner.get('/panel/tiers/level/silver/').status_code, 200)
+        for role in ('marketing', 'admin-rooms'):
+            c = self.panel(self.make_staff(role, email=f'{role}-t@b.kg'))
+            self.assertEqual(c.get('/panel/tiers/').status_code, 403, role)

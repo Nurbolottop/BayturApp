@@ -719,7 +719,7 @@ class TierForm(PanelForm, forms.ModelForm):
         model = Tier
         fields = ['name', 'threshold', 'cashback_bonus', 'permanent_lifetime', 'permanent_years']
         labels = {'threshold': 'Порог: «Нынешних» за год на предыдущем уровне',
-                  'cashback_bonus': 'Надбавка к кешбеку, % (Баллы = Сумма × 5 % × (1 + надбавка/100))',
+                  'cashback_bonus': 'Надбавка к кешбеку, %',
                   'permanent_lifetime': 'Навсегда: баллов за всё время (пусто — не бывает постоянным)',
                   'permanent_years': 'Навсегда: лет в программе'}
 

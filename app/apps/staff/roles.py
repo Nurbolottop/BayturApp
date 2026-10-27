@@ -1,7 +1,8 @@
 """
 Роли сотрудников и права. Системные роли:
 - Директор — условия программы (уровни, курс, кешбек, настройки), заявки, клиенты, отчёты, сотрудники и роли;
-  услуги, тексты и фото приложения, контент, акции, push и «Подарок новичку» — не его (OWNER_EXCLUDED):
+  уровни и привилегии — целиком только он; услуги, тексты и фото, контент, акции, push и «Подарок новичку» —
+  не его (OWNER_EXCLUDED):
   тексты и медиа ведёт маркетолог, цены и условия услуг — кураторы отделов;
 - Администратор кассы — привязан к точкам (ресепшен, бассейн, баня, спортзал…), работает в приложении
   кассира (телефон + 6-значный PIN): заявки, оплата баллами по QR, поиск клиента, обращения своих точек.
@@ -21,7 +22,7 @@ O, S = Role.OWNER, Role.STAFF
 
 # Чего у директора нет (решение 25.10.2026): услуги — у кураторов отделов (catalog.edit), тексты и фото,
 # контент, акции, push и подарок новичку — у маркетолога
-OWNER_EXCLUDED = {'catalog.edit', 'catalog.texts', 'tiers.texts', 'content.edit', 'promotions.edit',
+OWNER_EXCLUDED = {'catalog.edit', 'catalog.texts', 'content.edit', 'promotions.edit',
                   'coupons.manage', 'campaigns.draft', 'campaigns.send'}
 
 PERMISSIONS = {
@@ -38,7 +39,7 @@ PERMISSIONS = {
     'catalog.edit': set(),
     'catalog.texts': set(),
     'tiers.edit': {O},
-    'tiers.texts': set(),
+    'tiers.texts': {O},                # уровни целиком — только директор (27.10)
     # Контент и рассылки
     'content.edit': set(),
     'promotions.edit': set(),            # акции на цену
@@ -131,7 +132,7 @@ PERMISSION_GROUPS = [
 ]
 
 # Права новой роли «Маркетинг» по умолчанию (директор меняет их в панели)
-MARKETING_DEFAULT = ['catalog.texts', 'tiers.texts', 'content.edit', 'promotions.edit', 'coupons.manage',
+MARKETING_DEFAULT = ['catalog.texts', 'content.edit', 'promotions.edit', 'coupons.manage',
                      'campaigns.draft', 'campaigns.send', 'audit.view_own']  # аналитики у маркетинга нет (27.10)
 
 # Отделы: роль с отделом видит в панели только заявки, платежи, услуги, акции и обращения своих разделов
