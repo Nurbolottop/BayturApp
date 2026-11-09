@@ -7,8 +7,9 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 TIERS = ['bronze', 'silver', 'gold', 'platinum', 'titanium', 'ambassador']
-# группы, которые действуют во всех объектах; поздний выезд — одна привилегия на уровень для всех объектов
-GENERAL = {'birthday', 'late-checkout'}
+# группы, которые действуют во всех объектах; поздний выезд и апгрейд — одна привилегия на уровень для всех
+# объектов (разные условия объектов — в описании). «Подъёмник без очереди» и kymyz-upgrade убраны (09.11).
+GENERAL = {'birthday', 'late-checkout', 'room-upgrade'}
 
 
 def L(ru, ky, en):
@@ -36,12 +37,6 @@ SKI = [
               f'Лыжа, сноуборд жана жабдууларды ижарага алууга {p} % арзандатуу — ижара пунктунда QR көрсөтүңүз.',
               f'{p}% off skis, snowboards and gear — show your QR at the rental desk.'))
         for t, p in (('silver', 10), ('gold', 15), ('platinum', 20), ('titanium', 30), ('ambassador', 50))}),
-    ('ski-lift', 'upgrade', L('Подъёмник без очереди', 'Көтөргүчкө кезексиз', 'Priority lift'), {
-        t: (L('Подъёмник без очереди', 'Көтөргүчкө кезексиз', 'Priority lift access'),
-            L('Без очереди', 'Кезексиз', 'No queue'),
-            L('Отдельный проход на подъёмник без очереди.', 'Көтөргүчкө кезексиз өзүнчө өтүү.',
-              'Separate lift entrance with no queue.'))
-        for t in TIERS[2:]}),
     ('ski-instructor', 'gym', L('Инструктор', 'Инструктор', 'Instructor'), {
         t: (L(f'Занятия с инструктором: {n}', f'Инструктор менен сабак: {n}', f'Lessons with an instructor: {n}'),
             L(f'Инструктор ×{n}', f'Инструктор ×{n}', f'Instructor ×{n}'),
@@ -98,22 +93,13 @@ KYMYZ = [
         for t, ru, ky, en in (('gold', '1 час', '1 саат', '1 hour'), ('platinum', '2 часа', '2 саат', '2 hours'),
                               ('titanium', '3 часа', '3 саат', '3 hours'),
                               ('ambassador', 'каждый день', 'күн сайын', 'every day'))}),
-    ('kymyz-upgrade', 'upgrade', L('Апгрейд размещения', 'Жайгашууну жакшыртуу', 'Room upgrade'), {
-        t: (L(f'Апгрейд размещения: {ru}', f'Жайгашууну жакшыртуу: {ky}', f'Room upgrade: {en}'),
-            L(ru, ky, en),
-            L(f'При заселении — размещение выше забронированного: {ru}.',
-              f'Жайгашканда — брондолгондон жогору: {ky}.', f'On check-in — a better room: {en}.'))
-        for t, ru, ky, en in (('gold', '+1 категория', '+1 категория', '+1 category'),
-                              ('platinum', '+1 категория', '+1 категория', '+1 category'),
-                              ('titanium', '+2 категории', '+2 категория', '+2 categories'),
-                              ('ambassador', 'лучший коттедж', 'эң жакшы коттедж', 'best cottage'))}),
     ('kymyz-horse', 'excursion', L('Конная прогулка', 'Ат менен сейил', 'Horse ride'), {
         'platinum': (L('Конная прогулка 1 час', 'Ат менен 1 саат сейил', '1-hour horse ride'),
-                     L('Кони 1 ч', 'Ат 1 с', 'Horses 1 h'),
+                     L('Конная прогулка', 'Ат сейил', 'Horse ride'),
                      L('Часовая конная прогулка за заезд.', 'Ар бир келгенде бир сааттык ат сейил.',
                        'A one-hour horse ride per stay.')),
         'titanium': (L('Конная прогулка 2 часа', 'Ат менен 2 саат сейил', '2-hour horse ride'),
-                     L('Кони 2 ч', 'Ат 2 с', 'Horses 2 h'),
+                     L('Конная прогулка', 'Ат сейил', 'Horse ride'),
                      L('Двухчасовая конная прогулка за заезд.', 'Ар бир келгенде эки сааттык ат сейил.',
                        'A two-hour horse ride per stay.')),
         'ambassador': (L('Конный тур на день', 'Бир күндүк ат туру', 'Full-day horse tour'),

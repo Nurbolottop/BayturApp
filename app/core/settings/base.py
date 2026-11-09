@@ -324,6 +324,8 @@ RECEIPT_ALLOWED_TINS = [x.strip() for x in os.getenv('RECEIPT_ALLOWED_TINS', '')
 SMS_ONLY_PHONES = [x.strip() for x in os.getenv('SMS_ONLY_PHONES', '').split(',') if x.strip()]
 # Временный единый OTP-код для всех номеров (dev/staging, пока нет SMS-провайдера). В production игнорируется.
 OTP_FIXED_CODE = os.getenv('OTP_FIXED_CODE', '').strip()  # только для номеров без настоящей SMS
+# Дополнительные тестовые номера (E.164, через запятую): вход по коду «Тестового режима» из настроек, без SMS
+OTP_TEST_PHONES = [x.strip() for x in os.getenv('OTP_TEST_PHONES', '').split(',') if x.strip()]
 # Вход через Google / Apple ID: допустимые aud токена (через запятую). Пусто — провайдер выключен.
 # Google: client ID приложений iOS/Android/Web; Apple: bundle ID приложения (и Services ID для веба).
 GOOGLE_CLIENT_IDS = [x.strip() for x in os.getenv('GOOGLE_CLIENT_IDS', '').split(',') if x.strip()]

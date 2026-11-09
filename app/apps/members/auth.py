@@ -51,7 +51,10 @@ def _code_hash(phone, code):
 
 
 def _is_test_phone(phone, ps):
-    return ps.test_enabled and ps.test_phone and phone == ps.test_phone
+    """Тестовый номер из настроек или из OTP_TEST_PHONES (.env) — код ps.test_code, без SMS."""
+    if not (ps.test_enabled and ps.test_code):
+        return False
+    return phone == ps.test_phone or phone in settings.OTP_TEST_PHONES
 
 
 def _count_limit(key, limit, ttl):
