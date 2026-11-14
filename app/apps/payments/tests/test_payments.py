@@ -99,6 +99,20 @@ class PaymentFlowTests(BaseAPITestCase):
         services.resolve_orphan_payments()
         refund.assert_called_once()
 
+    def test_failed_orphan_refund_is_not_retried(self):
+        p = self.pay().json()
+        self.webhook(p)
+        Payment.objects.filter(pk=p['id']).update(paid_at=timezone.now() - timedelta(minutes=30))
+        from apps.catalog.models import Item
+        Item.objects.filter(pk='spa-stone').update(is_active=False)
+        with mock.patch('apps.payments.gateways.FakeGateway.refund', return_value=(False, '')) as gw:
+            services.resolve_orphan_payments()
+            services.resolve_orphan_payments()
+        self.assertEqual(gw.call_count, 1)
+        payment = Payment.objects.get(pk=p['id'])
+        self.assertEqual(payment.status, 'paid')
+        self.assertEqual(payment.refunds.filter(status='failed').count(), 1)
+
     def test_expire(self):
         p = self.pay(method='elqr').json()
         Payment.objects.filter(pk=p['id']).update(expires_at=timezone.now() - timedelta(seconds=1))

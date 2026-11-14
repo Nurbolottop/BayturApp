@@ -213,17 +213,23 @@ def resolve_orphan_payments(grace_minutes=10):
     """
     «Оплачено, но без заявки»: клиент закрыл приложение после оплаты. Сервер создаёт заявку сам
     по данным платежа; если это уже невозможно (баллов не хватает, услуга скрыта) — возврат денег.
+
+    Автовозврат пробуется один раз: если провайдер его не принял (ошибка, «возврат уже в процессе»),
+    платёж остаётся «оплачен» и разбирается вручную в админке — без повторов каждые 5 минут.
     """
     from apps.cashback.services import create_request
     cutoff = timezone.now() - timedelta(minutes=grace_minutes)
     handled = 0
-    for p in Payment.objects.filter(status=PaymentStatus.PAID, request__isnull=True, paid_at__lt=cutoff) \
-            .select_related('member'):
+    orphans = Payment.objects.filter(status=PaymentStatus.PAID, request__isnull=True, paid_at__lt=cutoff) \
+        .exclude(refunds__reason__startswith='orphan:').select_related('member').distinct()
+    for p in orphans:
         params = dict(p.params)
         try:
             create_request(p.member, {**params, 'paymentId': p.pk}, idempotency_key=f'auto:{p.pk}')
         except ApiError as e:
             log.warning('orphan payment %s: cannot create request (%s), refunding', p.pk, e.code)
-            refund_payment(p.pk, p.amount, f'orphan:{e.code}')
+            refund = refund_payment(p.pk, p.amount, f'orphan:{e.code}')
+            if refund is None or refund.status != 'done':
+                log.error('orphan payment %s: auto-refund failed, needs manual handling', p.pk)
         handled += 1
     return handled
