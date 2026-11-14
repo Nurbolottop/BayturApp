@@ -21,6 +21,7 @@ services:
   db:
     image: postgres:14
     restart: always
+    mem_limit: 256m
     env_file:
       - .env
     volumes:
@@ -34,9 +35,11 @@ services:
   redis:
     image: redis:7
     restart: always
+    mem_limit: 128m
 
   web:
     <<: *app
+    mem_limit: 768m
     # uvicorn-воркеры: HTTP + WebSocket (/api/v1/events, /api/v1/staff/events)
     command: sh -c "/entrypoint.sh && gunicorn core.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --workers ${WEB_WORKERS:-3} --timeout 120 --access-logfile -"
     ports:
@@ -45,10 +48,12 @@ services:
 
   worker:
     <<: *app
+    mem_limit: 384m
     command: celery -A core worker -l info --concurrency ${CELERY_CONCURRENCY:-4}
 
   beat:
     <<: *app
+    mem_limit: 160m
     command: celery -A core beat -l info
 
 volumes:
